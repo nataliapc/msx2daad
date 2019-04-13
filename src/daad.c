@@ -125,19 +125,21 @@ void initObjects()
 	uint16_t *extAttrLoc = (uint16_t*)hdr->objExtrPos;
 	uint8_t  *nameObj = (uint8_t*)hdr->objNamePos;
 
+	flags[fNOCarr] = 0;
+
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		objects[i].location     = *(objLoc + i);
 		objects[i].attribs.byte = *(attrLoc + i);
 		objects[i].extAttr      = *(extAttrLoc + i);
 		objects[i].nounId       = *(nameObj + i*2);
 		objects[i].adjectiveId  = *(nameObj + i*2 +1);
+		if (objects[i].location==LOC_CARRIED) flags[fNOCarr]++;
 	}
 }
 
 void mainLoop()
 {
 	initFlags();
-	initObjects();
 	initializePROC();
 
 	pushPROC(0);
@@ -237,34 +239,34 @@ bool getLogicalSentence()
 
 	// Clear parser flags
 	flags[fVerb] = flags[fNoun1] = flags[fAdject1] = flags[fAdverb] = flags[fPrep] = flags[fNoun2] = flags[fAdject2] = 
-		flags[fCPNoun] = flags[fCPAdject] = 0;
+		flags[fCPNoun] = flags[fCPAdject] = NULLWORD;
 #ifdef VERBOSE2
 printf("populateLogicalSentence()\n");
 #endif
 	while (*p && *(p+1)!=CONJUNCTION) {
 		id = *p;
 		type = *(p+1);
-		if (type==VERB && !flags[fVerb]) {										// VERB
+		if (type==VERB && flags[fVerb]==NULLWORD) {										// VERB
 			flags[fVerb] = id;
 			ret = true;
-		} else if (type==NOUN && !flags[fNoun1]) {								// NOUN1
+		} else if (type==NOUN && flags[fNoun1]==NULLWORD) {								// NOUN1
 			flags[fNoun1] = id;
 			if (id<20) flags[fVerb] = id;
 			ret = true;
-		} else if (type==NOUN && !flags[fNoun2]) {								// NOUN2
+		} else if (type==NOUN && flags[fNoun2]==NULLWORD) {								// NOUN2
 			flags[fNoun2] = id;
 			adj = fAdject2;
 			ret = true;
-		} else if (type==ADVERB && !flags[fAdverb]) {							// ADVERB
+		} else if (type==ADVERB && flags[fAdverb]==NULLWORD) {							// ADVERB
 			flags[fAdverb] = id;
 			ret = true;
-		} else if (type==PREPOSITION && !flags[fPrep]) {						// PREP
+		} else if (type==PREPOSITION && flags[fPrep]==NULLWORD) {						// PREP
 			flags[fPrep] = id;
 			ret = true;
-		} else if (type==ADJECTIVE && adj==fAdject1 && !flags[fAdject1]) {		// ADJ1
+		} else if (type==ADJECTIVE && adj==fAdject1 && flags[fAdject1]==NULLWORD) {		// ADJ1
 			flags[fAdject1] = id;
 			ret = true;
-		} else if (type==ADJECTIVE && adj==fAdject2 && !flags[fAdject2]) {		// ADJ2
+		} else if (type==ADJECTIVE && adj==fAdject2 && flags[fAdject2]==NULLWORD) {		// ADJ2
 			flags[fAdject2] = id;
 			ret = true;
 		}

@@ -100,8 +100,8 @@ printf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
 #ifdef VERBOSE
 printf("################ lastIsDone: %u\n", lastIsDone);
 #endif
-			if ((currProc->entry->verb==255 || currProc->entry->verb==flags[fVerb]) && 
-				(currProc->entry->noun==255 || currProc->entry->noun==flags[fNoun1]))
+			if ((currProc->entry->verb==NULLWORD || currProc->entry->verb==flags[fVerb]) && 
+				(currProc->entry->noun==NULLWORD || currProc->entry->noun==flags[fNoun1]))
 			{
 				currProc->condactIni = getPROCEntryCondacts();
 				currProc->condact = currProc->condactIni;
@@ -151,10 +151,6 @@ printf("    CONDACT: %s [Func:%p] [Pos:%p]\n",CONDACTS[func], &condactList[func]
 	if (!isDone) isDone |= condactList[func].flag;
 //		case CDT_SAVE:			//25  //1
 //		case CDT_LOAD:			//26  //1
-//		case CDT_AUTOG:			//31  //0
-//		case CDT_AUTOD:			//32  //0
-//		case CDT_AUTOW:			//33  //0
-//		case CDT_AUTOR:			//34  //0
 //		case CDT_RAMSAVE:		//62  //0
 //		case CDT_RAMLOAD:		//63  //1
 //		case CDT_DOALL:			//85  //1
@@ -354,7 +350,7 @@ void do_ISNDONE()
 // =============================================================================
 // Conditions for object attributes [2 condacts]
 
-void _private_hasat(uint8_t value, bool negate)
+void _internal_hasat(uint8_t value, bool negate)
 {
 	uint8_t flag, bit;
 	switch (value) {
@@ -394,11 +390,11 @@ void _private_hasat(uint8_t value, bool negate)
 	symbols in SYMBOLS.SCE which check certain parts of the DAAD system flags */
 void do_HASAT()		// value
 {
-	_private_hasat(getValueOrIndirection(), false);
+	_internal_hasat(getValueOrIndirection(), false);
 }
 void do_HASNAT()	// value
 {
-	_private_hasat(getValueOrIndirection(), true);
+	_internal_hasat(getValueOrIndirection(), true);
 }
 
 // =============================================================================
@@ -448,9 +444,9 @@ void do_QUIT()
 
 	Otherwise the position of Object objno. is changed to carried, Flag 1 is 
 	incremented and SM36 ("I now have the _.") is printed. */
-void _private_get(Object *obj)
+void _internal_get(uint8_t objno)
 {
-printf("GET obj:%u loc:%u\n", flags[fNoun1], obj->location);
+	Object *obj = objects + objno;
 	if (obj->location==LOC_CARRIED || obj->location==LOC_WORN) {
 		gfxPuts(getSystemMsg(25));
 		do_NEWTEXT();
@@ -472,13 +468,14 @@ printf("GET obj:%u loc:%u\n", flags[fNoun1], obj->location);
 		do_DONE();
 		//TODO DOALL loop must be cancelled
 	} else {
+		gfxPuts(getSystemMsg(36));
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
 	}
 }
 void do_GET()		// objno
 {
-	_private_get(&objects[getValueOrIndirection()]);
+	_internal_get(getValueOrIndirection());
 }
 /*	If Object objno. is worn then SM24 ("I can't. I'm wearing the _.") is 
 	printed and actions NEWTEXT & DONE are performed.
@@ -492,9 +489,9 @@ void do_GET()		// objno
 
 	Otherwise the position of Object objno. is changed to the current location, 
 	Flag 1 is decremented and SM39 ("I've dropped the _.") is printed. */
-void _private_drop(Object *obj)
+void _internal_drop(uint8_t objno)
 {
-printf("DROP obj:%u loc:%u\n", flags[fNoun1], obj->location);
+	Object *obj = objects + objno;
 	if (obj->location==LOC_CARRIED) {
 		obj->location = flags[fPlayer];
 		gfxPuts(getSystemMsg(39));
@@ -519,7 +516,7 @@ printf("DROP obj:%u loc:%u\n", flags[fNoun1], obj->location);
 }
 void do_DROP()		// objno
 {
-	_private_drop(&objects[getValueOrIndirection()]);
+	_internal_drop(getValueOrIndirection());
 }
 /*	If Object objno. is at the current location (but not carried or worn) SM49 
 	("I don't have the _.") is printed and actions NEWTEXT & DONE are 
@@ -537,9 +534,9 @@ void do_DROP()		// objno
 
 	Otherwise the position of Object objno. is changed to worn, Flag 1 is 
 	decremented and SM37 ("I'm now wearing the _.") is printed. */
-void do_WEAR()		// objno
+void _internal_wear(uint8_t objno)
 {
-	Object *obj = &objects[getValueOrIndirection()];
+	Object *obj = objects + objno;
 	if (obj->location==flags[fPlayer]) {
 		gfxPuts(getSystemMsg(49));
 		do_NEWTEXT();
@@ -565,6 +562,10 @@ void do_WEAR()		// objno
 		flags[fNOCarr]--;
 	}
 }
+void do_WEAR()		// objno
+{
+	_internal_wear(getValueOrIndirection());
+}
 /*	If Object objno. is carried or at the current location (but not worn) then 
 	SM50 ("I'm not wearing the _.") is printed and actions NEWTEXT & DONE are 
 	performed.
@@ -581,9 +582,9 @@ void do_WEAR()		// objno
 
 	Otherwise the position of Object objno. is changed to carried. Flag 1 is 
 	incremented and SM38 ("I've removed the _.") printed. */
-void do_REMOVE()	// objno
+void _internal_remove(uint8_t objno)
 {
-	Object *obj = &objects[getValueOrIndirection()];
+	Object *obj = objects + objno;
 	if (obj->location==LOC_CARRIED || obj->location==flags[fPlayer]) {
 		gfxPuts(getSystemMsg(50));
 		do_NEWTEXT();
@@ -608,6 +609,10 @@ void do_REMOVE()	// objno
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
 	}
+}
+void do_REMOVE()	// objno
+{
+	_internal_remove(getValueOrIndirection());
 }
 /*	The position of Object objno. is changed to the current location and Flag 1
 	is decremented if the object was carried. */
@@ -794,7 +799,13 @@ void do_DROPALL()
 	exist in the game). Either way actions NEWTEXT & DONE are performed */
 void do_AUTOG()
 {
-	_private_get(&objects[flags[fNoun1]]);
+	for (int i=0; i<hdr->numObjDsc; i++) {
+		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
+			_internal_get(i);
+			return;
+		}
+	}
+	gfxPuts(getSystemMsg(26));
 }
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; carried, worn, 
@@ -807,10 +818,52 @@ void do_AUTOG()
 	NEWTEXT & DONE are performed */
 void do_AUTOD()
 {
-	_private_drop(&objects[flags[fNoun1]]);
+	for (int i=0; i<hdr->numObjDsc; i++) {
+		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
+			_internal_drop(i);
+			return;
+		}
+	}
+	gfxPuts(getSystemMsg(28));
 }
-void do_AUTOW() {printf("===== AUTOW not implemented\n");}
-void do_AUTOR() {printf("===== AUTOR not implemented\n");}
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; carried, worn, 
+	here. i.e. The player is more likely to be trying to WEAR a carried object 
+	than one that is worn or here. If an object is found its number is passed 
+	to the WEAR action. Otherwise if there is an object in existence anywhere 
+	in the game or if Noun1 was not in the vocabulary then SM28 ("I don't have
+	one of those.") is printed. Else SM8 ("I can't do that.") is printed (i.e. 
+	It is not a valid object but does exist in the game). Either way actions 
+	NEWTEXT & DONE are performed */
+void do_AUTOW()
+{
+	for (int i=0; i<hdr->numObjDsc; i++) {
+		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
+			_internal_wear(i);
+			return;
+		}
+	}
+	gfxPuts(getSystemMsg(28));
+}
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; worn, carried, 
+	here. i.e. The player is more likely to be trying to REMOVE a worn object 
+	than one that is carried or here. If an object is found its number is passed 
+	to the REMOVE action. Otherwise if there is an object in existence anywhere 
+	in the game or if Noun1 was not in the vocabulary then SM23 ("I'm not 
+	wearing one of those.") is printed. Else SM8 ("I can't do that.") is printed 
+	(i.e. It is not a valid object but does exist in the game). Either way 
+	actions NEWTEXT & DONE are performed */
+void do_AUTOR()
+{
+	for (int i=0; i<hdr->numObjDsc; i++) {
+		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
+			_internal_remove(i);
+			return;
+		}
+	}
+	gfxPuts(getSystemMsg(23));
+}
 void do_AUTOP() {printf("===== AUTOP not implemented\n");}
 void do_AUTOT() {printf("===== AUTOT not implemented\n");}
 void do_COPYOO() {printf("===== COPYOO not implemented\n");}

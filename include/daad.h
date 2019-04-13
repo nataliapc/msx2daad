@@ -27,6 +27,9 @@
 #define LOC_CARRIED			254
 #define LOC_HERE			255
 
+// Vocabulary constant
+#define NULLWORD			255
+
 // Used by HASHAT/HASNAT
 #define HA_WAREABLE			23		// Flag 57 Bit#7
 #define HA_CONTAINER		31		// Flag 56 Bit#7
