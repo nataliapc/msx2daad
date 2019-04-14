@@ -10,7 +10,7 @@
 #include "vdp.h"
 
 
-#define MAX_TEXT_LEN		256
+#define MAX_TEXT_LEN		512
 #define MAX_PROMPT_TEXT		100
 
 #define MAX_PICFILE_READ	2048
@@ -78,7 +78,7 @@ typedef struct {
 } Vocabulary;
 
 typedef struct {
-	uint8_t  location;
+	uint8_t location;
 	union {
 		uint8_t byte;		// bits0-5:Weight|bit6:IsContainer|bit7:IsWorn
 		struct {
@@ -87,9 +87,10 @@ typedef struct {
 			unsigned isWareable  : 1;
 		} mask;
 	} attribs;
-	uint16_t extAttr;			// Extended attributes
-	uint8_t  nounId;			// Noun
-	uint8_t  adjectiveId;		// Adjective
+	uint8_t extAttr1;		// Extended attributes
+	uint8_t extAttr2;
+	uint8_t nounId;			// Noun
+	uint8_t adjectiveId;	// Adjective
 } Object;
 
 typedef struct {
@@ -311,7 +312,7 @@ extern Object *objects;
 extern Z80_registers regs;
 extern char *pPROC;					// Pointer to currect process condact
 
-extern char tmpMsg[MAX_TEXT_LEN];
+extern char *tmpMsg;				// MAX_TEXT_LEN
 extern uint8_t flags[256];
 
 extern Window windows[8];			// 0-7 windows definitions
@@ -341,6 +342,9 @@ char* getSystemMsg(uint8_t num);
 char* getUserMsg(uint8_t num);
 char* getObjectMsg(uint8_t num);
 char* getLocationMsg(uint8_t num);
+uint8_t getObjectById(uint8_t noun, uint8_t adjc);
+uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn);
+void referencedObject(uint8_t objno);
 
 void initializePROC();
 void pushPROC(uint8_t proc);

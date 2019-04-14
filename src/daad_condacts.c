@@ -325,7 +325,14 @@ void do_ADJECT2()
 // =============================================================================
 // Conditions for random [1 condacts]
 
-void do_CHANCE() {printf("===== CHANCE not implemented\n");}
+/*	Succeeds if percent is less than or equal to a random number in the range 
+	1-100 (inclusive). Thus a CHANCE 50 condition would allow PAW to look at the 
+	next CondAct only if the random number generated was between 1 and 50, a 50% 
+	chance of success. */
+void do_CHANCE()	// percent
+{
+	checkEntry = (rand()%100)+1 < getValueOrIndirection();
+}
 
 // =============================================================================
 // Conditions for sub-process success/fail [2 condacts]
@@ -376,10 +383,10 @@ void _internal_hasat(uint8_t value, bool negate)
 		case HA_TIMEOUT:   flag=fTIFlags; bit=0b10000000; break; // Flag 49 Bit#7
 		case HA_MOUSE:     flag=fTIFlags; bit=0b00000001; break; // Flag 29 Bit#0
 		case HA_GMODE:     flag=fGFlags;  bit=0b10000000; break; // Flag 29 Bit#7
+	#ifdef DEBUG
 		default:
-			#ifdef DEBUG
 				die("===== HASAT/HASNAT value not implemented\n");
-			#endif
+	#endif
 	}
 	flag = flags[flag] & bit;
 	if (negate) flag = !flag;
@@ -416,6 +423,7 @@ void do_INKEY()
 void do_QUIT()
 {
 	gfxPutsln(getSystemMsg(12));
+	clearLogicalSentences();
 	prompt();
 	char c = *tmpMsg;
 	getSystemMsg(30);
@@ -447,6 +455,7 @@ void do_QUIT()
 void _internal_get(uint8_t objno)
 {
 	Object *obj = objects + objno;
+	referencedObject(objno);
 	if (obj->location==LOC_CARRIED || obj->location==LOC_WORN) {
 		gfxPuts(getSystemMsg(25));
 		do_NEWTEXT();
@@ -456,12 +465,12 @@ void _internal_get(uint8_t objno)
 		gfxPuts(getSystemMsg(26));
 		do_NEWTEXT();
 		do_DONE();
-	} else/* TODO
-	if (weightCarriedAndWorn() + obj->attribs.mask.weight > flags[fStrength]) {
+	} else
+	if (getObjectWeight(NULLWORD, true)+getObjectWeight(objno, false) > flags[fStrength]) {
 		gfxPuts(getSystemMsg(43));
 		do_NEWTEXT();
 		do_DONE();
-	} else*/
+	} else
 	if (flags[fNOCarr] >= flags[fMaxCarr]) {
 		gfxPuts(getSystemMsg(27));
 		do_NEWTEXT();
@@ -492,6 +501,7 @@ void do_GET()		// objno
 void _internal_drop(uint8_t objno)
 {
 	Object *obj = objects + objno;
+	referencedObject(objno);
 	if (obj->location==LOC_CARRIED) {
 		obj->location = flags[fPlayer];
 		gfxPuts(getSystemMsg(39));
@@ -537,6 +547,7 @@ void do_DROP()		// objno
 void _internal_wear(uint8_t objno)
 {
 	Object *obj = objects + objno;
+	referencedObject(objno);
 	if (obj->location==flags[fPlayer]) {
 		gfxPuts(getSystemMsg(49));
 		do_NEWTEXT();
@@ -585,6 +596,7 @@ void do_WEAR()		// objno
 void _internal_remove(uint8_t objno)
 {
 	Object *obj = objects + objno;
+	referencedObject(objno);
 	if (obj->location==LOC_CARRIED || obj->location==flags[fPlayer]) {
 		gfxPuts(getSystemMsg(50));
 		do_NEWTEXT();
@@ -618,7 +630,9 @@ void do_REMOVE()	// objno
 	is decremented if the object was carried. */
 void do_CREATE()	// objno
 {
-	Object *obj = &objects[getValueOrIndirection()];
+	uint8_t objno = getValueOrIndirection();
+	Object *obj = objects + objno;
+	referencedObject(objno);
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
 	obj->location = flags[fPlayer];
 }
@@ -626,7 +640,9 @@ void do_CREATE()	// objno
 	decremented if the object was carried. */
 void do_DESTROY()	// objno
 {
-	Object *obj = &objects[getValueOrIndirection()];
+	uint8_t objno = getValueOrIndirection();
+	Object *obj = objects + objno;
+	referencedObject(objno);
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
 	obj->location = LOC_NOTCREATED;
 }
@@ -634,18 +650,22 @@ void do_DESTROY()	// objno
 	currently referenced object is set to be Object objno 2. */
 void do_SWAP()		// objno1 objno2
 {
-	Object *obj1 = &objects[getValueOrIndirection()];
-	Object *obj2 = &objects[*pPROC++];
+	Object *obj1 = objects + getValueOrIndirection();
+	uint8_t objno2 = *pPROC++;
+	Object *obj2 = objects + objno2;
 	uint8_t aux = obj1->location;
 	obj1->location = obj2->location;
 	obj2->location = aux;
+	referencedObject(objno2);
 }
 /*	The position of Object objno. is changed to Location locno. Flag 1 is 
 	decremented if the object was carried. It is incremented if the object is 
 	placed at location 254 (carried). */
 void do_PLACE()		// objno locno+
 {
-	Object *obj = &objects[getValueOrIndirection()];
+	uint8_t objno = getValueOrIndirection();
+	Object *obj = objects + objno;
+	referencedObject(objno);
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
 	obj->location = *pPROC++;
 }
@@ -655,12 +675,10 @@ void do_PLACE()		// objno locno+
 	It is incremented if the object is placed at location 254 (carried). */
 void do_PUTO()		// locno+
 {
-	Object *obj = &objects[flags[fCONum]];
+	Object *obj = objects + flags[fCONum];
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
-	else {
-		obj->location = getValueOrIndirection();
-		if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
-	}
+	obj->location = getValueOrIndirection();
+	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
 }
 /*	If Object objno. is worn then SM24 ("I can't. I'm wearing the _.") is 
 	printed and actions NEWTEXT & DONE are performed.
@@ -676,11 +694,9 @@ void do_PUTO()		// locno+
 	Otherwise the position of Object objno. is changed to Location locno. 
 	Flag 1 is decremented and SM44 ("The _ is in the"), a description of Object 
 	locno. and SM51 (".") is printed. */
-void do_PUTIN()		// objno locno
+void _internal_putin(uint8_t objno, uint8_t locno)
 {
-	uint8_t objno = getValueOrIndirection();
-	uint8_t locno = *pPROC++;
-	Object *obj = &objects[objno];
+	Object *obj = objects + objno;
 	if (obj->location==LOC_WORN) {
 		gfxPuts(getSystemMsg(24));
 		do_NEWTEXT();
@@ -704,6 +720,10 @@ void do_PUTIN()		// objno locno
 		do_SPACE();
 		gfxPuts(getSystemMsg(51));
 	}
+}
+void do_PUTIN()		// objno locno
+{
+	_internal_putin(getValueOrIndirection(), *pPROC++);
 }
 /*	If Object objno. is worn or carried, SM25 ("I already have the _.") is printed 
 	and actions NEWTEXT & DONE are performed.
@@ -730,10 +750,8 @@ void do_PUTIN()		// objno locno
 	incremented and SM36 ("I now have the _.") is printed.Note: No check is made, 
 	by either PUTIN or TAKEOUT, that Object locno. is actually present. This must 
 	be carried out by you if required. */
-void do_TAKEOUT()	// objno locno
+void _internal_takeout(uint8_t objno, uint8_t locno)
 {
-	uint8_t objno = getValueOrIndirection();
-	uint8_t locno = *pPROC++;
 	Object *obj = &objects[objno];
 	if (obj->location==LOC_WORN || obj->location==LOC_CARRIED) {
 		gfxPuts(getSystemMsg(25));
@@ -775,6 +793,10 @@ void do_TAKEOUT()	// objno locno
 		flags[fNOCarr]++;
 	}
 }
+void do_TAKEOUT()	// objno locno
+{
+	_internal_takeout(getValueOrIndirection(), *pPROC++);
+}
 /*	All objects which are carried or worn are created at the current location (i.e. 
 	all objects are dropped) and Flag 1 is set to 0. This is included for 
 	compatibility with older writing systems.
@@ -799,13 +821,11 @@ void do_DROPALL()
 	exist in the game). Either way actions NEWTEXT & DONE are performed */
 void do_AUTOG()
 {
-	for (int i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
-			_internal_get(i);
-			return;
-		}
-	}
-	gfxPuts(getSystemMsg(26));
+	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	if (objno==NULLWORD)
+		gfxPuts(getSystemMsg(26));
+	else
+		_internal_get(objno);
 }
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; carried, worn, 
@@ -818,13 +838,11 @@ void do_AUTOG()
 	NEWTEXT & DONE are performed */
 void do_AUTOD()
 {
-	for (int i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
-			_internal_drop(i);
-			return;
-		}
-	}
-	gfxPuts(getSystemMsg(28));
+	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	if (objno==NULLWORD)
+		gfxPuts(getSystemMsg(28));
+	else
+		_internal_drop(objno);
 }
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; carried, worn, 
@@ -837,13 +855,11 @@ void do_AUTOD()
 	NEWTEXT & DONE are performed */
 void do_AUTOW()
 {
-	for (int i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
-			_internal_wear(i);
-			return;
-		}
-	}
-	gfxPuts(getSystemMsg(28));
+	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	if (objno==NULLWORD)
+		gfxPuts(getSystemMsg(28));
+	else
+		_internal_wear(objno);
 }
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; worn, carried, 
@@ -856,17 +872,56 @@ void do_AUTOW()
 	actions NEWTEXT & DONE are performed */
 void do_AUTOR()
 {
-	for (int i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].nounId==flags[fNoun1] && objects[i].adjectiveId==flags[fAdject1]) {
-			_internal_remove(i);
-			return;
-		}
-	}
-	gfxPuts(getSystemMsg(23));
+	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	if (objno==NULLWORD)
+		gfxPuts(getSystemMsg(23));
+	else
+		_internal_remove(objno);
 }
-void do_AUTOP() {printf("===== AUTOP not implemented\n");}
-void do_AUTOT() {printf("===== AUTOT not implemented\n");}
-void do_COPYOO() {printf("===== COPYOO not implemented\n");}
+/*	A search for the object number represented by Noun(Adjective)1 is made in the 
+	object definition section in order of location priority; carried, worn, here. 
+	i.e. The player is more likely to be trying to PUT a carried object inside 
+	another than one that is worn or here. If an object is found its number is 
+	passed to the PUTIN action. Otherwise if there is an object in existence
+	anywhere in the game or if Noun1 was not in the vocabulary then SM28 ("I don't 
+	have one of those.") is printed. Else SM8 ("I can't do that.") is printed 
+	(i.e. It is not a valid object but does exist in the game). Either way actions 
+	NEWTEXT & DONE are performed */
+void do_AUTOP()		// locno
+{
+	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	if (objno==NULLWORD)
+		gfxPuts(getSystemMsg(28));
+	else
+		_internal_putin(objno, getValueOrIndirection());
+}
+/*	A search for the object number represented by Noun(Adjective)1 is made in the 
+	object definition section in order of location priority; in container, 
+	carried, worn, here. i.e. The player is more likely to be trying to get an 
+	object out of a container which is actually in there than one that is carried, 
+	worn or here. If an object is found its number is passed to the TAKEOUT action. 
+	Otherwise if there is an object in existence anywhere in the game or if Noun1 
+	was not in the vocabulary then SM52 ("There isn't one of those in the"), a 
+	description of Object locno. and SM51 (".") is printed. Else SM8 ("I can't do 
+	that.") is printed (i.e. It is not a valid object but does exist in the game).
+	Either way actions NEWTEXT & DONE are performed */
+void do_AUTOT()		// locno
+{
+	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	if (objno==NULLWORD)
+		gfxPuts(getSystemMsg(28));
+	else
+		_internal_takeout(objno, getValueOrIndirection());
+}
+/*	The position of Object objno2 is set to be the same as the position of 
+	Object Objno1. The currently referenced object is set to be Object objno2 */
+void do_COPYOO()	// objno1 objno2
+{
+	uint8_t objno1 = getValueOrIndirection();
+	uint8_t objno2 = *pPROC++;
+	objects[objno2].location = objects[objno1].location;
+	referencedObject(objno2);
+}
 /*	This Action bears no resemblance to the one with the same name in PAW. It has 
 	the pure function of placing all objects at the position given in the Object 
 	start table. It also sets the relevant flags dealing with no of objects 
@@ -878,11 +933,50 @@ void do_RESET() {
 // =============================================================================
 // Actions for object in flags manipulation [5 condacts]
 
-void do_COPYOF() {printf("===== COPYOF not implemented\n");}
-void do_COPYFO() {printf("===== COPYFO not implemented\n");}
-void do_WHATO() {printf("===== WHATO not implemented\n");}
-void do_SETCO() {printf("===== SETCO not implemented\n");}
-void do_WEIGH() {printf("===== WEIGHT not implemented\n");}
+/*	The position of Object objno. is copied into Flag flagno. This could be used 
+	to examine the location of an object in a comparison with another flag value. */
+void do_COPYOF()	// objno flagno
+{
+	Object *obj = objects + getValueOrIndirection();
+	flags[*pPROC++] = obj->location;
+}
+/*	The position of Object objno. is set to be the contents of Flag flagno. An 
+	attempt to copy from a flag containing 255 will result in a run time error. 
+	Setting an object to an invalid location will still be accepted as it 
+	presents no danger to the operation of PAW. */
+void do_COPYFO()	// flagno objno
+{
+	flags[getValueOrIndirection()] = (objects + *pPROC++)->location;
+}
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; carried, worn, 
+	here. This is because it is assumed any use of WHATO will be related to 
+	carried objects rather than any that are worn or here. If an object is found 
+	its number is placedin flag 51, along with the standard current object 
+	parameters in flags 54-57. This allows you to create other auto actions (the
+	tutorial gives an example of this for dropping objects in the tree). */
+void do_WHATO()
+{
+	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	if (objno!=NULLWORD)
+		referencedObject(objno);
+}
+/*	Sets the currently referenced object to objno. */
+void do_SETCO()		// objno
+{
+	referencedObject(getValueOrIndirection());
+}
+/*	The true weight of Object objno. is calculated (i.e. if it is a container, 
+	any objects inside have their weight added - don't forget that nested 
+	containers stop adding their contents after ten levels) and the value is 
+	placed in Flag flagno. This will have a maximum value of 255 which will not 
+	be exceeded. If Object objno. is a container of zero weight, Flag flagno 
+	will be cleared as objects in zero weight containers, also weigh zero! */
+void do_WEIGH()		// objno flagno
+{
+	uint8_t weight = getObjectWeight(getValueOrIndirection(), false);
+	flags[*pPROC++] = weight;
+}
 
 // =============================================================================
 // Actions to manipulate flags [11 condacts]
@@ -957,15 +1051,16 @@ void do_RANDOM()	// flagno
 /*	This is a very powerful action designed to manipulate PSI's. It allows the
 	current LS Verb to be used to scan the connections section for the location 
 	given in Flag flagno. 
-	If the Verb is found then Flag flagno. is changed to be the location number 
+	If the Verb is found then Flag flagno is changed to be the location number 
 	associated with it, and the next condact is considered.
 	If the verb is not found, or the original location number was invalid, then 
 	PAW considers the next entry in the table - if present. */
 void do_MOVE()		// flagno
 {
+	uint8_t flagno = getValueOrIndirection();
+
 	if (flags[fVerb]<14) {
 		uint8_t *cnx = &ddb[*(((uint16_t*)hdr->conLstPos) + flags[fPlayer])];
-		uint8_t flagno = *pPROC++;
 
 		while (*cnx != 0xff) {
 			if (flags[fVerb]==*cnx) {
@@ -987,7 +1082,15 @@ void do_GOTO()		// locno
 {
 	flags[fPlayer] = getValueOrIndirection();
 }
-void do_WEIGHT() {}
+/*	Calculates the true weight of all objects carried and worn by the player 
+	(i.e. any containers will have the weight of their contents added up to a 
+	maximum of 255), this value is then placed in Flag flagno.
+	This would be useful to ensure the player was not carrying too much weight 
+	to cross a bridge without it collapsing etc. */
+void do_WEIGHT()	// flagno
+{
+	flags[getValueOrIndirection()] = getObjectWeight(NULLWORD, true);
+}
 /*	This sets Flag 37, the maximum number of objects conveyable, to value 1 and 
 	Flag 52, the maximum weight of objects the player may carry and wear at any 
 	one time (or their strength), to be value 2 .
@@ -1004,9 +1107,9 @@ void do_ABILITY()	// value1 value2
 // =============================================================================
 // Actions for screen mode/format flags [3 condacts]
 
-void do_MODE() {printf("===== MODE not implemented\n");}
-void do_INPUT() {printf("===== INPUT not implemented\n");}
-void do_TIME() {printf("===== TIME not implemented\n");}
+void do_MODE() {printf("===== MODE not implemented\n"); pPROC++;}
+void do_INPUT() {printf("===== INPUT not implemented\n"); pPROC+=2;}
+void do_TIME() {printf("===== TIME not implemented\n"); pPROC+=2;}
 
 // =============================================================================
 // Actions for screen control & output [20 condacts]
@@ -1141,17 +1244,20 @@ void do_DPRINT()	// flagno
 	by a list of all objects present at the current location.
 	If there are no objects then nothing is printed. */
 void do_LISTOBJ() {
-	bool first = true;
+	flags[fOFlags] &= 0b01111111;
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		if (objects[i].location == flags[fPlayer]) {
-			if (first) {
+			if (!(flags[fOFlags] & 0b10000000)) {
 				gfxPuts(getSystemMsg(1));
-				first = false;
+				do_SPACE();
+				flags[fOFlags] |= 0b10000000;
+			} else {
+				gfxPuts(", ");
 			}
 			gfxPuts(getObjectMsg(i));
 		}
 	}
-	if (!first) do_NEWLINE();
+	if (flags[fOFlags] & 0b10000000) do_NEWLINE();
 }
 /*	If any objects are present then they are listed. Otherwise SM53 ("nothing.") 
 	is printed - note that you will usually have to precede this action with a 
@@ -1159,15 +1265,18 @@ void do_LISTOBJ() {
 void do_LISTAT()	// locno+
 {
 	uint8_t loc = *pPROC++;
-	bool found = false;
+	flags[fOFlags] &= 0b01111111;
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		if (objects[i].location == loc) {
+			if (flags[fOFlags] & 0b10000000) gfxPuts(", ");
 			gfxPuts(getObjectMsg(i));
-			found = true;
-		}
+		} 
+		flags[fOFlags] |= 0b10000000;
 	}
-	if (!found) gfxPuts(getSystemMsg(53));
-	else do_NEWLINE();
+	if (flags[fOFlags] & 0b10000000)
+		do_NEWLINE();
+	else
+		gfxPuts(getSystemMsg(53));
 }
 
 // =============================================================================
@@ -1189,7 +1298,7 @@ void do_ANYKEY()
 	gfxPuts(getSystemMsg(16));
 	do_INKEY();
 }
-void do_PAUSE() {printf("===== PAUSE not implemented\n");}
+void do_PAUSE() {printf("===== PAUSE not implemented\n"); pPROC++; }
 
 // =============================================================================
 // Actions to control the parse [3 condacts]
@@ -1219,7 +1328,18 @@ void do_NEWTEXT()
 {
 	clearLogicalSentences();
 }
-void do_SYNONYM() {printf("===== SYNONYM not implemented\n");}
+/*	Substitutes the given verb and noun in the LS. Nullword (Usually '_') can be 
+	used to suppress substitution for one or the other - or both I suppose! e.g.
+	        MATCH    ON         SYNONYM LIGHT MATCH
+	        STRIKE   MATCH      SYNONYM LIGHT _
+	        LIGHT    MATCH      ....                 ; Actions...
+	will switch the LS into a standard format for several different entries. 
+	Allowing only one to deal with the actual actions. */
+void do_SYNONYM()	// verb noun
+{
+	flags[fVerb] = getValueOrIndirection();
+	flags[fNoun1] = *pPROC++;
+}
 
 // =============================================================================
 // Actions for flow control [7 condacts]
@@ -1240,7 +1360,7 @@ void do_REDO()
 	currProc->entry = currProc->entryIni;
 	checkEntry = false;
 }
-void do_DOALL() {printf("===== DOALL not implemented\n");}
+void do_DOALL() {printf("===== DOALL not implemented\n"); pPROC++;}
 /*	Skip a distance of -128 to 128, or to the specified label. Will move the 
 	current entry in a table back or fore. 0 means next entry (so is meaningless).
 	-1 means restart current entry (Dangerous). */
@@ -1265,10 +1385,11 @@ void do_RESTART()
 void do_END()
 {
 	gfxPutsln(getSystemMsg(13));
+	clearLogicalSentences();
 	prompt();
 	char c = *tmpMsg;
 	getSystemMsg(31);
-	if (*tmpMsg==c) do_EXIT();
+	if (*tmpMsg==c) _internal_exit();
 	//Initialize game
 	initFlags();
 	do_RESET();
@@ -1282,10 +1403,14 @@ void do_END()
 	versions. Only the PCW supports this feature at the moment. It will probably 
 	be added to PC as part of the HYPERCARD work. So if you intend using it as a
 	reset ensure you use your PART number as the non zero value! */
+void _internal_exit()
+{
+	die("Thanks for playing!");
+}
 void do_EXIT()		// value
 {
 	if (!getValueOrIndirection()) {
-		die("Thanks for playing!");
+		_internal_exit();
 	}
 	//Initialize game
 	initFlags();

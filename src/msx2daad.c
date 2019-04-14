@@ -113,33 +113,9 @@ int main()
 	//Load files (DDB, Font, ...)
 	loadFilesBin();
 	if (!initDDB()) {
-		die("Bad DDB file. Must be for machine 8 (-m8)!\n");
+		die("Bad DDB file!\n");
 		exit(1);
 	}
-
-	//Initialize flags
-	initFlags();
-
-	//loadImage("000.SC7","000.PL7");
-	//loadImage("001.SC7","001.PL7");
-	//loadImage("000.SC8",NULL);
-
-//	gfxPutsln(getVocabulary(2));
-//	gfxPutsln("En un lugar de la mancha de cuyo nombre no quiero acordarme, vivia un hidalgo caballero de los de lanza en ristre y rocin flaco...");
-//	gfxPutsln("En un lugar de la mancha de cuyo nombre no quiero acordarme, vivia un hidalgo caballero de los de lanza en ristre y rocin flaco...");
-//	gfxPutsln("En un lugar de la mancha de cuyo nombre no quiero acordarme, vivia un hidalgo caballero de los de lanza en ristre y rocin flaco...");
-//	gfxPutsln("En un lugar de la mancha de cuyo nombre no quiero acordarme, vivia un hidalgo caballero de los de lanza en ristre y rocin flaco...");
-
-//	do_ANYKEY();
-
-//	gfxPutsln(getSystemMsg(3));
-//	gfxPutsln(getObjectMsg(0));
-//	gfxPutsln(getLocationMsg(0));
-//	gfxPutsln(getLocationMsg(1));
-//	gfxPutsln(getLocationMsg(2));
-
-//	gfxPutsln(">fin");
-//	do_QUIT();
 
 	mainLoop();
 

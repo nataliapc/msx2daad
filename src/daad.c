@@ -11,6 +11,9 @@ const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\
 const char PIC_NAME[] = { '0','0','0','.','I','M','0'+SCREEN, '\0' };	// Picture filename
 const char PLT_NAME[] = { '0','0','0','.','P','L','0'+SCREEN, '\0' };	// Palette filename
 
+// External
+extern void do_CLS();
+extern void do_INKEY();
 
 // Global variables
 uint8_t *ddb;
@@ -25,7 +28,7 @@ uint8_t flags[256];
 uint8_t lsBuffer[MAX_PROMPT_TEXT/2+1];	// Logical sentence buffer [type+id]
 char    tmpTok[6];
 char    tmpVoc[6];
-char    tmpMsg[MAX_TEXT_LEN];
+char   *tmpMsg;							// MAX_TEXT_LEN
 char    lastPrompt;
 uint8_t offsetText;
 
@@ -79,6 +82,8 @@ bool initDDB()
 		*(p++) += (uint16_t)ddb;
 	}
 
+	//Get memory for tmpMsg
+	tmpMsg = (char*)malloc(MAX_TEXT_LEN);
 	//Get memory for objects
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
 
@@ -122,7 +127,7 @@ void initObjects()
 {
 	uint8_t  *objLoc = (uint8_t*)hdr->objLocLst;
 	uint8_t  *attrLoc = (uint8_t*)hdr->objAttrPos;
-	uint16_t *extAttrLoc = (uint16_t*)hdr->objExtrPos;
+	uint8_t  *extAttrLoc = (uint8_t*)hdr->objExtrPos;
 	uint8_t  *nameObj = (uint8_t*)hdr->objNamePos;
 
 	flags[fNOCarr] = 0;
@@ -130,9 +135,10 @@ void initObjects()
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		objects[i].location     = *(objLoc + i);
 		objects[i].attribs.byte = *(attrLoc + i);
-		objects[i].extAttr      = *(extAttrLoc + i);
+		objects[i].extAttr1     = *(extAttrLoc + i*2);
+		objects[i].extAttr2     = *(extAttrLoc + i*2 + 1);
 		objects[i].nounId       = *(nameObj + i*2);
-		objects[i].adjectiveId  = *(nameObj + i*2 +1);
+		objects[i].adjectiveId  = *(nameObj + i*2 + 1);
 		if (objects[i].location==LOC_CARRIED) flags[fNOCarr]++;
 	}
 }
@@ -149,13 +155,6 @@ void mainLoop()
 void prompt()
 {
 	char c, *p = tmpMsg, *extChars;
-	char newPrompt;
-
-	newPrompt = flags[fPrompt];
-	if (!newPrompt)
-		while ((newPrompt=(rand()%4)+2)==lastPrompt);
-	gfxPutsln(getSystemMsg(newPrompt));
-	lastPrompt = newPrompt;
 
 	while (kbhit()) getchar();
 	gfxPutCh('>');
@@ -233,6 +232,14 @@ bool getLogicalSentence()
 
 	// If not logical sentences in buffer we ask to user again
 	if (!*p) {
+		char newPrompt;
+
+		newPrompt = flags[fPrompt];
+		if (!newPrompt)
+			while ((newPrompt=(rand()%4)+2)==lastPrompt);
+		gfxPutsln(getSystemMsg(newPrompt));
+		lastPrompt = newPrompt;
+
 		prompt();
 		parser();
 	}
@@ -370,19 +377,19 @@ char* _getMsg(uint16_t *lst, uint8_t num)
 
 	tmpMsg[0]='\0';
 	do {
-		c = *p++;
-		if (c < 127) {
+		c = 255 - *p++;
+		if (c >= 128) {
 			tmpMsg[i] = '\0';
-			strcat(&tmpMsg[i], getToken(255 - c -128));
+			strcat(&tmpMsg[i], getToken(c - 128));
 			while (tmpMsg[i]) i++;
 		} else {
-			tmpMsg[i++] = 255 - c;
+			tmpMsg[i++] = c;
 		}
 		#ifdef DEBUG
-			if (i>sizeof(tmpMsg)) die("Message exceeds limits of 'tmpMsg' variable!");
+		if (i>MAX_TEXT_LEN) die("Message exceeds limits of 'tmpMsg' variable!");
 		#endif
-	} while (c != 0xf5);		// = 255 - 0x0a
-	tmpMsg[i-1] = '\0';
+	} while (c != 0x0a);		// = 255 - 0xf5
+	tmpMsg[--i] = '\0';
 
 	return tmpMsg;
 }
@@ -407,6 +414,41 @@ char* getLocationMsg(uint8_t num)
 	return _getMsg((uint16_t*)hdr->locLstPos, num);
 }
 
+uint8_t getObjectById(uint8_t noun, uint8_t adjc)
+{
+	for (int i=0; i<hdr->numObjDsc; i++) {
+		if (objects[i].nounId==noun && objects[i].adjectiveId==adjc)
+			return i;
+	}
+	return NULLWORD;
+}
+
+uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
+{
+	uint16_t weight = 0;
+	Object *obj = objects;
+	for (int i=0; i<hdr->numObjDsc; i++) {
+		if ((objno==NULLWORD || objno==i) && (!isCarriedWorn || obj->location==LOC_CARRIED || obj->location==LOC_WORN)) {
+			if (obj->attribs.mask.isContainer && obj->attribs.mask.weight!=0) {
+				weight += getObjectWeight(i, false);
+			}
+			weight += obj->attribs.mask.weight;
+		}
+		obj++;
+	}
+	return weight>255 ? 255 : (uint8_t)weight;
+}
+
+void referencedObject(uint8_t objno)
+{
+	flags[fCONum] = objno;
+	flags[fCOLoc] = objects[objno].location;
+	flags[fCOWei] = objects[objno].attribs.mask.weight;
+	flags[fCOCon] = flags[fCOCon] & 0b01111111 | objects[objno].attribs.mask.isContainer << 7;
+	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | objects[objno].attribs.mask.isWareable << 7;
+	flags[fCOAtt] = objects[objno].extAttr1;
+	flags[fCOAtt+1] = objects[objno].extAttr2;
+}
 
 //=========================================================
 
@@ -534,6 +576,9 @@ void gfxPutCh(char c)
 
 void gfxPuts(char *str)
 {
+#ifdef VERBOSE
+printf("================================================\n%s\n================================================\n", str);
+#endif
 	char *aux, c;
 	while ((c = *str)) {
 		if (c==' ') {
