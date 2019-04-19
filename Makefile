@@ -5,7 +5,7 @@ AR = sdar
 CC = sdcc
 HEX2BIN = hex2bin
 
-DEFINES := -DDEBUG -DVERBOSE -DVERBOSE2 -DSCREEN=7
+DEFINES := -DDEBUG -DVERBOSE -D_VERBOSE2 -DSCREEN=7 -DFONTWIDTH=6
 LDFLAGS := -rc
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
 CCFLAGS := --code-loc 0x0106 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx --opt-code-size $(DEFINES) $(WRFLAGS)

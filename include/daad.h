@@ -14,12 +14,22 @@
 #define MAX_PROMPT_TEXT		100
 
 #define MAX_PICFILE_READ	2048
-#define MAX_LINES			26
-#if SCREEN==6 || SCREEN==7
-	#define MAX_COLUMNS		85
-#else
-	#define MAX_COLUMNS		42
+
+#ifndef FONTWIDTH
+	#define FONTWIDTH       6
 #endif
+#if FONTWIDTH!=6 && FONTWIDTH!=8
+	#error FONTWIDTH constant must be 6 or 8!
+#endif
+
+#if SCREEN==6 || SCREEN==7
+	#define SCREEN_WIDTH    512
+#else
+	#define SCREEN_WIDTH    256
+#endif
+
+#define MAX_COLUMNS		    ((int)(SCREEN_WIDTH/FONTWIDTH))
+#define MAX_LINES			26
 
 // Used in struct Object->location
 #define LOC_NOTCREATED		252
@@ -50,11 +60,11 @@ typedef struct {
 			unsigned machine  : 4;
 		} value;
 	} target;
-	uint8_t  magic;			// 0x02 | 1 byte  | Always contains 95, not identified
+	uint8_t  magic;			// 0x02 | 1 byte  | Always contains CTL value: 95d (ASCII '_')
 	uint8_t  numObjDsc;		// 0x03 | 1 byte  | Number of object descriptions
 	uint8_t  numLocDsc;		// 0x04 | 1 byte  | Number of location descriptions
-	uint8_t  numSysMsg;		// 0x05 | 1 byte  | Number of system messages
-	uint8_t  numUsrMsg;		// 0x06 | 1 byte  | Number of user messages
+	uint8_t  numUsrMsg;		// 0x05 | 1 byte  | Number of user messages
+	uint8_t  numSysMsg;		// 0x06 | 1 byte  | Number of system messages
 	uint8_t  numPrc;		// 0x07 | 1 byte  | Number of processes
 	uint16_t tokensPos;		// 0x08 | 2 bytes | Compressed text position
 	uint16_t prcLstPos;		// 0x0A | 2 bytes | Process list position
@@ -353,8 +363,6 @@ PROCentry* getPROCess(uint8_t proc);
 char* getPROCEntryCondacts();
 char* stepPROCEntryCondacts(int8_t step);
 void processPROC();
-void processPROCEntry();
-void processCondact();
 
 // GFX function definitions
 extern uint16_t colorTranslation[];

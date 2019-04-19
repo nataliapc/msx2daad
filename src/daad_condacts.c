@@ -15,7 +15,6 @@ PROCstack *currProc;
 uint8_t indirection;
 uint8_t checkEntry;
 uint8_t isDone, lastIsDone;
-uint8_t doPopProc;
 uint8_t lastPicLocation;
 uint8_t lastPicShow;
 
@@ -40,9 +39,10 @@ printf("pushPROC(%u)\n",proc);
 #endif
 	currProc++;
 	currProc->entryIni = getPROCess(proc);
-	currProc->entry = currProc->entryIni;
-	currProc->condactIni = (char*)0xffff;
-	currProc->condact = 0;
+	currProc->entry = currProc->entryIni - 1;
+//	currProc->condactIni = getPROCEntryCondacts();
+//	currProc->condact = currProc->condactIni;
+	checkEntry = false;
 }
 
 //===============================================
@@ -53,7 +53,10 @@ printf("popPROC()\n");
 #endif
 	if (currProc > procStack) memset(currProc, 0, sizeof(PROCstack));
 	currProc--;
-	return (currProc < procStack);	//Yes/No more PROCs in the stack
+	checkEntry = true;
+	lastIsDone = isDone;
+	isDone = false;
+	return (currProc >= procStack);	//Any PROCs in the stack?
 }
 
 //===============================================
@@ -90,71 +93,51 @@ void processPROC()
 printf("processPROC()\n");
 printf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
 #endif
-	//Clear ISDONE flags
-	isDone = false;
+	CondactStruct *currCondact;
 
-	do {
-		while (currProc->entry->verb != 0) {
-			lastIsDone = isDone;
-			isDone = false;
+	//Clear ISDONE flags
+	checkEntry = isDone = lastIsDone = false;
+
+	for (;;) {
+		while (checkEntry && *pPROC!=0xff) {
+			currCondact = (CondactStruct*)pPROC++;
+			indirection = currCondact->indirection;
 #ifdef VERBOSE
-printf("################ lastIsDone: %u\n", lastIsDone);
+printf("    [%03u] CONDACT: %s [Func:%p] [Pos:%p]\n",*((uint8_t*)currCondact), CONDACTS[currCondact->condact], &condactList[currCondact->condact].function, (char*)(pPROC-1)-ddb);
 #endif
-			if ((currProc->entry->verb==NULLWORD || currProc->entry->verb==flags[fVerb]) && 
-				(currProc->entry->noun==NULLWORD || currProc->entry->noun==flags[fNoun1]))
-			{
+			condactList[currCondact->condact].function();
+			if (!isDone) isDone |= condactList[currCondact->condact].flag;
+		}
+		do {
+printf("####### NEXT ENTRY\n");
+			currProc->entry++;
+			if (currProc->entry->verb==0) {
+				popPROC();
+printf("####### POP PROC\n");
+				break;
+			} else {
+printf("####### CONDACTINI = address\n");
 				currProc->condactIni = getPROCEntryCondacts();
 				currProc->condact = currProc->condactIni;
-				currProc->entry++;
-				processPROCEntry();
-			} else {
-				currProc->entry++;
 			}
-		}
-		popPROC();
-	} while (currProc>=procStack);
-}
-
-//===============================================
-void processPROCEntry()
-{
 #ifdef VERBOSE
-printf("processPROCEntry()\n");
-printf("    VERB:%u NOUN:%u [Pos:%p]\n",currProc->entry->verb, currProc->entry->noun, (char*)currProc->entry-ddb);
+printf("  VERB:%u NOUN:%u [Pos:%p]\n",currProc->entry->verb, currProc->entry->noun, (char*)currProc->entry-ddb);
 #endif
-	checkEntry = true;
-	doPopProc = false;
-	while (checkEntry && *pPROC!=0xff) {
-		processCondact();
-		if (doPopProc) {
-			doPopProc = false;
-			popPROC();
-			lastIsDone = isDone;
-			isDone = false;
-		}
+		} while (!((currProc->entry->verb==NULLWORD || currProc->entry->verb==flags[fVerb]) &&
+				 (currProc->entry->noun==NULLWORD || currProc->entry->noun==flags[fNoun1])));
+#ifdef VERBOSE
+printf("  ======================> VERB+NOUN OK\n");
+#endif
+		lastIsDone = isDone;
+		isDone = false;
+		checkEntry = true;
 	}
 }
-
-//===============================================
-void processCondact()
-{
-	uint8_t condact = *pPROC++;
-	uint8_t func = condact & 0x7f;
-#ifdef VERBOSE
-printf("processCondact(%u)\n",condact);
-printf("    CONDACT: %s [Func:%p] [Pos:%p]\n",CONDACTS[func], &condactList[func].condact, (char*)(currProc->condact-1)-ddb);
-#endif
-
-	indirection = condact & 0x80;
-
-	condactList[func].condact();
-	if (!isDone) isDone |= condactList[func].flag;
 //		case CDT_SAVE:			//25  //1
 //		case CDT_LOAD:			//26  //1
 //		case CDT_RAMSAVE:		//62  //0
 //		case CDT_RAMLOAD:		//63  //1
 //		case CDT_DOALL:			//85  //1
-}
 
 //===============================================
 uint8_t getValueOrIndirection()
@@ -1269,9 +1252,9 @@ void do_LISTAT()	// locno+
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		if (objects[i].location == loc) {
 			if (flags[fOFlags] & 0b10000000) gfxPuts(", ");
+			flags[fOFlags] |= 0b10000000;
 			gfxPuts(getObjectMsg(i));
 		} 
-		flags[fOFlags] |= 0b10000000;
 	}
 	if (flags[fOFlags] & 0b10000000)
 		do_NEWLINE();
@@ -1352,7 +1335,6 @@ void do_SYNONYM()	// verb noun
 void do_PROCESS()	// procno
 {
 	pushPROC(getValueOrIndirection());
-	processPROC();
 }
 /*	Will restart the currently executing table, allowing */
 void do_REDO()
@@ -1428,9 +1410,8 @@ void do_EXIT()		// value
 	start point of any active DOALL loop. */
 void do_DONE()
 {
-	doPopProc = true;
-	checkEntry = true;
 	isDone = true;
+	popPROC();
 }
 /*	This action jumps to the end of the process table and flags PAW that #no# 
 	action has been carried out. i.e. no more condacts or entries are considered. 
@@ -1440,9 +1421,8 @@ void do_DONE()
 	entry is present in the connections section for the current Verb. */
 void do_NOTDONE()
 {
-	doPopProc = true;
-	checkEntry = false;
 	isDone = false;
+	popPROC();
 }
 /*	SM15 ("OK") is printed and action DONE is performed. */
 void do_OK() {
@@ -1555,4 +1535,6 @@ void do_NOT_USED()
 {
 	pPROC++;
 }
+
+
 

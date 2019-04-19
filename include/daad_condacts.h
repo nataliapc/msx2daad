@@ -264,11 +264,16 @@ const char const CONDACTS[256][12] = {
 #endif
 
 typedef struct {
-	void (* const condact)();
-	uint8_t flag;
-} CONDACTS_FUNC;
+	unsigned condact     : 7;
+	unsigned indirection : 1;
+} CondactStruct;
 
-const CONDACTS_FUNC condactList[] = {
+typedef struct {
+	void (* const function)();
+	uint8_t flag;
+} CONDACT_LIST;
+
+const CONDACT_LIST condactList[] = {
 	{ do_AT, 		0 },
 	{ do_NOTAT,		0 },
 	{ do_ATGT,		0 },

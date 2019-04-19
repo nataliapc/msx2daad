@@ -55,8 +55,8 @@ bool initDDB()
 	printf("Magic............ 0x%02x\n", hdr->magic);
 	printf("Num.Obj.......... %u\n", hdr->numObjDsc);
 	printf("Num.Locations.... %u\n", hdr->numLocDsc);
-	printf("Num.Sys.Msg...... %u\n", hdr->numSysMsg);
 	printf("Num.Usr.Msg...... %u\n", hdr->numUsrMsg);
+	printf("Num.Sys.Msg...... %u\n", hdr->numSysMsg);
 	printf("Num.Proc......... %u\n", hdr->numPrc);
 	printf("Tokens pos....... 0x%04x\n", hdr->tokensPos);
 	printf("Proc list pos.... 0x%04x\n", hdr->prcLstPos);
@@ -373,7 +373,8 @@ char getVocabularyType(uint8_t num)
 char* _getMsg(uint16_t *lst, uint8_t num)
 {
 	char *p = &ddb[*(lst + num)];
-	char c, i = 0;
+	uint16_t i = 0;
+	char c;
 
 	tmpMsg[0]='\0';
 	do {
@@ -494,27 +495,17 @@ void gfxSetScreen()
 
 void gfxClearLines(uint16_t start, uint16_t lines)
 {
-	#if SCREEN==5 || SCREEN==8
-		bitBlt(0, 0, 0, start, 256, lines, 0x00, 0, CMD_HMMV);
-	#endif
-	#if SCREEN==6 || SCREEN==7
-		bitBlt(0, 0, 0, start, 512, lines, 0x00, 0, CMD_HMMV);
-	#endif
+	bitBlt(0, 0, 0, start, SCREEN_WIDTH, lines, 0x00, 0, CMD_HMMV);
 }
 
 void gfxClearScreen()
 {
-	#if SCREEN==5 || SCREEN==8
-		clearSC5();
-	#endif
-	#if SCREEN==6 || SCREEN==7
-		clearSC7();
-	#endif
+	gfxClearLines(0, 212);
 }
 
 void gfxClearWindow()
 {
-	bitBlt(0, 0, cw->winX*6, cw->winY*8, (cw->winW+1)*6, cw->winH*8, 0x00, 0, CMD_HMMV);
+	bitBlt(0, 0, cw->winX*FONTWIDTH, cw->winY*8, (cw->winW+1)*FONTWIDTH, cw->winH*8, 0x00, 0, CMD_HMMV);
 }
 
 void gfxSetPaperCol(uint8_t col)
@@ -534,12 +525,7 @@ void gfxSetBorderCol(uint8_t col)
 
 void gfxPutChPixels(char c)		// c = ASCII-0x10
 {
-	#if SCREEN==5 || SCREEN==8
-		bitBlt((c*8)%256, 256+(c>>5<<3), (cw->cursorX+cw->winX)*6, (cw->cursorY+cw->winY)*8, 6, 8, 0x00, 0, CMD_LMMM);
-	#endif
-	#if SCREEN==6 || SCREEN==7
-		bitBlt((c*8)%512, 256+(c>>6<<3), (cw->cursorX+cw->winX)*6, (cw->cursorY+cw->winY)*8, 6, 8, 0x00, 0, CMD_LMMM);
-	#endif
+	bitBlt((c*8)%SCREEN_WIDTH, 256+(c>>(SCREEN_WIDTH/256+4)<<3), (cw->cursorX+cw->winX)*FONTWIDTH, (cw->cursorY+cw->winY)*8, FONTWIDTH, 8, 0x00, 0, CMD_LMMM);
 }
 
 void gfxPutCh(char c)
