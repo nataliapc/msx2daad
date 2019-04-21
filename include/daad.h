@@ -10,9 +10,6 @@
 #include "vdp.h"
 
 
-#define MAX_TEXT_LEN		512
-#define MAX_PROMPT_TEXT		100
-
 #define MAX_PICFILE_READ	2048
 
 #ifndef FONTWIDTH
@@ -30,6 +27,9 @@
 
 #define MAX_COLUMNS		    ((int)(SCREEN_WIDTH/FONTWIDTH))
 #define MAX_LINES			26
+
+#define PROMPT_TEXT_LEN		100
+#define TEXT_BUFFER_LEN		PROMPT_TEXT_LEN	// Double buffer
 
 // Used in struct Object->location
 #define LOC_NOTCREATED		252
@@ -315,18 +315,19 @@ enum VOC_TYPE {
 
 
 // Global variables
-extern uint8_t *ddb;
+extern uint8_t    *ddb;
 extern DDB_Header *hdr;
-extern Object *objects;
+extern Object     *objects;
+extern char       *ramsave;
 
 extern Z80_registers regs;
-extern char *pPROC;					// Pointer to currect process condact
+extern char *pPROC;						// Pointer to currect process condact
 
-extern char *tmpMsg;				// MAX_TEXT_LEN
-extern uint8_t flags[256];
+extern char        *tmpMsg;				// MAX_TEXT_LEN
+extern uint8_t     flags[256];
 
-extern Window windows[8];			// 0-7 windows definitions
-extern Window *cw;					// Pointer to current active window
+extern Window windows[8];				// 0-7 windows definitions
+extern Window *cw;						// Pointer to current active window
 extern uint8_t savedPosX;
 extern uint8_t savedPosY;
 
@@ -345,13 +346,12 @@ void printBase10(uint16_t value);
 void mainLoop();
 
 char* getToken(uint8_t num);
-//char* getVocabulary(uint8_t num);
-//char  getVocabularyID(uint8_t num);
-//char  getVocabularyType(uint8_t num);
-char* getSystemMsg(uint8_t num);
-char* getUserMsg(uint8_t num);
-char* getObjectMsg(uint8_t num);
-char* getLocationMsg(uint8_t num);
+void getSystemMsg(uint8_t num);
+void printSystemMsg(uint8_t num);
+void printUserMsg(uint8_t num);
+void printLocationMsg(uint8_t num);
+void printObjectMsg(uint8_t num);
+void printObjectMsgModif(uint8_t num, char modif);
 uint8_t getObjectById(uint8_t noun, uint8_t adjc);
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn);
 void referencedObject(uint8_t objno);

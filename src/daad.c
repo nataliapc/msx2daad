@@ -14,6 +14,7 @@ const char PLT_NAME[] = { '0','0','0','.','P','L','0'+SCREEN, '\0' };	// Palette
 // External
 extern void do_CLS();
 extern void do_INKEY();
+extern void do_NEWLINE();
 
 // Global variables
 uint8_t *ddb;
@@ -25,10 +26,11 @@ Z80_registers regs;
 
 // Internal variables
 uint8_t flags[256];
-uint8_t lsBuffer[MAX_PROMPT_TEXT/2+1];	// Logical sentence buffer [type+id]
+char   *ramsave;						// Storage for game state in RAM (RAMSAVE)
+
+uint8_t lsBuffer[PROMPT_TEXT_LEN/2+1];	// Logical sentence buffer [type+id]
 char    tmpTok[6];
-char    tmpVoc[6];
-char   *tmpMsg;							// MAX_TEXT_LEN
+char   *tmpMsg;							// TEXT_BUFFER_LEN
 char    lastPrompt;
 uint8_t offsetText;
 
@@ -82,10 +84,12 @@ bool initDDB()
 		*(p++) += (uint16_t)ddb;
 	}
 
-	//Get memory for tmpMsg
-	tmpMsg = (char*)malloc(MAX_TEXT_LEN);
+	//Get memory for RAMSAVE
+	ramsave = (char*)malloc(256+sizeof(Object)*hdr->numObjDsc);
 	//Get memory for objects
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
+	//Get memory for tmpMsg
+	tmpMsg = (char*)malloc(TEXT_BUFFER_LEN);
 
 	return true;
 }
@@ -168,7 +172,7 @@ void prompt()
 			if (cw->cursorX>0) cw->cursorX--; else { cw->cursorX = cw->winW-1; cw->cursorY--; }
 			gfxPutChPixels(' '-16);
 		} else {
-			if (p-tmpMsg > MAX_PROMPT_TEXT) continue;
+			if (p-tmpMsg > PROMPT_TEXT_LEN) continue;
 			extChars = strchr(CHARS_MSX, c);
 			if (extChars) c = (char)(extChars-CHARS_MSX+0x10);
 			gfxPutCh(c);
@@ -237,7 +241,8 @@ bool getLogicalSentence()
 		newPrompt = flags[fPrompt];
 		if (!newPrompt)
 			while ((newPrompt=(rand()%4)+2)==lastPrompt);
-		gfxPutsln(getSystemMsg(newPrompt));
+		printSystemMsg(newPrompt);
+		do_NEWLINE();
 		lastPrompt = newPrompt;
 
 		prompt();
@@ -344,32 +349,6 @@ char* getToken(uint8_t num)
 }
 
 /*
-char* getVocabulary(uint8_t num)
-{
-	char *p = (char*)hdr->vocPos + (num*7);
-	char i=0;
-
-	while (i<5) {
-		if (*p==0xdf) break;	// (255-32)=space char
-		tmpVoc[i++] = 255 - *p;
-		p++;
-	}
-	tmpVoc[i] = '\0';
-
-	return tmpVoc;
-}
-
-char getVocabularyID(uint8_t num)
-{
-	return ((Vocabulary*)hdr->vocPos + num)->id;
-}
-
-char getVocabularyType(uint8_t num)
-{
-	return ((Vocabulary*)hdr->vocPos + num)->type;
-}
-*/
-
 char* _getMsg(uint16_t *lst, uint8_t num)
 {
 	char *p = &ddb[*(lst + num)];
@@ -393,26 +372,101 @@ char* _getMsg(uint16_t *lst, uint8_t num)
 	tmpMsg[--i] = '\0';
 
 	return tmpMsg;
+}*/
+
+void _printMsg(uint16_t *lst, uint8_t num, bool print)
+{
+#ifdef VERBOSE
+printf("================================================\n");
+#endif
+	char *p = &ddb[*(lst + num)];
+	char c, *token;
+	uint16_t i = 0;
+
+	tmpMsg[0]='\0';
+	do {
+		c = 255 - *p++;
+		if (c >= 128) {
+			token = getToken(c - 128);
+			while (*token) {
+				tmpMsg[i++] = *token;
+				if (*token==' ' || *token=='\r') {
+					if (print) {
+						tmpMsg[i] = '\0';
+						gfxPuts(tmpMsg);
+						i = 0;
+					}
+				}
+				token++;
+			}
+		} else {
+			if (print && (c=='_' || c=='@')) {
+				printObjectMsgModif(flags[fCONum], c);
+				i = 0;
+				continue;
+			}
+			tmpMsg[i++] = c;
+			if (c==' ' || c==0x0a) {
+				if (c==0x0a) tmpMsg[--i] = '\0';
+				if (print) {
+					tmpMsg[i] = '\0';
+					gfxPuts(tmpMsg);
+					i=0;
+				}
+			}
+		}
+	} while (c != 0x0a);		// = 255 - 0xf5
+#ifdef VERBOSE
+printf("\n================================================\n");
+#endif
 }
 
-char* getSystemMsg(uint8_t num)
+void getSystemMsg(uint8_t num)
 {
-	return _getMsg((uint16_t*)hdr->sysMsgPos, num);
+	_printMsg((uint16_t*)hdr->sysMsgPos, num, false);
 }
 
-char* getUserMsg(uint8_t num)
+void printSystemMsg(uint8_t num)
 {
-	return _getMsg((uint16_t*)hdr->usrMsgPos, num);
+	_printMsg((uint16_t*)hdr->sysMsgPos, num, true);
 }
 
-char* getObjectMsg(uint8_t num)
+void printUserMsg(uint8_t num)
 {
-	return _getMsg((uint16_t*)hdr->objLstPos, num);
+	_printMsg((uint16_t*)hdr->usrMsgPos, num, true);
 }
 
-char* getLocationMsg(uint8_t num)
+void printLocationMsg(uint8_t num)
 {
-	return _getMsg((uint16_t*)hdr->locLstPos, num);
+	_printMsg((uint16_t*)hdr->locLstPos, num, true);
+}
+
+void printObjectMsg(uint8_t num)
+{
+	_printMsg((uint16_t*)hdr->objLstPos, num, true);
+}
+
+/*
+	Print object name modified from "Una linterna." to "La linterna"
+	//TODO: support english
+*/
+void printObjectMsgModif(uint8_t num, char modif)
+{
+	char *ini = tmpMsg, *p = tmpMsg;
+	_printMsg((uint16_t*)hdr->objLstPos, num, false);
+	if (tmpMsg[2]==' ') {
+		tmpMsg[0] = modif=='@'?'E':'e';
+		tmpMsg[1] = 'l';
+	} else
+	if (tmpMsg[3]==' ') {
+		ini++;
+		tmpMsg[1] = modif=='@'?'L':'l';
+	}
+	while (*p) {
+		if (*p=='.' || *p==0x0a) { *p--='\0'; }
+		p++;
+	}
+	gfxPuts(ini);
 }
 
 uint8_t getObjectById(uint8_t noun, uint8_t adjc)
@@ -451,7 +505,32 @@ void referencedObject(uint8_t objno)
 	flags[fCOAtt+1] = objects[objno].extAttr2;
 }
 
+
 //=========================================================
+// PLATFORM DEPENDENT FUNCTIONS
+//=========================================================
+
+#define ADDR_POINTER_BYTE(X)	(*((uint8_t*)X))
+#define ADDR_POINTER_WORD(X)	(*((uint16_t*)X))
+#define JIFFY   0xfc9e		// (WORD) Contains value of the software clock, each interrupt of the VDP 
+							//        it is increased by 1 (50/60Hz)
+
+//=========================================================
+// TIMER
+
+void setTime(uint16_t time)
+{
+	ADDR_POINTER_WORD(JIFFY) = time;
+}
+
+uint16_t getTime()
+{
+	return ADDR_POINTER_WORD(JIFFY);
+}
+
+
+//=========================================================
+// GRAPHICS (GFX)
 
 #if SCREEN!=6
 	#define COLOR_INK		15
@@ -543,8 +622,14 @@ void gfxPutCh(char c)
 	if (c=='\r' || c=='\n') {
 		cw->cursorX = 0;
 		cw->cursorY++;
+#ifdef VERBOSE
+printf("\n");
+#endif
 	} else 
 	if (!(c==' ' && cw->cursorX==0)) {
+#ifdef VERBOSE
+printf("%c", c);
+#endif
 		c -= 16;
 		gfxPutChPixels(offsetText + c);
 		cw->cursorX++;
@@ -562,18 +647,16 @@ void gfxPutCh(char c)
 
 void gfxPuts(char *str)
 {
-#ifdef VERBOSE
-printf("================================================\n%s\n================================================\n", str);
-#endif
-	char *aux, c;
+	char *aux = NULL, c;
+
 	while ((c = *str)) {
-		if (c==' ') {
+		if (c==' ' || !aux) {
 			aux = str+1;
-			while (*aux && *aux!=0x20 && *aux!='\r' && *aux!='\n') {
+			while (*aux && *aux!=' ' && *aux!='\n') {
 				aux++;
 			}
 			if (cw->cursorX+(aux-(str+1)) >= cw->winW) {
-				c = '\n';
+				if (c==' ') c = '\n'; else do_NEWLINE();
 			}
 		}
 		gfxPutCh(c);

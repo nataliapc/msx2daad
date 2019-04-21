@@ -1,3 +1,5 @@
+#include "daad_defines.h"
+
 #ifndef __DAAD_CONDACTS_H__
 #define __DAAD_CONDACTS_H__
 
@@ -123,12 +125,12 @@ void do_SKIP();
 void do_RESTART();
 void do_TAB();
 void do_COPYOF();
-void do_NOT_USED();
 void do_COPYOO();
 void do_COPYFO();
 void do_COPYFF();
 void do_COPYBF();
 void do_RESET();
+void do_NOT_USED();
 
 #ifdef VERBOSE
 const char const CONDACTS[256][12] = {
@@ -270,7 +272,7 @@ typedef struct {
 
 typedef struct {
 	void (* const function)();
-	uint8_t flag;
+	uint8_t flag;					//0:not count for ISDONE | 1:count for ISDONE
 } CONDACT_LIST;
 
 const CONDACT_LIST condactList[] = {

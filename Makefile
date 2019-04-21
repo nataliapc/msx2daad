@@ -5,7 +5,7 @@ AR = sdar
 CC = sdcc
 HEX2BIN = hex2bin
 
-DEFINES := -DDEBUG -DVERBOSE -D_VERBOSE2 -DSCREEN=7 -DFONTWIDTH=6
+DEFINES := -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DSCREEN=7 -DFONTWIDTH=6
 LDFLAGS := -rc
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
 CCFLAGS := --code-loc 0x0106 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx --opt-code-size $(DEFINES) $(WRFLAGS)
@@ -64,6 +64,10 @@ clean:
 	@rm -f $(OBJDIR)/*
 	@rm -f $(INCDIR)/*.com $(INCDIR)/*.asm $(INCDIR)/*.lst $(INCDIR)/*.sym $(INCDIR)/*.bin $(INCDIR)/*.ihx $(INCDIR)/*.lk $(INCDIR)/*.map $(INCDIR)/*.noi $(INCDIR)/*.rel
 	@rm -f $(addprefix $(LIBDIR), $(LIBS))
+
+
+prepro: $(INCDIR)daad_defines.h clean
+	@php bin/precomp.php dsk/DAAD.DDB $(INCDIR)daad_defines.h
 
 
 test: release
