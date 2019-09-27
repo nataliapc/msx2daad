@@ -3,33 +3,16 @@
 
 #include <stdint.h>
 #include <ctype.h>
+#include "daad_platform_api.h"
 #include "utils.h"
-#include "heap.h"
-#include "dos.h"
-#include "asm.h"
-#include "vdp.h"
-
-
-#define MAX_PICFILE_READ	2048
-
-#ifndef FONTWIDTH
-	#define FONTWIDTH       6
-#endif
-#if FONTWIDTH!=6 && FONTWIDTH!=8
-	#error FONTWIDTH constant must be 6 or 8!
+#ifdef MSX2
+	#include "heap.h"
+	#include "dos.h"
+	#include "asm.h"
 #endif
 
-#if SCREEN==6 || SCREEN==7
-	#define SCREEN_WIDTH    512
-#else
-	#define SCREEN_WIDTH    256
-#endif
 
-#define MAX_COLUMNS		    ((int)(SCREEN_WIDTH/FONTWIDTH))
-#define MAX_LINES			26
-
-#define PROMPT_TEXT_LEN		100
-#define TEXT_BUFFER_LEN		PROMPT_TEXT_LEN	// Double buffer
+#define TEXT_BUFFER_LEN		100
 
 // Used in struct Object->location
 #define LOC_NOTCREATED		252
@@ -48,10 +31,19 @@
 #define HA_MOUSE			240		// Flag 29 Bit#0
 #define HA_GMODE			247		// Flag 29 Bit#7
 
+// Used by TIME and flag fTIFlags
+#define TIME_FIRSTCHAR		1		// Set this so timeout can occur at start of input only
+#define TIME_MORE			2		// Set this so timeout can occur on "More..."
+#define TIME_ANYKEY			4		// Set this so timeout can occur on ANYKEY
+#define TIME_CLEAR			8		// TODO Set this to clear input window
+#define TIME_INPUT			16		// TODO Set this to print input in current stream after edit
+#define TIME_RECALL			32		// TODO Set this to cause auto recall of input buffer after timeout
+#define TIME_AVAILABLE		64		// TODO Set if data available for recall (not of use to writer)
+#define TIME_TIMEOUT		128		// Set if timeout occurred last frame
+
 
 // DDB header
 typedef struct {
-
 	uint8_t	 version;		// 0x00 | 1 byte  | DAAD version number (1 for Aventura Original and Jabato, 1989, 2 for the rest)
 	union {					// 0x01 | 1 byte  | High nibble: target machine | Low nibble: target language
 		uint8_t byte;
@@ -81,12 +73,38 @@ typedef struct {
 	uint16_t fileLength;	// 0x20 | 2 bytes | File length
 } DDB_Header;
 
+// Process entry
 typedef struct {
-	uint8_t word[5];
-	uint8_t id;
-	uint8_t type;
-} Vocabulary;
+	uint8_t verb;
+	uint8_t noun;
+	char *pCondacts;
+} PROCentry;
 
+// Process call stack
+typedef struct {
+	PROCentry *entryIni;		// First entry in current PROCess
+	PROCentry *entry;			// Current entry in current PROCess
+	char *condactIni;			// First condact in current entry
+	char *condact;				// Current condact in current entry
+} PROCstack;
+
+// Condact struct
+typedef struct {
+	unsigned condact     : 7;
+	unsigned indirection : 1;
+} CondactStruct;
+
+// Window
+typedef struct {
+	uint8_t winX;
+	uint8_t winY;
+	uint8_t winW;
+	uint8_t winH;
+	uint8_t cursorX;
+	uint8_t cursorY;
+} Window;
+
+// Object Entry
 typedef struct {
 	uint8_t location;
 	union {
@@ -103,28 +121,14 @@ typedef struct {
 	uint8_t adjectiveId;	// Adjective
 } Object;
 
+// Vocabulary Entry
 typedef struct {
-	uint8_t winX;
-	uint8_t winY;
-	uint8_t winH;
-	uint8_t winW;
-	uint8_t cursorX;
-	uint8_t cursorY;
-} Window;
+	uint8_t word[5];
+	uint8_t id;
+	uint8_t type;
+} Vocabulary;
 
-typedef struct {
-	uint8_t verb;
-	uint8_t noun;
-	char *pCondacts;
-} PROCentry;
-
-typedef struct {
-	PROCentry *entryIni;		// First entry in current PROCess
-	PROCentry *entry;			// Current entry in current PROCess
-	char *condactIni;			// First condact in current entry
-	char *condact;				// Current condact in current entry
-} PROCstack;
-
+// Vocabulary types
 enum VOC_TYPE {
 	VERB,						// 0
 	ADVERB,						// 1
@@ -183,148 +187,15 @@ enum VOC_TYPE {
 #define fCurWin   63	// Which window is active at the moment (for read only)
 
 
-// Condacts
-#define CDT_AT         0   //   1
-#define CDT_NOTAT      1   //   1
-#define CDT_ATGT       2   //   1
-#define CDT_ATLT       3   //   1
-#define CDT_PRESENT    4   //   1
-#define CDT_ABSENT     5   //   1
-#define CDT_WORN       6   //   1
-#define CDT_NOTWORN    7   //   1
-#define CDT_CARRIED    8   //   1
-#define CDT_NOTCARR    9   //   1
-#define CDT_CHANCE     10  //   1
-#define CDT_ZERO       11  //   1
-#define CDT_NOTZERO    12  //   1
-#define CDT_EQ         13  //   2
-#define CDT_GT         14  //   2
-#define CDT_LT         15  //   2
-#define CDT_ADJECT1    16  //   1
-#define CDT_ADVERB     17  //   1
-#define CDT_SFX        18  //   2
-#define CDT_DESC       19  //   1
-#define CDT_QUIT       20  //   0
-#define CDT_END        21  //   0
-#define CDT_DONE       22  //   0
-#define CDT_OK         23  //   0
-#define CDT_ANYKEY     24  //   0
-#define CDT_SAVE       25  //   1
-#define CDT_LOAD       26  //   1
-#define CDT_DPRINT     27  //   1 *
-#define CDT_DISPLAY    28  //   1 *
-#define CDT_CLS        29  //   0
-#define CDT_DROPALL    30  //   0
-#define CDT_AUTOG      31  //   0
-#define CDT_AUTOD      32  //   0
-#define CDT_AUTOW      33  //   0
-#define CDT_AUTOR      34  //   0
-#define CDT_PAUSE      35  //   1
-#define CDT_SYNONYM    36  //   2 *
-#define CDT_GOTO       37  //   1
-#define CDT_MESSAGE    38  //   1
-#define CDT_REMOVE     39  //   1
-#define CDT_GET        40  //   1
-#define CDT_DROP       41  //   1
-#define CDT_WEAR       42  //   1
-#define CDT_DESTROY    43  //   1
-#define CDT_CREATE     44  //   1
-#define CDT_SWAP       45  //   2
-#define CDT_PLACE      46  //   2
-#define CDT_SET        47  //   1
-#define CDT_CLEAR      48  //   1
-#define CDT_PLUS       49  //   2
-#define CDT_MINUS      50  //   2
-#define CDT_LET        51  //   2
-#define CDT_NEWLINE    52  //   0
-#define CDT_PRINT      53  //   1
-#define CDT_SYSMESS    54  //   1
-#define CDT_ISAT       55  //   2
-#define CDT_SETCO      56  //   1
-#define CDT_SPACE      57  //   0
-#define CDT_HASAT      58  //   1
-#define CDT_HASNAT     59  //   1
-#define CDT_LISTOBJ    60  //   0
-#define CDT_EXTERN     61  //   2
-#define CDT_RAMSAVE    62  //   0
-#define CDT_RAMLOAD    63  //   1
-#define CDT_BEEP       64  //   2
-#define CDT_PAPER      65  //   1
-#define CDT_INK        66  //   1
-#define CDT_BORDER     67  //   1
-#define CDT_PREP       68  //   1
-#define CDT_NOUN2      69  //   1
-#define CDT_ADJECT2    70  //   1
-#define CDT_ADD        71  //   2
-#define CDT_SUB        72  //   2
-#define CDT_PARSE      73  //   1
-#define CDT_LISTAT     74  //   1
-#define CDT_PROCESS    75  //   1
-#define CDT_SAME       76  //   2
-#define CDT_MES        77  //   1
-#define CDT_WINDOW     78  //   1
-#define CDT_NOTEQ      79  //   2
-#define CDT_NOTSAME    80  //   2
-#define CDT_MODE       81  //   1
-#define CDT_WINAT      82  //   2
-#define CDT_TIME       83  //   2
-#define CDT_PICTURE    84  //   1
-#define CDT_DOALL      85  //   1
-#define CDT_MOUSE      86  //   1
-#define CDT_GFX        87  //   2
-#define CDT_ISNOTAT    88  //   2
-#define CDT_WEIGH      89  //   2
-#define CDT_PUTIN      90  //   2
-#define CDT_TAKEOUT    91  //   2
-#define CDT_NEWTEXT    92  //   0
-#define CDT_ABILITY    93  //   2
-#define CDT_WEIGHT     94  //   1
-#define CDT_RANDOM     95  //   1
-#define CDT_INPUT      96  //   2
-#define CDT_SAVEAT     97  //   0
-#define CDT_BACKAT     98  //   0
-#define CDT_PRINTAT    99  //   2
-#define CDT_WHATO      100 //   0
-#define CDT_CALL       101 //   1
-#define CDT_PUTO       102 //   1
-#define CDT_NOTDONE    103 //   0
-#define CDT_AUTOP      104 //   1
-#define CDT_AUTOT      105 //   1
-#define CDT_MOVE       106 //   1
-#define CDT_WINSIZE    107 //   2
-#define CDT_REDO       108 //   0
-#define CDT_CENTRE     109 //   0
-#define CDT_EXIT       110 //   1
-#define CDT_INKEY      111 //   0
-#define CDT_BIGGER     112 //   2
-#define CDT_SMALLER    113 //   2
-#define CDT_ISDONE     114 //   0
-#define CDT_ISNDONE    115 //   0
-#define CDT_SKIP       116 //   1
-#define CDT_RESTART    117 //   0
-#define CDT_TAB        118 //   1
-#define CDT_COPYOF     119 //   2
-#define CDT_dumb1      120 //   0 (according DAAD manual, internal)
-#define CDT_COPYOO     121 //   2
-#define CDT_dumb2      122 //   0 (according DAAD manual, internal)
-#define CDT_COPYFO     123 //   2
-#define CDT_dumb3      124 //   0 (according DAAD manual, internal)
-#define CDT_COPYFF     125 //   2
-#define CDT_COPYBF     126 //   2
-#define CDT_RESET      127 //   0
-
-
 // Global variables
 extern uint8_t    *ddb;
 extern DDB_Header *hdr;
 extern Object     *objects;
 extern char       *ramsave;
 
-extern Z80_registers regs;
-extern char *pPROC;						// Pointer to currect process condact
-
-extern char        *tmpMsg;				// MAX_TEXT_LEN
-extern uint8_t     flags[256];
+extern char    *tmpMsg;					// MAX_TEXT_LEN
+extern uint8_t  offsetText;
+extern uint8_t  flags[256];
 
 extern Window windows[8];				// 0-7 windows definitions
 extern Window *cw;						// Pointer to current active window
@@ -332,9 +203,8 @@ extern uint8_t savedPosX;
 extern uint8_t savedPosY;
 
 
-
-// Core function definitions
-bool initDDB();
+// DAAD Core function definitions
+bool initDAAD();
 void initFlags();
 void initObjects();
 void prompt();
@@ -343,6 +213,7 @@ void clearLogicalSentences();
 bool getLogicalSentence();
 void nextLogicalSentence();
 void printBase10(uint16_t value);
+bool waitForTimeout(uint16_t timerFlag);
 void mainLoop();
 
 char* getToken(uint8_t num);
@@ -363,24 +234,6 @@ PROCentry* getPROCess(uint8_t proc);
 char* getPROCEntryCondacts();
 char* stepPROCEntryCondacts(int8_t step);
 void processPROC();
-
-// GFX function definitions
-extern uint16_t colorTranslation[];
-
-void gfxSetScreen();
-void gfxClearLines(uint16_t start, uint16_t lines);
-void gfxClearScreen();
-void gfxClearWindow();
-void gfxSetPaperCol(uint8_t col);
-void gfxSetInkCol(uint8_t col);
-void gfxSetBorderCol(uint8_t col);
-void gfxPutChPixels(char c);
-void gfxPutCh(char c);
-void gfxPuts(char *str);
-void gfxPutsln(char *str);
-void gfxScrollUp();
-bool gfxPicturePrepare(uint8_t location);
-void gfxPictureShow();
 
 
 #endif //__DAAD_H__

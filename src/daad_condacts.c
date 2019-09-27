@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-#include "daad_condacts.h"
 #include "daad.h"
+#include "daad_condacts.h"
 
 
 #define pPROC currProc->condact
@@ -17,6 +17,137 @@ uint8_t checkEntry;
 uint8_t isDone, lastIsDone;
 uint8_t lastPicLocation;
 uint8_t lastPicShow;
+
+const CONDACT_LIST condactList[] = {
+	{ do_AT, 		0 },
+	{ do_NOTAT,		0 },
+	{ do_ATGT,		0 },
+	{ do_ATLT,		0 },
+	{ do_PRESENT,	0 },
+	{ do_ABSENT,	0 },
+	{ do_WORN,		0 },
+	{ do_NOTWORN,	0 },
+	{ do_CARRIED,	0 },
+	{ do_NOTCARR,	0 },
+	{ do_CHANCE,	0 },
+	{ do_ZERO,		0 },
+	{ do_NOTZERO,	0 },
+	{ do_EQ,		0 },
+	{ do_GT,		0 },
+	{ do_LT,		0 },
+	{ do_ADJECT1,	0 },
+	{ do_ADVERB,	0 },
+	{ do_SFX,		1 },
+	{ do_DESC,		1 },
+	{ do_QUIT,		0 },
+	{ do_END,		1 },
+	{ do_DONE,		1 },
+	{ do_OK,		1 },
+	{ do_ANYKEY,	1 },
+	{ do_SAVE,		1 },
+	{ do_LOAD,		1 },
+	{ do_DPRINT,	1 },
+	{ do_DISPLAY,	1 },
+	{ do_CLS,		1 },
+	{ do_DROPALL,	1 },
+	{ do_AUTOG,		1 },
+	{ do_AUTOD,		1 },
+	{ do_AUTOW,		1 },
+	{ do_AUTOR,		1 },
+	{ do_PAUSE,		1 },
+	{ do_SYNONYM,	1 },
+	{ do_GOTO,		1 },
+	{ do_MESSAGE,	1 },
+	{ do_REMOVE,	1 },
+	{ do_GET,		1 },
+	{ do_DROP,		1 },
+	{ do_WEAR,		1 },
+	{ do_DESTROY,	1 },
+	{ do_CREATE,	1 },
+	{ do_SWAP,		1 },
+	{ do_PLACE,		1 },
+	{ do_SET,		1 },
+	{ do_CLEAR,		1 },
+	{ do_PLUS,		1 },
+	{ do_MINUS,		1 },
+	{ do_LET,		1 },
+	{ do_NEWLINE,	1 },
+	{ do_PRINT,		1 },
+	{ do_SYSMESS,	1 },
+	{ do_ISAT,		0 },
+	{ do_SETCO,		1 },
+	{ do_SPACE,		1 },
+	{ do_HASAT,		0 },
+	{ do_HASNAT,	0 },
+	{ do_LISTOBJ,	1 },
+	{ do_EXTERN,	1 },
+	{ do_RAMSAVE,	1 },
+	{ do_RAMLOAD,	1 },
+	{ do_BEEP,		1 },
+	{ do_PAPER,		1 },
+	{ do_INK,		1 },
+	{ do_BORDER,	1 },
+	{ do_PREP,		0 },
+	{ do_NOUN2,		0 },
+	{ do_ADJECT2,	0 },
+	{ do_ADD,		1 },
+	{ do_SUB,		1 },
+	{ do_PARSE,		1 },
+	{ do_LISTAT,	1 },
+	{ do_PROCESS,	1 },
+	{ do_SAME,		0 },
+	{ do_MES,		1 },
+	{ do_WINDOW,	1 },
+	{ do_NOTEQ,		0 },
+	{ do_NOTSAME,	0 },
+	{ do_MODE,		1 },
+	{ do_WINAT,		1 },
+	{ do_TIME,		1 },
+	{ do_PICTURE,	1 },
+	{ do_DOALL,		1 },
+	{ do_MOUSE,		1 },
+	{ do_GFX,		1 },
+	{ do_ISNOTAT,	0 },
+	{ do_WEIGH,		1 },
+	{ do_PUTIN,		1 },
+	{ do_TAKEOUT,	1 },
+	{ do_NEWTEXT,	1 },
+	{ do_ABILITY,	1 },
+	{ do_WEIGHT,	1 },
+	{ do_RANDOM,	1 },
+	{ do_INPUT,		1 },
+	{ do_SAVEAT,	1 },
+	{ do_BACKAT,	1 },
+	{ do_PRINTAT,	1 },
+	{ do_WHATO,		1 },
+	{ do_CALL,		1 },
+	{ do_PUTO,		1 },
+	{ do_NOTDONE,	0 },
+	{ do_AUTOP,		1 },
+	{ do_AUTOT,		1 },
+	{ do_MOVE,		1 },
+	{ do_WINSIZE,	1 },
+	{ do_REDO,		1 },
+	{ do_CENTRE,	1 },
+	{ do_EXIT,		1 },
+	{ do_INKEY,		0 },
+	{ do_BIGGER,	0 },
+	{ do_SMALLER,	0 },
+	{ do_ISDONE,	0 },
+	{ do_ISNDONE,	0 },
+	{ do_SKIP,		1 },
+	{ do_RESTART,	1 },
+	{ do_TAB,		1 },
+	{ do_COPYOF,	1 },
+	{ do_NOT_USED,	1 },
+	{ do_COPYOO,	1 },
+	{ do_NOT_USED,	1 },
+	{ do_COPYFO,	1 },
+	{ do_NOT_USED,	1 },
+	{ do_COPYFF,	1 },
+	{ do_COPYBF,	1 },
+	{ do_RESET,		1 },
+};
 
 
 //==============================================================================
@@ -92,16 +223,25 @@ printf("processPROC()\n");
 printf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
 #endif
 	CondactStruct *currCondact;
+	uint8_t temp;
 
 	//Clear ISDONE flags
 	checkEntry = isDone = lastIsDone = false;
 
 	for (;;) {
-		while (checkEntry && *pPROC!=0xff) {
+		//Execute condacts until 0xff (entry end) is found
+		while (checkEntry && (temp=*pPROC)!=0xff) {
 			currCondact = (CondactStruct*)pPROC++;
 			indirection = currCondact->indirection;
 #ifdef VERBOSE
-printf("    [%03u] CONDACT: %s [Func:%p] [Pos:%p]\n",*((uint8_t*)currCondact), CONDACTS[currCondact->condact], &condactList[currCondact->condact].function, (char*)(pPROC-1)-ddb);
+printf("     [%p][%3u] %s ",(char*)(pPROC-1)-ddb, *((uint8_t*)currCondact), CONDACTS[currCondact->condact].name);
+if (CONDACTS[currCondact->condact].args>=1) {
+	if (indirection) printf("[");
+	printf("%u", *(pPROC));
+	if (indirection) printf("]");
+}
+if (CONDACTS[currCondact->condact].args>=2) printf(" %u", *(pPROC+1));
+printf("\n");
 #endif
 			condactList[currCondact->condact].function();
 			if (!isDone) isDone |= condactList[currCondact->condact].flag;
@@ -132,15 +272,14 @@ printf("  ======================> VERB+NOUN OK\n");
 //		DOALL
 //		SAVE
 //		LOAD
-//      PAUSE
-//      TIME
 //      MODE
 //      INPUT
+//      TIME		//TODO SYS32 "More..." if MODE option enabled
 //
 // TODO Low Priority:
 //      EXTERN
 //      CALL
-//      ANYKEY		//TODO timeout
+//      ANYKEY		//TODO check for timeout
 //      PARSE		//TODO PARSE 1
 //      GET 		//TODO cancel DOALL loop
 //      TAKEOUT 	//TODO cancel DOALL loop
@@ -158,6 +297,8 @@ uint8_t getValueOrIndirection()
 	uint8_t value = *pPROC++;
 	return indirection ? flags[value] : value;
 }
+
+
 
 // =============================================================================
 // Conditions of player locations [4 condacts]
@@ -434,12 +575,12 @@ void _internal_hasat(uint8_t value, bool negate)
 		case 13: flag=fCOAtt+1; bit=0b00100000; break;
 		case 14: flag=fCOAtt+1; bit=0b01000000; break;
 		case 15: flag=fCOAtt+1; bit=0b10000000; break;
-		case HA_WAREABLE:  flag=fCOWR;    bit=0b10000000; break; // Flag 57 Bit#7
-		case HA_CONTAINER: flag=fCOCon;   bit=0b10000000; break; // Flag 56 Bit#7
-		case HA_LISTED:    flag=fOFlags;  bit=0b10000000; break; // Flag 53 Bit#7
-		case HA_TIMEOUT:   flag=fTIFlags; bit=0b10000000; break; // Flag 49 Bit#7
-		case HA_MOUSE:     flag=fTIFlags; bit=0b00000001; break; // Flag 29 Bit#0
-		case HA_GMODE:     flag=fGFlags;  bit=0b10000000; break; // Flag 29 Bit#7
+		case HA_WAREABLE:  flag=fCOWR;    bit=0b10000000;   break; // Flag 57 Bit#7
+		case HA_CONTAINER: flag=fCOCon;   bit=0b10000000;   break; // Flag 56 Bit#7
+		case HA_LISTED:    flag=fOFlags;  bit=0b10000000;   break; // Flag 53 Bit#7
+		case HA_TIMEOUT:   flag=fTIFlags; bit=TIME_TIMEOUT; break; // Flag 49 Bit#7
+		case HA_MOUSE:     flag=fGFlags;  bit=0b00000001;   break; // Flag 29 Bit#0
+		case HA_GMODE:     flag=fGFlags;  bit=0b10000000;   break; // Flag 29 Bit#7
 	#ifdef DEBUG
 		default:
 				die("===== HASAT/HASNAT value not implemented\n");
@@ -1270,8 +1411,26 @@ void do_MODE() {printf("===== MODE not implemented\n"); pPROC++;}
 #ifndef DISABLE_INPUT
 void do_INPUT() {printf("===== INPUT not implemented\n"); pPROC+=2;}
 #endif
+/*	Allows input to be set to 'timeout' after a specific duration in 1 second 
+	intervals, i.e. the Process 2 table will be called again if the player types 
+	nothing for the specified period. This action alters flags 48 & 49. 'option' 
+	allows this to also occur on ANYKEY and the "More..." prompt. In order to 
+	calculate the number to use for the option just add the numbers shown next to
+	each item to achieve the required combination;
+	    1 - While waiting for first character of Input only.
+	    2 - While waiting for the key on the "More..." prompt.
+	    4 - While waiting for the key on the ANYKEY action.
+	e.g. TIME 5 6 (option = 2+4) will allow 5 seconds of inactivity on behalf of 
+	the player on input, ANYKEY or "More..." and between each key press. Whereas 
+	TIME 5 3 (option = 1+2) allows it only on the first character of input and on 
+	"More...".
+	TIME 0 0 will stop timeouts (default). */
 #ifndef DISABLE_TIME
-void do_TIME() {printf("===== TIME not implemented\n"); pPROC+=2;}
+void do_TIME()		// duration option
+{
+	flags[fTime] = getValueOrIndirection();		// Timeout duration required
+	flags[fTIFlags] = *pPROC++;					// Timeout Control bitmask flags
+}
 #endif
 
 // =============================================================================
@@ -1391,7 +1550,7 @@ void do_SPACE()
 #ifndef DISABLE_NEWLINE
 void do_NEWLINE()
 {
-	gfxPutCh('\n');
+	gfxPutCh('\r');
 }
 #endif
 /*	Prints Message mesno. */
@@ -1555,11 +1714,21 @@ void do_ANYKEY()
 {
 	//TODO timeout
 	printSystemMsg(16);
-	do_INKEY();
+	waitForTimeout(TIME_ANYKEY);
+	getchar();
 }
 #endif
+/*	Pauses for value/50 secs. However, if value is zero then the pause is for 
+	256/50 secs. */
 #ifndef DISABLE_PAUSE
-void do_PAUSE() {printf("===== PAUSE not implemented\n"); pPROC++; }
+void do_PAUSE()		// value
+{
+	uint16_t value = getValueOrIndirection();
+	if (!value) value = 256;
+
+	setTime(0);
+	while (getTime() < value);
+}
 #endif
 
 // =============================================================================
@@ -1852,8 +2021,7 @@ void do_MOUSE() { /* //TODO*/ }
 void do_BEEP()		// length tone
 {
 	//TODO undocumented
-	BiosCall(0xc0, &regs, REGS_NONE);
-	pPROC+=2;
+	sfxSound(getValueOrIndirection(), *pPROC++);
 }
 #endif
 void do_NOT_USED()

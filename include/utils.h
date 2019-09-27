@@ -9,6 +9,8 @@ void unRLE(char *source, char *target);
 void unRLE_vram(char *srcmem, uint32_t vram);
 
 void pletter2vram(char* data, uint32_t vram);
+void pletter2ram(char* datain, char* dataout);
+
 void dzx7vram (char *data, uint32_t vram_offset);
 
 void dzx7b(char *input, char *output);

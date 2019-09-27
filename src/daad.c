@@ -6,11 +6,6 @@
 #include "daad.h"
 
 
-// Constants
-const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\x80\x81\x9A";	//ª¡¿«»áéíóúñÑçÇüÜ
-const char PIC_NAME[] = { '0','0','0','.','I','M','0'+SCREEN, '\0' };	// Picture filename
-const char PLT_NAME[] = { '0','0','0','.','P','L','0'+SCREEN, '\0' };	// Palette filename
-
 // External
 extern void do_CLS();
 extern void do_INKEY();
@@ -21,14 +16,11 @@ uint8_t *ddb;
 DDB_Header *hdr;
 Object *objects;
 
-Z80_registers regs;
-
-
 // Internal variables
 uint8_t flags[256];
 char   *ramsave;						// Storage for game state in RAM (RAMSAVE)
 
-uint8_t lsBuffer[PROMPT_TEXT_LEN/2+1];	// Logical sentence buffer [type+id]
+uint8_t lsBuffer[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id]
 char    tmpTok[6];
 char   *tmpMsg;							// TEXT_BUFFER_LEN
 char    lastPrompt;
@@ -43,10 +35,12 @@ uint8_t savedPosY;
 
 //=========================================================
 
-bool initDDB()
+bool initDAAD()
 {
 	uint16_t *p;
 	
+	loadFilesBin();
+
 	hdr = (DDB_Header*)ddb;
 	p = (uint16_t *)&hdr->tokensPos;
 
@@ -72,7 +66,7 @@ bool initDDB()
 	printf("Obj.Name pos..... 0x%04x\n", hdr->objNamePos);
 	printf("Obj.Attr pos..... 0x%04x\n", hdr->objAttrPos);
 	printf("Obj.Extr pos..... 0x%04x\n", hdr->objExtrPos);
-	printf("File length...... 0x%04x\n", hdr->fileLength);
+	printf("File length...... %u bytes\n", hdr->fileLength);
 #endif
 
 	//If not a valid DDB version exits
@@ -90,6 +84,10 @@ bool initDDB()
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
 	//Get memory for tmpMsg
 	tmpMsg = (char*)malloc(TEXT_BUFFER_LEN);
+
+#ifdef DEBUG
+	printf("\nDDB max size..... %u bytes\n", getFreeMemory());
+#endif
 
 	return true;
 }
@@ -162,8 +160,12 @@ void prompt()
 
 	while (kbhit()) getchar();
 	gfxPutCh('>');
+	*p = '\0';
 	do {
-		while (!kbhit());
+		// Check first char Timeout flag
+		if (p==tmpMsg) {
+			if (waitForTimeout(TIME_FIRSTCHAR)) return;
+		}
 		c = getchar();
 		if (c=='\r' && p==tmpMsg) { c = 0; continue; }	// Avoid enter an empty text order
 		if (c==0x08) {									// Back space (BS)
@@ -172,9 +174,9 @@ void prompt()
 			if (cw->cursorX>0) cw->cursorX--; else { cw->cursorX = cw->winW-1; cw->cursorY--; }
 			gfxPutChPixels(' '-16);
 		} else {
-			if (p-tmpMsg > PROMPT_TEXT_LEN) continue;
-			extChars = strchr(CHARS_MSX, c);
-			if (extChars) c = (char)(extChars-CHARS_MSX+0x10);
+			if (p-tmpMsg > TEXT_BUFFER_LEN) continue;
+			extChars = strchr(getCharsTranslation(), c);
+			if (extChars) c = (char)(extChars-getCharsTranslation()+0x10);
 			gfxPutCh(c);
 			*p++ = toupper(c);
 		}
@@ -284,6 +286,12 @@ printf("populateLogicalSentence()\n");
 		}
 		p+=2;
 	}
+
+	if (flags[fNoun2]!=NULLWORD) {
+		uint8_t obj = getObjectById(flags[fNoun2], flags[fAdject2]);
+		if (obj!=NULLWORD) flags[fO2Con] = objects[obj].attribs.mask.isContainer;
+	}
+
 #ifdef VERBOSE2
 printf("VERB:%u NOUN1:%u ADJ1:%u, ADVERB:%u PREP: %u NOUN2:%u, ADJ2:%u %u\n",flags[fVerb],flags[fNoun1],flags[fAdject1],flags[fAdverb],flags[fPrep],flags[fNoun2],flags[fAdject2]);
 #endif
@@ -318,6 +326,9 @@ printf("nextLogicalSentence()\n");
 	*c = 0;
 }
 
+//=========================================================
+//UTILS
+
 void printBase10(uint16_t value)
 {
 	if (value<10) {
@@ -326,6 +337,26 @@ void printBase10(uint16_t value)
 	}
 	printBase10(value/10);
 	gfxPutCh('0'+(uint8_t)(value%10));
+}
+
+bool waitForTimeout(uint16_t timerFlag)
+{
+	uint16_t timeout = flags[fTime]*50;
+
+	while (kbhit()) getchar();
+	if (flags[fTIFlags] & timerFlag) {
+		flags[fTIFlags] &= TIME_TIMEOUT^255;
+		setTime(0);
+		while (!kbhit()) {
+			if (getTime() > timeout) {
+				flags[fTIFlags] |= TIME_TIMEOUT;
+				return true;
+			}
+		}	
+	} else {
+		while (!kbhit());
+	}
+	return false;
 }
 
 //=========================================================
@@ -347,32 +378,6 @@ char* getToken(uint8_t num)
 
 	return tmpTok;
 }
-
-/*
-char* _getMsg(uint16_t *lst, uint8_t num)
-{
-	char *p = &ddb[*(lst + num)];
-	uint16_t i = 0;
-	char c;
-
-	tmpMsg[0]='\0';
-	do {
-		c = 255 - *p++;
-		if (c >= 128) {
-			tmpMsg[i] = '\0';
-			strcat(&tmpMsg[i], getToken(c - 128));
-			while (tmpMsg[i]) i++;
-		} else {
-			tmpMsg[i++] = c;
-		}
-		#ifdef DEBUG
-		if (i>MAX_TEXT_LEN) die("Message exceeds limits of 'tmpMsg' variable!");
-		#endif
-	} while (c != 0x0a);		// = 255 - 0xf5
-	tmpMsg[--i] = '\0';
-
-	return tmpMsg;
-}*/
 
 void _printMsg(uint16_t *lst, uint8_t num, bool print)
 {
@@ -503,246 +508,4 @@ void referencedObject(uint8_t objno)
 	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | objects[objno].attribs.mask.isWareable << 7;
 	flags[fCOAtt] = objects[objno].extAttr1;
 	flags[fCOAtt+1] = objects[objno].extAttr2;
-}
-
-
-//=========================================================
-// PLATFORM DEPENDENT FUNCTIONS
-//=========================================================
-
-#define ADDR_POINTER_BYTE(X)	(*((uint8_t*)X))
-#define ADDR_POINTER_WORD(X)	(*((uint16_t*)X))
-#define JIFFY   0xfc9e		// (WORD) Contains value of the software clock, each interrupt of the VDP 
-							//        it is increased by 1 (50/60Hz)
-
-//=========================================================
-// TIMER
-
-void setTime(uint16_t time)
-{
-	ADDR_POINTER_WORD(JIFFY) = time;
-}
-
-uint16_t getTime()
-{
-	return ADDR_POINTER_WORD(JIFFY);
-}
-
-
-//=========================================================
-// GRAPHICS (GFX)
-
-#if SCREEN!=6
-	#define COLOR_INK		15
-#else
-	#define COLOR_INK		3
-#endif
-#define COLOR_PAPER		0
-
-
-uint16_t colorTranslation[] = {	// EGA rgb -> MSX grb
-	0x000, //000 black
-	0x006, //006 blue
-	0x600, //060 green
-	0x606, //066 dark cyan
-	0x060, //600 red
-	0x066, //606 dark purple
-	0x260, //620 orange
-	0x666, //666 light gray
-	0x222, //222 dark gray
-	0x337, //337 light blue
-	0x722, //272 light green
-	0x727, //277 light cyan
-	0x272, //722 light red
-	0x277, //727 light purple
-	0x772, //772 yellow
-	0x777  //777 white
-};
-
-
-void gfxSetScreen()
-{
-	//Set Color 15,0,0
-	setColor(15, 0, 0);
-	//Set SCREEN mode
-	regs.Bytes.A = SCREEN;
-	BiosCall(0x5f, &regs, REGS_ALL);
-	enable212lines();
-	enable50Hz();
-	disableSPR();
-}
-
-void gfxClearLines(uint16_t start, uint16_t lines)
-{
-	bitBlt(0, 0, 0, start, SCREEN_WIDTH, lines, 0x00, 0, CMD_HMMV);
-}
-
-void gfxClearScreen()
-{
-	gfxClearLines(0, 212);
-}
-
-void gfxClearWindow()
-{
-	bitBlt(0, 0, cw->winX*FONTWIDTH, cw->winY*8, (cw->winW+1)*FONTWIDTH, cw->winH*8, 0x00, 0, CMD_HMMV);
-}
-
-void gfxSetPaperCol(uint8_t col)
-{
-	setColorPal(COLOR_PAPER, colorTranslation[col]);
-}
-
-void gfxSetInkCol(uint8_t col)
-{
-	setColorPal(COLOR_INK, colorTranslation[col]);
-}
-
-void gfxSetBorderCol(uint8_t col)
-{
-	gfxSetPaperCol(col);
-}
-
-void gfxPutChPixels(char c)		// c = ASCII-0x10
-{
-	bitBlt((c*8)%SCREEN_WIDTH, 256+(c>>(SCREEN_WIDTH/256+4)<<3), (cw->cursorX+cw->winX)*FONTWIDTH, (cw->cursorY+cw->winY)*8, FONTWIDTH, 8, 0x00, 0, CMD_LMMM);
-}
-
-void gfxPutCh(char c)
-{
-	switch (c) {
-		case 11:		// \b
-			do_CLS(); return;
-		case 12:		// \k
-			do_INKEY(); return;
-		case 14:		// \g
-			offsetText = 128; return;
-		case 15:		// \t
-			offsetText = 0; return;
-	}
-	if (c=='\r' || c=='\n') {
-		cw->cursorX = 0;
-		cw->cursorY++;
-#ifdef VERBOSE
-printf("\n");
-#endif
-	} else 
-	if (!(c==' ' && cw->cursorX==0)) {
-#ifdef VERBOSE
-printf("%c", c);
-#endif
-		c -= 16;
-		gfxPutChPixels(offsetText + c);
-		cw->cursorX++;
-		if (cw->cursorX >= cw->winW) {
-			cw->cursorX = 0;
-			cw->cursorY++;
-		}
-	}
-	if (cw->cursorY >= cw->winH) {
-		gfxScrollUp();
-		cw->cursorX = 0;
-		cw->cursorY--;
-	}
-}
-
-void gfxPuts(char *str)
-{
-	char *aux = NULL, c;
-
-	while ((c = *str)) {
-		if (c==' ' || !aux) {
-			aux = str+1;
-			while (*aux && *aux!=' ' && *aux!='\n') {
-				aux++;
-			}
-			if (cw->cursorX+(aux-(str+1)) >= cw->winW) {
-				if (c==' ') c = '\n'; else do_NEWLINE();
-			}
-		}
-		gfxPutCh(c);
-		str++;
-	}
-}
-
-void gfxPutsln(char *str)
-{
-	gfxPuts(str);
-	gfxPutCh('\r');
-}
-
-void gfxScrollUp()
-{
-	bitBlt(0, cw->winY*8+8, cw->winX*6, cw->winY*8, cw->winW*6, cw->winH*8-8, 0x00, 0, CMD_YMMM);
-	bitBlt(0, 0, cw->winX*6, (cw->winY+cw->winH-1)*8, cw->winW*6, 8, 0x00, 0, CMD_HMMV);
-}
-
-bool gfxPicturePrepare(uint8_t location)
-{
-	char *pic = PIC_NAME, *plt = PLT_NAME;
-
-	pic[2] = plt[2] = location%10 + '0';
-	location /= 10;
-	pic[1] = plt[1] = location%10 + '0';
-	location /= 10;
-	pic[0] = plt[0] = location%10 + '0';
-
-	return fileexists(PIC_NAME);
-}
-
-void gfxPictureShow()
-{
-	uint16_t fp;
-	uint8_t i = cw->winH;
-	char *buffer = heap_top;
-
-	do_CLS();	//TODO clear only lines will be read from file
-
-	#if SCREEN!=8
-		fp = fopen(PLT_NAME, O_RDONLY);
-		if (!(fp&0xff00)) {
-			fread(buffer, 32, fp);
-			setPalette(buffer);
-			fclose(fp);
-		}
-	#endif
-
-	fp = fopen(PIC_NAME, O_RDONLY);
-	if (fp<0xff00) {
-//		fseek(fp, 7+76*256, SEEK_CUR);
-/*
-		uint16_t chunk;
-		uint16_t size;
-		setVDP_Write(0x00000);
-		do {
-			size = fread(&chunk, 2, fp);
-printf("size:%u chunk:%u\n",size,chunk);
-			if (!(size & 0xff00)) {
-				fread(buffer, chunk, fp);
-printf("# size:%u chunk:%u\n",size,chunk);
-				dzx7vram(buffer, 0);
-			}
-		} while (!(size & 0xff00));
-*/
-		setVDP_Write(0x00000);
-		while (fread(buffer, MAX_PICFILE_READ, fp)==MAX_PICFILE_READ) {
-			__asm
-				push hl
-				push bc
-				ld hl,(#_heap_top)
-				ld bc,#0x0098
-				otir
-				otir
-				otir
-				otir
-				otir
-				otir
-				otir
-				otir
-				pop bc
-				pop hl
-			__endasm;
-		}
-
-		fclose(fp);
-	}
 }

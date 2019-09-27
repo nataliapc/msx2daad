@@ -11,18 +11,18 @@
 #endif
 
 // BitBlt commands
-#define CMD_HMMC	0b11110000       // 
-#define CMD_YMMM	0b11100000       // 
-#define CMD_HMMM	0b11010000       // 
-#define CMD_HMMV	0b11000000       // 
-#define CMD_LMMC	0b10110000       // 
-#define CMD_LMCM	0b10100000       // 
-#define CMD_LMMM	0b10010000       // 
-#define CMD_LMMV	0b10000000       // 
-#define CMD_LINE	0b01110000       // 
-#define CMD_SRCH	0b01100000       // 
-#define CMD_PSET	0b01010000       // 
-#define CMD_POINT	0b01000000       // 
+#define CMD_HMMC	0b11110000       // High speed move CPU to VRAM: transfer data from the CPU to VRAM
+#define CMD_YMMM	0b11100000       // High speed move VRAM to VRAM, Y coordinate only: transfer VRAM to VRAM in Y coordinate
+#define CMD_HMMM	0b11010000       // High speed move VRAM to VRAM: transfer data from VRAM to VRAM
+#define CMD_HMMV	0b11000000       // High speed move VDP to VRAM: paint in a specific rectangular area in the VRAM
+#define CMD_LMMC	0b10110000       // Logical move CPU to VRAM: transfer data from the CPU to VRAM
+#define CMD_LMCM	0b10100000       // Logical move VRAM to CPU: transfer data from VRAM to the CPU through VDP
+#define CMD_LMMM	0b10010000       // Logical move VRAM to VRAM: transfer data from VRAM to VRAM
+#define CMD_LMMV	0b10000000       // Logical move VDP to VRAM: paint in a specific rectangular area in the VRAM
+#define CMD_LINE	0b01110000       // LINE command: used to draw straight line in VRAM
+#define CMD_SRCH	0b01100000       // SRCH command: used to search for the specific color in VRAM
+#define CMD_PSET	0b01010000       // PSET command: used to draw a dot in VRAM
+#define CMD_POINT	0b01000000       // POINT command: used to read the color of the specified dot located in VRAM
 #define CMD_STOP	0b00000000       // 
 // Logical operations
 #define LOG_IMP		0b00000000       // DC=SC

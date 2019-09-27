@@ -28,7 +28,7 @@
 		array(0,'END    '), //  21
 		array(0,'DONE   '), //  22
 		array(0,'OK     '), //  23
-		array(0,'ANYKEY ', array('INKEY')), //  24
+		array(0,'ANYKEY '), //  24
 		array(1,'SAVE   '), //  25
 		array(1,'LOAD   '), //  26
 		array(1,'DPRINT '), //  27 *

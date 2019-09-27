@@ -5,7 +5,7 @@ AR = sdar
 CC = sdcc
 HEX2BIN = hex2bin
 
-DEFINES := -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DSCREEN=7 -DFONTWIDTH=6
+DEFINES := -DDEBUG -D_VERBOSE -D_VERBOSE2 -DMSX2
 LDFLAGS := -rc
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
 CCFLAGS := --code-loc 0x0106 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx --opt-code-size $(DEFINES) $(WRFLAGS)
@@ -15,9 +15,11 @@ SRCLIB = $(SRCDIR)libs/
 LIBDIR = libs/
 INCDIR = include/
 OBJDIR = obj/
+DIR_GUARD=@mkdir -p $(OBJDIR)
+
 
 LIBS := dos.lib vdp.lib utils.lib
-REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos.rel heap.rel daad.rel daad_condacts.rel) $(addprefix $(LIBDIR), $(LIBS))
+REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos.rel heap.rel daad.rel daad_condacts.rel daad_platform_msx2.rel) $(addprefix $(LIBDIR), $(LIBS))
 
 PROGRAMS = msx2daad.com
 
@@ -26,34 +28,42 @@ all: $(PROGRAMS)
 $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
 	@echo "#### ASM $@"
+	$(DIR_GUARD)
 	$(AS) -o $@ $^
 
 $(OBJDIR)%.rel: $(SRCDIR)%.c
 	@echo "#### CC $@"
+	$(DIR_GUARD)
 	$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
 
 $(OBJDIR)%.c.rel: $(SRCLIB)%.c
 	@echo "#### CC $@"
+	$(DIR_GUARD)
 	$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
 
 $(OBJDIR)%.s.rel: $(SRCLIB)%.s
 	@echo "#### ASM $@"
+	$(DIR_GUARD)
 	$(AS) -o $@ $^
 
 $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos_*))
 	@echo "######## Compiling $@"
+	$(DIR_GUARD)
 	$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)vdp.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)vdp_*))
 	@echo "######## Compiling $@"
+	$(DIR_GUARD)
 	$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)utils_*))
 	@echo "######## Compiling $@"
+	$(DIR_GUARD)
 	$(AR) $(LDFLAGS) $@ $^
 
 msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
 	@echo "######## Compiling $@"
+	$(DIR_GUARD)
 	$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) asm.lib $(subst .com,.c,$^)
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
 
@@ -62,7 +72,6 @@ clean:
 	@rm -f dsk/msx2daad.com
 	@rm -f *.com *.asm *.lst *.sym *.bin *.ihx *.lk *.map *.noi *.rel
 	@rm -f $(OBJDIR)/*
-	@rm -f $(INCDIR)/*.com $(INCDIR)/*.asm $(INCDIR)/*.lst $(INCDIR)/*.sym $(INCDIR)/*.bin $(INCDIR)/*.ihx $(INCDIR)/*.lk $(INCDIR)/*.map $(INCDIR)/*.noi $(INCDIR)/*.rel
 	@rm -f $(addprefix $(LIBDIR), $(LIBS))
 
 

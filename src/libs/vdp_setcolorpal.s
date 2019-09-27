@@ -15,14 +15,13 @@ _setColorPal::
         pop ix
 
 setColorPal::
-        ld      b,#0                    ; set pointer to zero.
-        ld      c,#0x99
+        ld      c,#0x99                    ; set port to 0x99
         di
-        out     (c), b
+        out     (c), a
         ld      a, #(16+128)
         ei
         out     (c), a
-        ld      c, #0x9A
+        inc     c
         out     (c), e
         out     (c), d
         ret
