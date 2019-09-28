@@ -8,6 +8,8 @@
 ; + to optimize the ROM size, not the speed
 ; http://www.gamopat-forum.com/t75544-termine-pang-msx
 ; Size: 244 bytes
+;-----------------------------------------------------------
+; Adapter to MSX2 by Natalia Pujol (VRAM Page 0 only)
 
  ; global from this code
 
@@ -17,25 +19,34 @@
 
 _pletter2vram::
     push ix
-    ld ix,#0
+    ld ix,#4
     add ix,sp
+    ld l, 0(ix)
+    ld h, 1(ix)
+    ld e, 2(ix)
+    ld d, 3(ix)
     push af
     push bc
     push de
     push hl
     push iy
-    ld l, 4(ix)
-    ld h, 5(ix)
-    ld e, 6(ix)
-    ld d, 7(ix)
-    di
 
 ; VRAM address setup
-    ld a,e
-    out (0x99),a
-    ld a,d
-    or #0x40
-    out (0x99),a
+	ld	a,d
+	rlca
+	rlca
+	and	#0b00000011
+    di
+	out	(0x99),a	; VRAM address A14-A15
+	ld	a,#128+14
+	out	(0x99),a	; VRAM access base address register
+    ld	a,e
+	out	(0x99),a	; VRAM a0-7  
+	ld	a,d
+	and	#0b00111111
+	or	#0b01000000	; Write
+    ei
+	out	(0x99),a	; VRAM a8-13
 
 ; Initialization
     ld a,(hl)
@@ -135,26 +146,47 @@ offsok:
     pop bc
     push af
 $9:
-    ld a,l
-    out (0x99),a
-    ld a,h
-    nop                     ; VDP timing
-    out (0x99),a
-    nop                     ; VDP timing
-    in a,(0x98)
+	ld	a,h
+	rlca
+	rlca
+	and	#0b11
+    di
+	out	(0x99),a	; VRAM address A14-A15
+	ld	a,#128+14
+	out	(0x99),a	; VRAM access base address register
+    ld	a,l
+	out	(0x99),a	; VRAM a0-7  
+	ld	a,h
+	and	#0b00111111	; Read
+    ei
+	out	(0x99),a	; VRAM a8-13
+	nop
+	nop
+	in	a,(0x98)
     ex af,af'
-    ld a,e
-    nop                     ; VDP timing
-    out (0x99),a
-    ld a,d
-    or #0x40
-    out (0x99),a
+
+	ld	a,d
+	rlca
+	rlca
+	and	#0b11
+    di
+	out	(0x99),a	; VRAM address A14-A15
+	ld	a,#128+14
+	out	(0x99),a	; VRAM access base address register
+    ld	a,e
+	out	(0x99),a	; VRAM a0-7  
+	ld	a,d
+	and	#0b00111111
+	or	#0b01000000	; Write
+    ei
+	out	(0x99),a	; VRAM a8-13
     ex af,af'
-    nop                     ; VDP timing
     out (0x98),a
+
     inc de
     cpi
     jp pe,$9
+    ei
     pop af
     pop hl
     ;jp (iy)
@@ -182,7 +214,6 @@ Depack_out:
     pop bc
     pop af
     pop ix
-;    ei
     ret
 
 modes:
