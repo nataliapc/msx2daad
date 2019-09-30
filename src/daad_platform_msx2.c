@@ -12,10 +12,13 @@
 #include "daad.h"
 #include "vdp.h"
 #include "asm.h"
+#include "dos.h"
 
 
 #define ADDR_POINTER_BYTE(X)	(*((uint8_t*)X))
 #define ADDR_POINTER_WORD(X)	(*((uint16_t*)X))
+
+#define MAX_PICFILE_READ		2048 + 1 + 2 + 2 	// 1:type + 2:sizeIn + 2:sizeOut + 2048:max_data_size
 
 #define MODE	0xfafc		/*Flag for screen mode. (1B/R)
 								bit 7: 1 = conversion to Katakana; 0 = conversion to Hiragana. (MSX2+~)
@@ -31,6 +34,7 @@
 								bit 0: 1 if the conversion of Romaji to Kana is possible. (MSX2~)*/
 #define JIFFY   0xfc9e		// (WORD) Contains value of the software clock, each interrupt of the VDP 
 							//        it is increased by 1 (50/60Hz)
+#define CLIKSW	0xf3db		// (BYTE) SCREEN ,,n will write to this address (0:disables_keys_click 1:enables_keys_click)
 
 // Constants
 const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\x80\x81\x9A";	//ª¡¿«»áéíóúñÑçÇüÜ
@@ -40,6 +44,8 @@ const char PLT_NAME[] = { '0','0','0','.','P','L','0'+SCREEN, '\0' };	// Palette
 
 
 Z80_registers regs;
+uint8_t lastImageLoaded = 255;
+uint8_t currentLoadingImage = 255;
 
 
 //=========================================================
@@ -51,6 +57,11 @@ bool checkPlatformSystem()
 	if ((ADDR_POINTER_BYTE(MODE) & 0x06) < 0x04) {
 		die("MSX2 with 128Kb VRAM is needed to run!\n");
 	}
+	#ifdef MSXDOS2
+		if (dosver()<VER_MSXDOS2x) {
+			die("MSXDOS 2.x or better is needed!\n");
+		}
+	#endif
     return true;
 }
 
@@ -110,24 +121,6 @@ uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size)
 	return len;
 }
 
-uint16_t fileSize(char *filename)
-{
-	uint16_t fp = fopen(filename, O_RDONLY);
-	uint32_t len;
-	char *error;
-	if (fp & 0xff00) {
-		len = 0;
-		if ((uint8_t)fp != 0xd7) {
-			explain(error, (uint8_t)fp);
-			die(error);
-		}
-	} else {
-		len = fseek(fp, 0, SEEK_END);
-		fclose(fp);
-	}
-	return (uint16_t)len;
-}
-
 void compactFilename(char *dst, char *src)
 {
 	char pos=0;
@@ -150,13 +143,13 @@ void loadFilesBin()
 
 	//DMG/FONT
 	compactFilename(buff, &FILES[0]);
-	size = fileSize(buff);
+	size = filesize(buff);
 	loadFile(buff, heap_top, size);
 	unRLE_vram(heap_top, VRAM_PAGE1);
 
 	//DDB
 	compactFilename(buff, &FILES[11]);
-	size = fileSize(buff);
+	size = filesize(buff);
 	ddb = malloc(size);
 	loadFile(buff, ddb, size);
 }
@@ -165,11 +158,11 @@ void loadFilesBin()
 //=========================================================
 // GRAPHICS (GFX)
 
-#define MAX_PICFILE_READ	2048
-
 #if SCREEN==8
-	uint8_t COLOR_INK	=   255;
-	uint8_t COLOR_PAPER	=	0;
+//TODO	uint8_t COLOR_INK	=   255;
+//TODO	uint8_t COLOR_PAPER	=	0;
+	#define COLOR_INK		256
+	#define COLOR_PAPER		0
 #elif SCREEN==6
 	#define COLOR_INK		3
 	#define COLOR_PAPER		0
@@ -215,6 +208,7 @@ void gfxSetScreen()
 	enable212lines();
 	enable50Hz();
 	disableSPR();
+	ADDR_POINTER_BYTE(CLIKSW) = 0;	// Disable keys typing sound
 }
 
 void gfxClearLines(uint16_t start, uint16_t lines)
@@ -234,8 +228,9 @@ void gfxClearWindow()
 
 void gfxSetPaperCol(uint8_t col)
 {
+	col;
 	#if SCREEN==8
-		COLOR_PAPER = colorTranslation[col];
+//TODO		COLOR_PAPER = colorTranslation[col];
 	#else
 		setColorPal(COLOR_PAPER, colorTranslation[col]);
 	#endif
@@ -243,8 +238,9 @@ void gfxSetPaperCol(uint8_t col)
 
 void gfxSetInkCol(uint8_t col)
 {
+	col;
 	#if SCREEN==8
-		COLOR_INK = colorTranslation[col];
+//TODO		COLOR_INK = colorTranslation[col];
 	#else
 		setColorPal(COLOR_INK, colorTranslation[col]);
 	#endif
@@ -307,7 +303,8 @@ printf("%c", c);
 		cw->cursorX = 0;
 		cw->cursorY--;
 	}
-	/*if (printedLines >= cw->winH-1) {	// Must be show "More..." SYS32?
+	/*TODO
+		if (printedLines >= cw->winH-1) {	// Must show "More..." SYS32?
 		char *oldTmpMsg = tmpMsg;
 		tmpMsg += TEXT_BUFFER_LEN/2;
 		printSystemMsg(32);
@@ -355,96 +352,116 @@ void gfxScrollUp()
 
 bool gfxPicturePrepare(uint8_t location)
 {
-	char *pic = PIC_NAME, *plt = PLT_NAME;
+	char *pic = PIC_NAME;
+	
+	currentLoadingImage = location;
 
-	pic[2] = plt[2] = location%10 + '0';
+	pic[2] = location%10 + '0';
 	location /= 10;
-	pic[1] = plt[1] = location%10 + '0';
+	pic[1] = location%10 + '0';
 	location /= 10;
-	pic[0] = plt[0] = location%10 + '0';
+	pic[0] = location%10 + '0';
 
 	return fileexists(PIC_NAME);
 }
 
-uint16_t chunkSize;
-uint16_t outSize;
-
 void gfxPictureShow()
 {
+#ifdef DEBUG
+uint16_t time = getTime();
+#endif
 	uint16_t fp;
 	uint8_t i = cw->winH;
 	char *buffer = heap_top;
-	char *buffer2 = buffer + MAX_PICFILE_READ;
+	char *buffer2 = buffer + 5;
 
-	do_CLS();	//TODO clear only lines read from file
+	if (lastImageLoaded==currentLoadingImage) return;
 
-	#if SCREEN!=8
-		fp = fopen(PLT_NAME, O_RDONLY);
-		if (!(fp&0xff00)) {
-			fread(buffer, 32, fp);
-			setPalette(buffer);
-			fclose(fp);
-		}
-	#endif
+	do_CLS();	//TODO need I clear only lines read from file?
 
 	fp = fopen(PIC_NAME, O_RDONLY);
 	if (fp<0xff00) {
-		uint16_t size;
+		uint8_t  *type = buffer;
+		uint16_t *chunkSize = buffer+1;
+		uint16_t *outSize = buffer+3;
 		uint32_t posVRAM = 0;
-		setVDP_Write(0);
+		uint16_t size;
+
+		setVDP_Write(0x00000);
+		fread(buffer, 4, fp);					// Read IMAGE_MAGIC "IMG " TODO: check it!
 		do {
-			size = fread(&chunkSize, 2, fp);
-			if (!(size & 0xff00)) {
-				fread(&outSize, 2, fp);
-				fread(buffer, chunkSize, fp);
+			size = fread(buffer, 5, fp);		// Read next chunk type
+			if (size & 0xff00) continue;
+
+			if (*type==IMG_CHUNK_REDIRECT) {		// Redirect to another picture
 #ifdef DEBUG
-printf("size:%u\tchunk:%u\toutSize:%u\n",size,chunkSize,outSize);
+//printf("CHUNK_REDIRECT\n");
 #endif
-				pletter2ram(buffer, buffer2);
-				__asm
-					di
-					push hl
-					push bc
-					ld hl,(#_heap_top)
-					ld de,#MAX_PICFILE_READ
-					add hl,de
-					ld de,(#_outSize)
-					ld bc,#0x0098
-				0001$:
-					otir
-					dec d
-					jr nz, 0001$
-					ld b,e
-					otir
-					pop bc
-					pop hl
-					ei
-				__endasm;
+				fclose(fp);
+				gfxPicturePrepare(*(type+1));
+				gfxPictureShow();
+				return;
+			} else
+			if (*type==IMG_CHUNK_PALETTE) {		// Load image palette
+#ifdef DEBUG
+//printf("CHUNK_PALETTE\n");
+#endif
+				#if SCREEN!=8
+					size = fread(buffer, 32, fp);
+					if (!(size & 0xff00))
+						setPalette(buffer);
+				#endif
+			} else {
+				fread(buffer2, *chunkSize, fp);
+				if (*type==IMG_CHUNK_RAW) {		// Show RAW data
+#ifdef DEBUG
+//printf("CHUNK_RAW     ");
+#endif
+					__asm
+						push hl
+						push bc
+						ld hl,(#_heap_top)
+						ld de,#5
+						add hl,de
+						ld bc,#0x0098
+						otir
+						otir
+						otir
+						otir
+						otir
+						otir
+						otir
+						otir
+						pop bc
+						pop hl
+					__endasm;
+				} else
+				if (*type==IMG_CHUNK_RLE) {		// Show RLE data
+#ifdef DEBUG
+//printf("CHUNK_RLE     ");
+#endif
+					unRLE_vram(buffer2, posVRAM);
+				} else
+				if (*type==IMG_CHUNK_PLETTER) {	// Show Pletter5 data
+#ifdef DEBUG
+//printf("CHUNK_PLETTER ");
+#endif
+					pletter2vram(buffer2, posVRAM);
+				}
+#ifdef DEBUG
+//printf("chunk:%u\toutSize:%u\n",*chunkSize,*outSize);
+#endif
+				posVRAM += *outSize;
 			}
 		} while (!(size & 0xff00));
-/*
-		setVDP_Write(0x00000);
-		while (fread(buffer, MAX_PICFILE_READ, fp)==MAX_PICFILE_READ) {
-			__asm
-				push hl
-				push bc
-				ld hl,(#_heap_top)
-				ld bc,#0x0098
-				otir
-				otir
-				otir
-				otir
-				otir
-				otir
-				otir
-				otir
-				pop bc
-				pop hl
-			__endasm;
-		}
-*/
+
 		fclose(fp);
+		lastImageLoaded = currentLoadingImage;
 	}
+#ifdef DEBUG
+time = getTime() - time;
+printf("time: %u vsync\n",time);
+#endif
 }
 
 void sfxSound(uint8_t value1, uint8_t value2)

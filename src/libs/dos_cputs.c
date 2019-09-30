@@ -1,7 +1,6 @@
 #include "dos.h"
 
 
-
 void cputs(char *s)
 {
 	while (*s != 0) {

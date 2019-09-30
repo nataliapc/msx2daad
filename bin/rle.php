@@ -22,7 +22,8 @@
 	}
 
 	$in = file_get_contents($argv[1]);
-	$out = pack("v", strlen($in));
+	$out = "";
+	//$out .= pack("v", strlen($in));
 
 	echo "File in:  ".strlen($in)." bytes\n";
 

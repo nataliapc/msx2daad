@@ -4,6 +4,7 @@
 void explain(char* buffer, char error_code) __naked {
   error_code;
   buffer;
+#ifdef MSXDOS2
   __asm
     push ix
     ld ix,#4
@@ -22,4 +23,7 @@ void explain(char* buffer, char error_code) __naked {
     pop ix
     ret
   __endasm;
+#else
+    *buffer = '\0';
+#endif
 }

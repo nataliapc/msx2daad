@@ -23,7 +23,7 @@
 		array(1,'ADJECT1'), //  16
 		array(1,'ADVERB '), //  17
 		array(2,'SFX    '), //  18
-		array(1,'DESC   '), //  19
+		array(1,'DESC   ', array('MESSAGE')), //  19
 		array(0,'QUIT   ', array('NEWLINE')), //  20
 		array(0,'END    '), //  21
 		array(0,'DONE   '), //  22
@@ -42,7 +42,7 @@
 		array(1,'PAUSE  '), //  35
 		array(2,'SYNONYM'), //  36 *
 		array(1,'GOTO   '), //  37
-		array(1,'MESSAGE', array('MES','NEWLINE')), //  38
+		array(1,'MESSAGE', array('MES','NEWLINE','INKEY','CLS')), //  38
 		array(1,'REMOVE ', array('NEWTEXT','DONE')), //  39
 		array(1,'GET    ', array('NEWTEXT','DONE')), //  40
 		array(1,'DROP   ', array('NEWTEXT','DONE')), //  41
@@ -58,7 +58,7 @@
 		array(2,'LET    '), //  51
 		array(0,'NEWLINE'), //  52
 		array(1,'PRINT  '), //  53
-		array(1,'SYSMESS'), //  54
+		array(1,'SYSMESS', array('MESSAGE')), //  54
 		array(2,'ISAT   '), //  55
 		array(1,'SETCO  '), //  56 COPYOF in old games
 		array(0,'SPACE  '), //  57 COPYOO in old games
@@ -81,7 +81,7 @@
 		array(1,'LISTAT ', array('NEWLINE')), //  74
 		array(1,'PROCESS'), //  75
 		array(2,'SAME   '), //  76
-		array(1,'MES    '), //  77
+		array(1,'MES    ', array('MESSAGE')), //  77
 		array(1,'WINDOW '), //  78
 		array(2,'NOTEQ  '), //  79
 		array(2,'NOTSAME'), //  80

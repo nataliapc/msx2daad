@@ -15,7 +15,7 @@ char dosver(void) __naked {
 
     ld a,i            ; Nextor: IXh must contain '1'
     or a
-    jr nz,no_nextor$
+    jr z,no_nextor$
     ld b, #3
 
   no_nextor$:

@@ -12,5 +12,5 @@ void die(const char *s)
 	BiosCall(0x5f, &regs, REGS_ALL);
 
 	cputs(s);
-	exit(1);
+	exit0();
 }

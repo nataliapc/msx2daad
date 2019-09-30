@@ -158,7 +158,7 @@ void prompt()
 {
 	char c, *p = tmpMsg, *extChars;
 
-	while (kbhit()) getchar();
+	while (kbhit()) cgetchar();
 	gfxPutCh('>');
 	*p = '\0';
 	do {
@@ -166,7 +166,7 @@ void prompt()
 		if (p==tmpMsg) {
 			if (waitForTimeout(TIME_FIRSTCHAR)) return;
 		}
-		c = getchar();
+		c = cgetchar();
 		if (c=='\r' && p==tmpMsg) { c = 0; continue; }	// Avoid enter an empty text order
 		if (c==0x08) {									// Back space (BS)
 			if (p==tmpMsg) continue;
@@ -343,7 +343,7 @@ bool waitForTimeout(uint16_t timerFlag)
 {
 	uint16_t timeout = flags[fTime]*50;
 
-	while (kbhit()) getchar();
+	while (kbhit()) cgetchar();
 	if (flags[fTIFlags] & timerFlag) {
 		flags[fTIFlags] &= TIME_TIMEOUT^255;
 		setTime(0);

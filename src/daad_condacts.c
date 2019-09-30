@@ -617,9 +617,9 @@ void do_HASNAT()	// value
 #ifndef DISABLE_INKEY
 void do_INKEY()
 {
-	while (kbhit()) getchar();
+	while (kbhit()) cgetchar();
 	while (!kbhit());
-	flags[fKey1] = getchar();
+	flags[fKey1] = cgetchar();
 }
 #endif
 /*	SM12 ("Are you sure?") is printed and called. Will succeed if the player replies
@@ -1715,7 +1715,7 @@ void do_ANYKEY()
 	//TODO timeout
 	printSystemMsg(16);
 	waitForTimeout(TIME_ANYKEY);
-	getchar();
+	cgetchar();
 }
 #endif
 /*	Pauses for value/50 secs. However, if value is zero then the pause is for 

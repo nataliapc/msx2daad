@@ -18,7 +18,6 @@ int main()
 	//Load files (DDB, Font, ...)
 	if (!initDAAD()) {
 		die("Bad DDB file!\n");
-		exit(1);
 	}
 
 	mainLoop();

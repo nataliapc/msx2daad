@@ -1,7 +1,7 @@
 #include "dos.h"
 
 
-int getchar(void) __naked {
+int cgetchar(void) __naked {
   __asm
     push ix
 

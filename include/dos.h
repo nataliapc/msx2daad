@@ -6,43 +6,66 @@
 
 #define DOSCALL  call 5
 #define BIOSCALL ld iy,(EXPTBL-1)\
-call CALSLT
-
+                 call CALSLT
 
 /* SYSTEM vars */
-#define EXPTBL #0xFCC1
+#define SYSFCB	#0x005C		// File control block in the CP/M system area
+#define EXPTBL  #0xFCC1
 
 /* DOS calls */
 // MSXDOS 1
-#define CONIN   #0x01
-#define CONOUT  #0x02
-#define CONST   #0x0b
-#define CURDRV  #0x19
-#define SETDTA  #0x1A
-#define FILESIZ #0x23
+#define TERM0   #0x00		// Program terminate			CPM MSX1
+#define CONIN   #0x01		// Console input				CPM MSX1
+#define CONOUT  #0x02		// Console output				CPM MSX1
+#define CONST   #0x0B		// Console status				CPM MSX1
+
+#define FOPEN   #0x0F		// Open file (FCB)				CPM MSX1
+#define FCLOSE  #0x10		// Close file (FCB)				CPM MSX1
+#define FDELETE #0x13		// Delete file (FCB)			CPM MSX1
+#define RDSEQ   #0x14		// Sequential read (FCB)		CPM MSX1
+#define WRSEQ   #0x15		// Sequential write FCB)		CPM MSX1
+#define FMAKE   #0x16		// Create file (FCB)			CPM MSX1
+
+#define CURDRV  #0x19		// Get current drive			CPM MSX1
+#define SETDTA  #0x1A		// Set disk transfer address	CPM MSX1
+
+#define RDRND   #0x21		// Random read (FCB)			CPM MSX1
+#define WRRND   #0x22		// Random write (FCB)			CPM MSX1
+#define FSIZE   #0x23		// Get file size (FCB)			CPM MSX1
+#define WRBLK   #0x26		// Random block read (FCB)		    MSX1
+#define RDBLK   #0x27		// Random block write (FCB)		    MSX1
 // MSXDOS 2
-#define DPARM   #0x31
-#define FFIRST  #0x40
-#define FNEXT   #0x41
-#define OPEN    #0x43
-#define CREATE  #0x44
-#define CLOSE   #0x45
-#define READ    #0x48
-#define WRITE   #0x49
-#define SEEK    #0x4A
-#define IOCTL   #0x4B
-#define DELETE  #0x4D
-#define GETCD   #0x59
-#define PARSE   #0x5B
-#define TERM    #0x62
-#define EXPLAIN #0x66
-#define GENV    #0x6B
-#define DOSVER  #0x6F
+#define DPARM   #0x31		// Get disk parameters			         NEW
+#define FFIRST  #0x40		// Find first entry				         NEW
+#define FNEXT   #0x41		// Find next entry				         NEW
+
+#define OPEN    #0x43		// Open file handle				         NEW
+#define CREATE  #0x44		// Create file handle			         NEW
+#define CLOSE   #0x45		// Close file handle			         NEW
+#define READ    #0x48		// Read from file handle		         NEW
+#define WRITE   #0x49		// Write from file handle		         NEW
+#define SEEK    #0x4A		// Move file handle pointer 	         NEW
+#define IOCTL   #0x4B		// I/O control for devices		         NEW
+
+#define DELETE  #0x4D		// Delete file or subdirectory	         NEW
+
+#define GETCD   #0x59		// Get current directory		         NEW
+#define PARSE   #0x5B		// Parse pathname				         NEW
+
+#define TERM    #0x62		// Terminate with error code	         NEW
+#define EXPLAIN #0x66		// Explain error code			         NEW
+
+#define GENV    #0x6B		// Get environment item			         NEW
+#define DOSVER  #0x6F		// Get MSX-DOS version			         NEW
 // Nextor
-#define FOUT    #0x71
+#define FOUT    #0x71		
 #define RDDRV   #0x73
 #define WRDRV   #0x74
 
+/* MSX DOS versions from dosver() */
+#define VER_MSXDOS1x    1
+#define VER_MSXDOS2x    2
+#define VER_NextorDOS   3
 
 /* DOS errors */
 #define NOFIL   0xD7
@@ -108,6 +131,24 @@ call CALSLT
 #define ERR_NORAM   0xde	//Not enough memory: MSX-DOS has run out of memory in its 16k kernel data segment. Try reducing the number of sector buffers or removing some environment strings. Also occurs if there are no free segments for creating the RAMdisk.
 #define ERR_INTER   0xdf	//Internal error: Should never occur.
 
+typedef struct {
+	uint8_t  drvNum;		//  0 [DR] 1   Drive number containing the file (0:default drive, 1:A, 2:B, ..., 8:H)
+	uint8_t  filename[11];	//  1 [Fn] 11  8 bytes for filename and 3 bytes for its extension.
+	uint8_t  currBlkLo;		// 12 [EX] 1   Current block LO / Extend number LO
+	uint8_t  currBlkHi;		// 13 [S1] 1   Current block HI / File attributes (DOS2)
+	uint8_t  recordSizeLo;	// 14 [S2] 1   Record size LO / Extend number HI
+	uint8_t  recordSizeHi;	// 15 [RC] 1   Record size HI / Record count
+	uint32_t fileSize;		// 16 [AL] 4   File size in bytes
+	uint16_t date;			// 20 [  ] 2   Date (DOS1) / Volume ID (DOS2)
+	uint16_t time;			// 22 [  ] 2   Time (DOS1) / Volume ID (DOS2)
+	uint8_t  deviceId;		// 24 [  ] 1   Device ID. (DOS1) -> FBh:PRN FCh:LST FCh:NUL FEh:AUX FFh:CON
+	uint8_t  dirLoc;		// 25 [  ] 1   Directory location (DOS1)
+	uint16_t topCluster;	// 26 [  ] 2   Top cluster number of the file (DOS1)
+	uint16_t lastCluster;	// 28 [  ] 2   Last cluster number accessed (DOS1)
+	uint16_t relCluster;	// 30 [  ] 2   Relative location from top cluster of the file number of clusters from top of the file to the last cluster accessed (DOS1)
+	uint8_t  currRecord;	// 32 [CR] 1   Current record within extent (0...127)
+	uint32_t rndRecord;		// 33 [Rn] 4   Random record number. If record size <64 then all 4 bytes will be used, otherwise 3 bytes.
+} FCB;	// File control block definition
 
 typedef struct {
 	uint8_t  drvnum;		//     DE+0      - Physical drive number (1=A: etc)
@@ -130,36 +171,38 @@ typedef struct {
 } DPARM_info;	// Disk drive parameters info
 
 
-char get_screen_size(void);
+//char get_screen_size(void);
 
-int getchar(void);
+int cgetchar(void);
 int putchar(int c);
 void cputs(char *s);
-int cprintf(const char *format, ...);
+//int cprintf(const char *format, ...);
 int kbhit(void);
 
-char get_current_drive(void);
-char get_current_directory(char drive, char *path);
-char get_drive_params(char drive, DPARM_info *param);
+//char get_current_drive(void);
+//char get_current_directory(char drive, char *path);
+//char get_drive_params(char drive, DPARM_info *param);
 
 uint16_t fopen(char *fn, char mode);
 uint8_t  fclose(char fp);
-uint16_t fcreate(char *fn, char mode, char attributes);
-uint16_t remove(char *file);
+//uint16_t fcreate(char *fn, char mode, char attributes);
+//uint16_t remove(char *file);
 uint16_t fread(char* buf, unsigned int size, char fp);
-uint16_t fwrite(char* buf, unsigned int size, char fp);
-uint32_t fseek (char fp, uint32_t offset, char origin);
-char fileexists(char *filename);
+//uint16_t fwrite(char* buf, unsigned int size, char fp);
+//uint32_t fseek (char fp, uint32_t offset, char origin);
+uint16_t filesize(char *fn);
+char fileexists(char *fn);
 
-int parse_pathname(char volume_name_flag, char* s);
-void exit(int code);
-char dosver(void);
+//int parse_pathname(char volume_name_flag, char* s);
+//void exit(int code);
+void exit0();
+//char dosver(void);
 void explain(char* buffer, char error_code);
-char get_env(char* name, char* buffer, char buffer_size);
+//char get_env(char* name, char* buffer, char buffer_size);
 
-void set_transfer_address(uint8_t *memaddress);
-char read_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
-char write_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
+//void set_transfer_address(uint8_t *memaddress);
+//char read_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
+//char write_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
 
 
 #endif

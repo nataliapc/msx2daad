@@ -1,4 +1,5 @@
 #include "dos.h"
+#include "utils.h"
 
 
 uint32_t fseek (char fp, uint32_t offset, char origin) __naked
@@ -6,6 +7,8 @@ uint32_t fseek (char fp, uint32_t offset, char origin) __naked
   fp;
   offset;
   origin;
+#ifdef MSXDOS2
+
   __asm
     push ix
     ld ix,#4
@@ -29,4 +32,10 @@ uint32_t fseek (char fp, uint32_t offset, char origin) __naked
     pop ix
     ret
   __endasm;
+
+#else //MSXDOS1 (FCB)
+
+    die("fseek fail!");
+
+#endif
 }

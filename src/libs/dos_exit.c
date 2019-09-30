@@ -3,16 +3,26 @@
 
 void exit(int code) __naked {
   code;
+#ifdef MSXDOS2
+
   __asm
     push ix
     ld ix,#4
     add ix,sp
+    pop ix
 
     ld b,(ix)
     ld c, TERM
     DOSCALL
 
-    pop ix
     ret
   __endasm;
+
+#else //MSXDOS1 (FCB)
+
+  __asm
+    jp _exit0
+  __endasm;
+
+#endif
 }

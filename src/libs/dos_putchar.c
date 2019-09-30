@@ -4,11 +4,12 @@
 int putchar(int c) __naked {
   c;
   __asm
-    push ix
-    ld ix,#4
-    add ix,sp
+    pop af
+    pop de
+    push de
+    push af
+    ld a,e
 
-    ld a,(ix)
     cp #0x0a
     ld e,a
     ld c,CONOUT
@@ -38,7 +39,6 @@ jumpPutchar$:
     pop af
 #endif
 
-    pop ix
     ret
   __endasm;
 }
