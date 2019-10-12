@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include "daad_platform_api.h"
+#include "daad_defines.h"
 #include "utils.h"
 #ifdef MSX2
 	#include "heap.h"
@@ -187,20 +188,21 @@ enum VOC_TYPE {
 
 
 // Global variables
-extern uint8_t    *ddb;
-extern DDB_Header *hdr;
-extern Object     *objects;
-extern char       *ramsave;
+extern uint8_t    *ddb;				// Where the DDB is allocated
+extern DDB_Header *hdr;				// Struct pointer to DDB Header
+extern Object     *objects;			// Memory allocation for objects data
+extern char       *ramsave;			// Memory to store ram save
 
-extern char    *tmpMsg;					// MAX_TEXT_LEN
-extern uint8_t  offsetText;
-extern uint8_t  flags[256];
+extern char       *tmpMsg;			// MAX_TEXT_LEN
+extern uint8_t     offsetText;
+extern uint8_t     flags[256];		// DAAD flags
 
-extern Window windows[8];				// 0-7 windows definitions
-extern Window *cw;						// Pointer to current active window
-extern uint8_t savedPosX;
-extern uint8_t savedPosY;
-
+extern Window      windows[8];		// 0-7 windows definitions
+extern Window     *cw;				// Pointer to current active window
+#ifndef DISABLE_SAVEAT
+extern uint8_t     savedPosX;		// For SAVEAT/BACKAT
+extern uint8_t     savedPosY;		//  "    "      "
+#endif
 
 // DAAD Core function definitions
 bool initDAAD();

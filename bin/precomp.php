@@ -102,7 +102,7 @@
 		array(1,'RANDOM '), //  95
 		array(2,'INPUT  '), //  96 
 		array(0,'SAVEAT '), //  97
-		array(0,'BACKAT '), //  98
+		array(0,'BACKAT ', array('SAVEAT')), //  98
 		array(2,'PRINTAT'), //  99
 		array(0,'WHATO  '), // 100
 		array(1,'CALL   '), // 101

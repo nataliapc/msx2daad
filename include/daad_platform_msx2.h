@@ -88,7 +88,7 @@
 
 typedef struct {
 	char     magic[3];				// Magic text: "IMG".
-	uint8_t  screenMode;			// Screen mode for this image: 5, 6, 7 or 8.
+	uint8_t  screenMode;			// Screen mode for this image: '5', '6', '7' or '8'.
 } IMG_HEADER;
 
 typedef struct {

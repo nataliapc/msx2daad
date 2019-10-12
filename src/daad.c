@@ -12,28 +12,40 @@ extern void do_INKEY();
 extern void do_NEWLINE();
 
 // Global variables
-uint8_t *ddb;
-DDB_Header *hdr;
-Object *objects;
+uint8_t    *ddb;						// Where the DDB is allocated
+DDB_Header *hdr;						// Struct pointer to DDB Header
+Object     *objects;					// Memory allocation for objects data
+uint8_t     flags[256];					// DAAD flags
+char       *ramsave;					// Memory to store ram save (RAMSAVE)
+
+#ifndef DISABLE_WINDOW
+Window      windows[8];					// 0-7 windows definitions
+#else
+Window      windows[1];					// Only one if WINDOW condact is not used
+#endif
+Window     *cw;							// Pointer to current active window
+
+#ifndef DISABLE_SAVEAT
+uint8_t     savedPosX;					// For SAVEAT/BACKAT
+uint8_t     savedPosY;					//  "    "      "
+#endif
 
 // Internal variables
-uint8_t flags[256];
-char   *ramsave;						// Storage for game state in RAM (RAMSAVE)
-
 uint8_t lsBuffer[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id]
 char    tmpTok[6];
 char   *tmpMsg;							// TEXT_BUFFER_LEN
 char    lastPrompt;
 uint8_t offsetText;
 
-Window  windows[8];						// 0-7 windows definitions
-Window  *cw;							// Pointer to current active window
-uint8_t savedPosX;
-uint8_t savedPosY;
-
-
 //=========================================================
 
+/*
+ * Function: initDAAD
+ * --------------------------------
+ * Initialize DDB and DAAD engine.
+ * 
+ * @return			none.
+ */
 bool initDAAD()
 {
 	uint16_t *p;
@@ -43,30 +55,30 @@ bool initDAAD()
 	hdr = (DDB_Header*)ddb;
 	p = (uint16_t *)&hdr->tokensPos;
 
-#ifdef DEBUG
-	printf("Version.......... %u\n", hdr->version);
-	printf("Language......... %u\n", hdr->target.value.language);
-	printf("Machine.......... %u\n", hdr->target.value.machine);
-	printf("Magic............ 0x%02x\n", hdr->magic);
-	printf("Num.Obj.......... %u\n", hdr->numObjDsc);
-	printf("Num.Locations.... %u\n", hdr->numLocDsc);
-	printf("Num.Usr.Msg...... %u\n", hdr->numUsrMsg);
-	printf("Num.Sys.Msg...... %u\n", hdr->numSysMsg);
-	printf("Num.Proc......... %u\n", hdr->numPrc);
-	printf("Tokens pos....... 0x%04x\n", hdr->tokensPos);
-	printf("Proc list pos.... 0x%04x\n", hdr->prcLstPos);
-	printf("Obj. list pos.... 0x%04x\n", hdr->objLstPos);
-	printf("Loc. list pos.... 0x%04x\n", hdr->locLstPos);
-	printf("Usr. msg. pos.... 0x%04x\n", hdr->usrMsgPos);
-	printf("Sys. msg. pos.... 0x%04x\n", hdr->sysMsgPos);
-	printf("Connections pos.. 0x%04x\n", hdr->conLstPos);
-	printf("Vocabulary pos... 0x%04x\n", hdr->vocPos);
-	printf("Obj.Loc. list.... 0x%04x\n", hdr->objLocLst);
-	printf("Obj.Name pos..... 0x%04x\n", hdr->objNamePos);
-	printf("Obj.Attr pos..... 0x%04x\n", hdr->objAttrPos);
-	printf("Obj.Extr pos..... 0x%04x\n", hdr->objExtrPos);
-	printf("File length...... %u bytes\n", hdr->fileLength);
-#endif
+	#ifdef DEBUG
+		printf("Version.......... %u\n", hdr->version);
+		printf("Language......... %u\n", hdr->target.value.language);
+		printf("Machine.......... %u\n", hdr->target.value.machine);
+		printf("Magic............ 0x%02x\n", hdr->magic);
+		printf("Num.Obj.......... %u\n", hdr->numObjDsc);
+		printf("Num.Locations.... %u\n", hdr->numLocDsc);
+		printf("Num.Usr.Msg...... %u\n", hdr->numUsrMsg);
+		printf("Num.Sys.Msg...... %u\n", hdr->numSysMsg);
+		printf("Num.Proc......... %u\n", hdr->numPrc);
+		printf("Tokens pos....... 0x%04x\n", hdr->tokensPos);
+		printf("Proc list pos.... 0x%04x\n", hdr->prcLstPos);
+		printf("Obj. list pos.... 0x%04x\n", hdr->objLstPos);
+		printf("Loc. list pos.... 0x%04x\n", hdr->locLstPos);
+		printf("Usr. msg. pos.... 0x%04x\n", hdr->usrMsgPos);
+		printf("Sys. msg. pos.... 0x%04x\n", hdr->sysMsgPos);
+		printf("Connections pos.. 0x%04x\n", hdr->conLstPos);
+		printf("Vocabulary pos... 0x%04x\n", hdr->vocPos);
+		printf("Obj.Loc. list.... 0x%04x\n", hdr->objLocLst);
+		printf("Obj.Name pos..... 0x%04x\n", hdr->objNamePos);
+		printf("Obj.Attr pos..... 0x%04x\n", hdr->objAttrPos);
+		printf("Obj.Extr pos..... 0x%04x\n", hdr->objExtrPos);
+		printf("File length...... %u bytes\n", hdr->fileLength);
+	#endif
 
 	//If not a valid DDB version exits
 	if (hdr->version != 2 || hdr->magic != 0x5f)
@@ -84,13 +96,20 @@ bool initDAAD()
 	//Get memory for tmpMsg
 	tmpMsg = (char*)malloc(TEXT_BUFFER_LEN);
 
-#ifdef DEBUG
-	printf("\nDDB max size..... %u bytes\n", getFreeMemory());
-#endif
+	#ifdef DEBUG
+		printf("\nDDB max size..... %u bytes\n", getFreeMemory());
+	#endif
 
 	return true;
 }
 
+/*
+ * Function: initFlags
+ * --------------------------------
+ * Initialize DAAD flags and some structs.
+ * 
+ * @return			none.
+ */
 void initFlags()
 {
 	//Clear flags
@@ -107,7 +126,7 @@ void initFlags()
 		flags[fScMode] = 141;	// VGA
 	#endif
 
-	//Initialize windows
+	//Initialize DAAD windows
 	memset(windows, 0, sizeof(windows));
 	flags[fCurWin] = 0;
 	cw = &windows[0];
@@ -116,7 +135,9 @@ void initFlags()
 	cw->winW = MAX_COLUMNS;
 	cw->winH = MAX_LINES;
 	cw->cursorX = cw->cursorY = 0;
-	savedPosX = savedPosY = 0;
+	#ifndef DISABLE_SAVEAT
+		savedPosX = savedPosY = 0;
+	#endif
 
 	//Clear logical sentences
 	clearLogicalSentences();
@@ -124,6 +145,13 @@ void initFlags()
 	offsetText = 0;
 }
 
+/*
+ * Function: initObjects
+ * --------------------------------
+ * Initialize Objects.
+ * 
+ * @return			none.
+ */
 void initObjects()
 {
 	uint8_t  *objLoc = (uint8_t*)hdr->objLocLst;
@@ -144,6 +172,13 @@ void initObjects()
 	}
 }
 
+/*
+ * Function: mainLoop
+ * --------------------------------
+ * DAAD main loop start.
+ * 
+ * @return			none.
+ */
 void mainLoop()
 {
 	initFlags();
@@ -153,6 +188,14 @@ void mainLoop()
 	processPROC();
 }
 
+/*
+ * Function: prompt
+ * --------------------------------
+ * Wait for user entry text and fill tmpMsg 
+ * variable with it.
+ * 
+ * @return			none.
+ */
 void prompt()
 {
 	char c, *p = tmpMsg, *extChars;
@@ -169,7 +212,7 @@ void prompt()
 		c = getchar();
 		if (c=='\r' && p==tmpMsg) { c = 0; continue; }	// Avoid enter an empty text order
 		if (c==0x08) {									// Back space (BS)
-			if (p==tmpMsg) continue;
+			if (p<=tmpMsg) continue;
 			p--;
 			if (cw->cursorX>0) cw->cursorX--; else { cw->cursorX = cw->winW-1; cw->cursorY--; }
 			gfxPutChWindow(' ');
@@ -184,6 +227,14 @@ void prompt()
 	*--p = '\0';
 }
 
+/*
+ * Function: parser
+ * --------------------------------
+ * Parse the words in user entry text and compare 
+ * them with VOCabulary table.
+ * 
+ * @return			none.
+ */
 void parser()
 {
 	char *p = tmpMsg, *p2;
@@ -231,6 +282,15 @@ printf("%02u %02u %02u %02u %02u %02u %02u %02u \n",lsBuffer[0],lsBuffer[1],lsBu
 #endif
 }
 
+/*
+ * Function: getLogicalSentence
+ * --------------------------------
+ * Get the first logical sentence from parsed user entry 
+ * and fill noun, verbs, adjectives, etc.
+ * If no sentences prompt to user.
+ * 
+ * @return		Boolean with True if any logical sentence found.
+ */
 bool getLogicalSentence()
 {
 	char *p = lsBuffer, type, id, adj = fAdject1;
@@ -300,14 +360,29 @@ printf("VERB:%u NOUN1:%u ADJ1:%u, ADVERB:%u PREP: %u NOUN2:%u, ADJ2:%u %u\n",fla
 	return ret;
 }
 
+/*
+ * Function: clearLogicalSentences
+ * --------------------------------
+ * Clear pending logical sentences if any.
+ * 
+ * @return			none.
+ */
 void clearLogicalSentences()
 {
 #ifdef VERBOSE2
-printf("clearLogicalSentence()\n");
+printf("clearLogicalSentences()\n");
 #endif
 	memset(lsBuffer, 0, sizeof(lsBuffer));
 }
 
+/*
+ * Function: nextLogicalSentence
+ * --------------------------------
+ * Move next logical sentence to start of logical 
+ * sentence buffer.
+ * 
+ * @return			none.
+ */
 void nextLogicalSentence()
 {
 #ifdef VERBOSE2
@@ -455,39 +530,87 @@ void _printMsg(uint16_t *lst, uint8_t num, bool print)
 	} while (c != 0x0a);		// = 255 - 0xf5
 }
 
+/*
+ * Function: getSystemMsg
+ * --------------------------------
+ * Extract system message.
+ * 
+ * @param num		Number of system message.
+ * @return			none.
+ */
 void getSystemMsg(uint8_t num)
 {
 	_printMsg((uint16_t*)hdr->sysMsgPos, num, false);
 }
 
+/*
+ * Function: printSystemMsg
+ * --------------------------------
+ * Extract system message and print it.
+ * 
+ * @param num		Number of system message.
+ * @return			none.
+ */
 void printSystemMsg(uint8_t num)
 {
 	_printMsg((uint16_t*)hdr->sysMsgPos, num, true);
 }
 
+/*
+ * Function: printUserMsg
+ * --------------------------------
+ * Extract user message and print it.
+ * 
+ * @param num		Number of user message.
+ * @return			none.
+ */
 void printUserMsg(uint8_t num)
 {
 	_printMsg((uint16_t*)hdr->usrMsgPos, num, true);
 }
 
+/*
+ * Function: printLocationMsg
+ * --------------------------------
+ * Extract location message and print it.
+ * 
+ * @param num		Number of location message.
+ * @return			none.
+ */
 void printLocationMsg(uint8_t num)
 {
 	_printMsg((uint16_t*)hdr->locLstPos, num, true);
 }
 
+/*
+ * Function: printObjectMsg
+ * --------------------------------
+ * Extract object message and print it.
+ * 
+ * @param num		Number of object message.
+ * @return			none.
+ */
 void printObjectMsg(uint8_t num)
 {
 	_printMsg((uint16_t*)hdr->objLstPos, num, true);
 }
 
 /*
-	Print object name modified from "Una linterna." to "La linterna"
-	//TODO: support english
-*/
+ * Function: printObjectMsgModif
+ * --------------------------------
+ * Extract object message, change the article and print it:
+ * "Una linterna" -> "La linterna"
+ * "A lantern" -> "The Lantern"
+ *  
+ * @param num		Number of object name.
+ * @param modif		Modifier for uppercase.
+ * @return			none.
+ */
 void printObjectMsgModif(uint8_t num, char modif)
 {
 	char *ini = tmpMsg, *p = tmpMsg;
 	_printMsg((uint16_t*)hdr->objLstPos, num, false);
+#ifdef LANG_ES
 	if (tmpMsg[2]==' ') {
 		tmpMsg[0] = modif=='@'?'E':'e';
 		tmpMsg[1] = 'l';
@@ -500,9 +623,22 @@ void printObjectMsgModif(uint8_t num, char modif)
 		if (*p=='.' || *p==0x0a) { *p--='\0'; }
 		p++;
 	}
+#elif LANG_EN
+	gfxPuts(modif=='@'?"Th":"th");
+	tmpMsg[0] = 'e';
+#endif
 	gfxPuts(ini);
 }
 
+/*
+ * Function: getObjectById
+ * --------------------------------
+ * Return de object ID by Noun+Adjc ID.
+ *  
+ * @param noun		Noun ID.
+ * @param adjc		Adjective ID.
+ * @return			Object ID if found or NULLWORD.
+ */
 uint8_t getObjectById(uint8_t noun, uint8_t adjc)
 {
 	for (int i=0; i<hdr->numObjDsc; i++) {
@@ -512,6 +648,17 @@ uint8_t getObjectById(uint8_t noun, uint8_t adjc)
 	return NULLWORD;
 }
 
+/*
+ * Function: getObjectWeight
+ * --------------------------------
+ * Return the weight of a object by ID. Also can return 
+ * the total weight of location or carried/worn objects
+ * if objno is NULLWORD.
+ *  
+ * @param objno			Object ID or NULLWORD.
+ * @param isCarriedWorn	Check carried/worn objects if True.
+ * @return				Return the weight of one or a sum of objects.
+ */
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
 {
 	uint16_t weight = 0;
@@ -528,6 +675,15 @@ uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
 	return weight>255 ? 255 : (uint8_t)weight;
 }
 
+/*
+ * Function: referencedObject
+ * --------------------------------
+ * Modify DAAD flags to reference the las object used
+ * in a logical sentence.
+ *  
+ * @param objno		Object ID.
+ * @return			none.
+ */
 void referencedObject(uint8_t objno)
 {
 	flags[fCONum] = objno;
