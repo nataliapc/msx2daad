@@ -1,5 +1,5 @@
-#ifndef DOS_H
-#define DOS_H
+#ifndef ____DOS_H____
+#define ____DOS_H____
 
 #include <stdint.h>
 
@@ -9,8 +9,10 @@
                  call CALSLT
 
 /* SYSTEM vars */
-#define SYSFCB	#0x005C		// File control block in the CP/M system area
-#define EXPTBL  #0xFCC1
+#ifdef MSX2
+	#define SYSFCB	#0x005c		// File control block in the CP/M system area
+	#define EXPTBL  #0xfcc1		// BIOS slot
+#endif
 
 /* DOS calls */
 // MSXDOS 1
@@ -173,36 +175,36 @@ typedef struct {
 
 //char get_screen_size(void);
 
-int cgetchar(void);
+int getchar(void);
 int putchar(int c);
 void cputs(char *s);
-//int cprintf(const char *format, ...);
+int cprintf(const char *format, ...);
 int kbhit(void);
 
-//char get_current_drive(void);
-//char get_current_directory(char drive, char *path);
-//char get_drive_params(char drive, DPARM_info *param);
+char get_current_drive(void);
+char get_current_directory(char drive, char *path);
+char get_drive_params(char drive, DPARM_info *param);
 
 uint16_t fopen(char *fn, char mode);
 uint8_t  fclose(char fp);
-//uint16_t fcreate(char *fn, char mode, char attributes);
-//uint16_t remove(char *file);
+uint16_t fcreate(char *fn, char mode, char attributes);
+uint16_t remove(char *file);
 uint16_t fread(char* buf, unsigned int size, char fp);
-//uint16_t fwrite(char* buf, unsigned int size, char fp);
-//uint32_t fseek (char fp, uint32_t offset, char origin);
+uint16_t fwrite(char* buf, unsigned int size, char fp);
+uint32_t fseek (char fp, uint32_t offset, char origin);
 uint16_t filesize(char *fn);
 char fileexists(char *fn);
 
-//int parse_pathname(char volume_name_flag, char* s);
-//void exit(int code);
+int parse_pathname(char volume_name_flag, char* s);
+void exit(int code);
 void exit0();
-//char dosver(void);
+char dosver(void);
 void explain(char* buffer, char error_code);
-//char get_env(char* name, char* buffer, char buffer_size);
+char get_env(char* name, char* buffer, char buffer_size);
 
-//void set_transfer_address(uint8_t *memaddress);
-//char read_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
-//char write_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
+void set_transfer_address(uint8_t *memaddress);
+char read_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
+char write_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
 
 
-#endif
+#endif //____DOS_H____

@@ -270,8 +270,6 @@ printf("  ======================> VERB+NOUN OK\n");
 }
 // TODO High Priority:
 //		DOALL
-//		SAVE
-//		LOAD
 //      MODE
 //      INPUT
 //      TIME		//TODO SYS32 "More..." if MODE option enabled
@@ -279,6 +277,8 @@ printf("  ======================> VERB+NOUN OK\n");
 // TODO Low Priority:
 //      EXTERN
 //      CALL
+//		SAVE		//TODO get filename from player
+//		LOAD		//TODO get filename from player
 //      ANYKEY		//TODO check for timeout
 //      PARSE		//TODO PARSE 1
 //      GET 		//TODO cancel DOALL loop
@@ -341,9 +341,7 @@ void do_ATLT()		// locno
 void do_PRESENT()	// objno
 {
 	Object *obj = &objects[getValueOrIndirection()];
-	if (obj->location<LOC_NOTCREATED && obj->location!=flags[fPlayer]) {
-		checkEntry = false;
-	}
+	checkEntry = (obj->location>LOC_NOTCREATED || obj->location==flags[fPlayer]);
 }
 #endif
 /*	Succeeds if Object objno. is not carried (254), not worn (253) and not at 
@@ -352,9 +350,7 @@ void do_PRESENT()	// objno
 void do_ABSENT()	// objno
 {	
 	Object *obj = &objects[getValueOrIndirection()];
-	if (obj->location>=LOC_NOTCREATED || obj->location==flags[fPlayer]) {
-		checkEntry = false;
-	}
+	checkEntry = (obj->location<=LOC_NOTCREATED && obj->location!=flags[fPlayer]);
 }
 #endif
 /*	Succeeds if object objno. is worn. */
@@ -617,9 +613,9 @@ void do_HASNAT()	// value
 #ifndef DISABLE_INKEY
 void do_INKEY()
 {
-	while (kbhit()) cgetchar();
+	while (kbhit()) getchar();
 	while (!kbhit());
-	flags[fKey1] = cgetchar();
+	flags[fKey1] = getchar();
 }
 #endif
 /*	SM12 ("Are you sure?") is printed and called. Will succeed if the player replies
@@ -1478,8 +1474,6 @@ void do_CLS()
 {
 	gfxClearWindow();
 	cw->cursorX = cw->cursorY = 0;
-	lastPicLocation = 255;
-	lastPicShow = false;
 }
 #endif
 /*	Save and Restore print position for current window. This allows you to 
@@ -1656,7 +1650,13 @@ void do_LISTAT()	// locno+
 #ifndef DISABLE_SAVE
 void do_SAVE()		// opt
 {
-	//TODO
+	//TODO get the filename from the player
+	uint16_t fh = fcreate("SAVEGAME.000", O_WRONLY, ATTR_ARCHIVE);
+	if (fh<0xff00) {
+		fwrite((char*)flags, 256, fh);
+		fwrite((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
+		fclose(fh);
+	}
 	pPROC++;
 }
 #endif
@@ -1668,7 +1668,13 @@ void do_SAVE()		// opt
 #ifndef DISABLE_LOAD
 void do_LOAD()		// opt
 {
-	//TODO
+	//TODO get the filename from the player
+	uint16_t fh = fopen("SAVEGAME.000", O_RDONLY);
+	if (fh<0xff00) {
+		fread((char*)flags, 256, fh);
+		fread((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
+		fclose(fh);
+	}
 	pPROC++;
 }
 #endif
@@ -1715,7 +1721,7 @@ void do_ANYKEY()
 	//TODO timeout
 	printSystemMsg(16);
 	waitForTimeout(TIME_ANYKEY);
-	cgetchar();
+	getchar();
 }
 #endif
 /*	Pauses for value/50 secs. However, if value is zero then the pause is for 
@@ -1976,8 +1982,10 @@ void do_PICTURE()	// picno
 {
 	uint8_t newPic = getValueOrIndirection();
 	lastPicShow = (newPic==lastPicLocation);
-	lastPicLocation = newPic;
-	checkEntry = gfxPicturePrepare(lastPicLocation);
+	if (!lastPicShow) {
+		lastPicLocation = newPic;
+		checkEntry = gfxPicturePrepare(lastPicLocation);
+	}
 }
 #endif
 /*	If value=0 then the last buffered picture is placed onscreen. 
@@ -1989,6 +1997,8 @@ void do_DISPLAY()	// value
 {
 	if (getValueOrIndirection()) {
 		do_CLS();
+		lastPicLocation = 255;
+		lastPicShow = false;
 	} else {
 		if (!lastPicShow) gfxPictureShow();
 	}

@@ -2,7 +2,7 @@
 ; Decompression in VRAM version by Daniel Bienvenu
 ; based in DZX7 "Turbo"
 ;
-; Adapted to MSX by Natalia Pujol
+; Adapted to MSX2 by Natalia Pujol
 ; Size: 131 bytes
 
 	; global from this code
@@ -18,6 +18,11 @@ _dzx7vram::
 	push hl
 	push de
 	push af
+
+	push af
+	push bc
+	push de
+	push hl
 
 dzx7vram::
 	; Set Write in VRAM at DE
@@ -36,7 +41,7 @@ zx7_copy_byte_loop:
 	inc	de
 zx7_main_loop:
 	call	zx7_getbit 				; check next bit
-	jr	nc,zx7_copy_byte_loop
+	jr	nc, zx7_copy_byte_loop
 
 ; determine number of bits used for length (Elias gamma coding)
 	push    de
@@ -98,6 +103,7 @@ zx7_copybytes_loop:
 ; nop                                 ;;!!!!!!!!!!!!!!NOP añadido por aviso del OpenMSX (toggle_vdp_access_test)
 ; nop
 	in	a,(0x98)
+
 	out	(c),e
 ; nop                                 ;;!!!!!!!!!!!!!!NOP añadido por aviso del OpenMSX (toggle_vdp_access_test)
 ; nop
@@ -121,6 +127,12 @@ zx7_copybytes_loop:
 zx7_exit:
 	pop     hl 						; restore source address (compressed data)
 	jp      nc, zx7_main_loop
+
+	pop hl
+	pop de
+	pop bc
+	pop af
+
 	ret
 
 zx7_getbit:

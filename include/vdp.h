@@ -35,9 +35,20 @@
 #define LOG_TOR	 	0b00001010       // if SC=0 then DC=DC else DC=SC | DC
 #define LOG_TXOR	0b00001011       // if SC=0 then DC=DC else DC=SC ^ DC
 #define LOG_TNOT	0b00001100       // if SC=0 then DC=DC else DC=!SC
-// More used
+// Most used combinations
 #define LMMM_TIMP	CMD_LMMM | LOG_TIMP
 
+typedef struct {
+	uint16_t sx;
+	uint16_t sy;
+	uint16_t dx;
+	uint16_t dy;
+	uint16_t nx;
+	uint16_t ny;
+	uint8_t  col;
+	uint8_t  arg;
+	uint8_t  cmd;
+} BITBLT;
 
 
 void setRegVDP(char reg, char value);

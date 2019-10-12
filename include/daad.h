@@ -8,7 +8,6 @@
 #ifdef MSX2
 	#include "heap.h"
 	#include "dos.h"
-	#include "asm.h"
 #endif
 
 

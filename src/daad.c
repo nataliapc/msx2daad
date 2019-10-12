@@ -32,7 +32,6 @@ uint8_t savedPosX;
 uint8_t savedPosY;
 
 
-
 //=========================================================
 
 bool initDAAD()
@@ -158,7 +157,7 @@ void prompt()
 {
 	char c, *p = tmpMsg, *extChars;
 
-	while (kbhit()) cgetchar();
+	while (kbhit()) getchar();
 	gfxPutCh('>');
 	*p = '\0';
 	do {
@@ -166,13 +165,14 @@ void prompt()
 		if (p==tmpMsg) {
 			if (waitForTimeout(TIME_FIRSTCHAR)) return;
 		}
-		c = cgetchar();
+		while (!kbhit()) waitForPrompt();
+		c = getchar();
 		if (c=='\r' && p==tmpMsg) { c = 0; continue; }	// Avoid enter an empty text order
 		if (c==0x08) {									// Back space (BS)
 			if (p==tmpMsg) continue;
 			p--;
 			if (cw->cursorX>0) cw->cursorX--; else { cw->cursorX = cw->winW-1; cw->cursorY--; }
-			gfxPutChPixels(' '-16);
+			gfxPutChWindow(' ');
 		} else {
 			if (p-tmpMsg > TEXT_BUFFER_LEN) continue;
 			extChars = strchr(getCharsTranslation(), c);
@@ -329,6 +329,14 @@ printf("nextLogicalSentence()\n");
 //=========================================================
 //UTILS
 
+/*
+ * Function: printBase10
+ * --------------------------------
+ * Prints a base 10 number.
+ * 
+ * @param value		Number to print.
+ * @return			none.
+ */
 void printBase10(uint16_t value)
 {
 	if (value<10) {
@@ -339,28 +347,45 @@ void printBase10(uint16_t value)
 	gfxPutCh('0'+(uint8_t)(value%10));
 }
 
+/*
+ * Function: waitForTimeout
+ * --------------------------------
+ * Wait for a timeout or key pressed
+ * 
+ * @param timeFlag	A mask to compare with Timer Flag.
+ * @return			Boolean for timeout if reached or not.
+ */
 bool waitForTimeout(uint16_t timerFlag)
 {
 	uint16_t timeout = flags[fTime]*50;
 
-	while (kbhit()) cgetchar();
+	while (kbhit()) getchar();
 	if (flags[fTIFlags] & timerFlag) {
 		flags[fTIFlags] &= TIME_TIMEOUT^255;
 		setTime(0);
 		while (!kbhit()) {
+			waitForPrompt();
 			if (getTime() > timeout) {
 				flags[fTIFlags] |= TIME_TIMEOUT;
 				return true;
 			}
 		}	
 	} else {
-		while (!kbhit());
+		while (!kbhit()) { waitForPrompt(); }
 	}
 	return false;
 }
 
 //=========================================================
 
+/*
+ * Function: getToken
+ * --------------------------------
+ * Return the requested token.
+ * 
+ * @param num   	To get the token number 'num' in the token list.
+ * @return			Return a pointer to the requested token.
+ */
 char* getToken(uint8_t num)
 {
 	char *p = (char*)hdr->tokensPos + 1;
@@ -379,11 +404,18 @@ char* getToken(uint8_t num)
 	return tmpTok;
 }
 
+/*
+ * Function: _printMsg
+ * --------------------------------
+ * Uncompress a tokenized string and print it or not.
+ * 
+ * @param lst		List of tokenized string (sysmes, usermes, desc...).
+ * @param num   	To get the string number 'num' in that list.
+ * @param print		Output the string to the current window or not.
+ * @return			none.
+ */
 void _printMsg(uint16_t *lst, uint8_t num, bool print)
 {
-#ifdef VERBOSE
-printf("================================================\n");
-#endif
 	char *p = &ddb[*(lst + num)];
 	char c, *token;
 	uint16_t i = 0;
@@ -395,7 +427,7 @@ printf("================================================\n");
 			token = getToken(c - 128);
 			while (*token) {
 				tmpMsg[i++] = *token;
-				if (*token==' ' || *token=='\r') {
+				if (*token==' ' || *token=='\r' || *token=='\n') {
 					if (print) {
 						tmpMsg[i] = '\0';
 						gfxPuts(tmpMsg);
@@ -421,9 +453,6 @@ printf("================================================\n");
 			}
 		}
 	} while (c != 0x0a);		// = 255 - 0xf5
-#ifdef VERBOSE
-printf("\n================================================\n");
-#endif
 }
 
 void getSystemMsg(uint8_t num)

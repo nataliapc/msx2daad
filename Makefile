@@ -5,7 +5,7 @@ AR = sdar
 CC = sdcc
 HEX2BIN = hex2bin
 
-DEFINES := -DDEBUG -D_VERBOSE -D_VERBOSE2 -DMSX2
+DEFINES := -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSX2 -D_MSXDOS2
 LDFLAGS := -rc
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
 CCFLAGS := --code-loc 0x0106 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx --opt-code-size $(DEFINES) $(WRFLAGS)
@@ -84,7 +84,7 @@ test: release
 	; then \
 		echo "**** openmsx already running..." \
 	; else \
-		openmsx -machine Philips_NMS_8245 -ext msxdos2 -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+		openmsx -machine msx2_eu -ext ram1mb -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
 	; fi'
 
 

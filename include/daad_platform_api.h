@@ -29,6 +29,9 @@
 #define MAX_COLUMNS		((int)(SCREEN_WIDTH/FONTWIDTH))
 #define MAX_LINES		(SCREEN_HEIGHT/FONTHEIGHT)
 
+// Macro helpers
+#define STRINGIFY2(x)	#x
+#define STRINGIFY(x) STRINGIFY2(x)
 
 // System functions
 bool     checkPlatformSystem();
@@ -36,7 +39,7 @@ uint16_t getFreeMemory();
 char*    getCharsTranslation();
 void     setTime(uint16_t time);
 uint16_t getTime();
-
+void     waitForPrompt();
 
 // Filesystem
 void     loadFilesBin();
@@ -45,8 +48,6 @@ uint16_t fileSize(char *filename);
 
 
 // GFX functions
-//extern const uint16_t colorTranslation[];
-
 void gfxSetScreen();
 void gfxClearLines(uint16_t start, uint16_t lines);
 void gfxClearScreen();
@@ -54,7 +55,8 @@ void gfxClearWindow();
 void gfxSetPaperCol(uint8_t col);
 void gfxSetInkCol(uint8_t col);
 void gfxSetBorderCol(uint8_t col);
-void gfxPutChPixels(uint8_t c);
+void gfxPutChWindow(uint8_t c);
+void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy);
 void gfxPutCh(char c);
 void gfxPuts(char *str);
 void gfxPutsln(char *str);
@@ -62,6 +64,8 @@ void gfxScrollUp();
 bool gfxPicturePrepare(uint8_t location);
 void gfxPictureShow();
 
+
+// SFX functions
 void sfxSound(uint8_t value1, uint8_t value2);
 
 
