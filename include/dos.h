@@ -5,66 +5,70 @@
 
 
 #define DOSCALL  call 5
-#define BIOSCALL ld iy,(EXPTBL-1)\
+#define BIOSCALL ld iy,(#EXPTBL-1) \
                  call CALSLT
 
 /* SYSTEM vars */
+#if defined(MSX2) || defined(CPM)
+	#define SYSFCB	0x005c	// File control block in the CP/M system area
+#endif
 #ifdef MSX2
-	#define SYSFCB	#0x005c		// File control block in the CP/M system area
-	#define EXPTBL  #0xfcc1		// BIOS slot
+	#define EXPTBL  0xfcc1	// BIOS slot
 #endif
 
 /* DOS calls */
 // MSXDOS 1
-#define TERM0   #0x00		// Program terminate			CPM MSX1
-#define CONIN   #0x01		// Console input				CPM MSX1
-#define CONOUT  #0x02		// Console output				CPM MSX1
-#define CONST   #0x0B		// Console status				CPM MSX1
+#define TERM0   0x00		// Program terminate			CPM MSX1
+#define CONIN   0x01		// Console input				CPM MSX1
+#define CONOUT  0x02		// Console output				CPM MSX1
+#define INNOE   0x08		// Console input w/o echo		    MSX1
+#define CONST   0x0B		// Console status				CPM MSX1
 
-#define FOPEN   #0x0F		// Open file (FCB)				CPM MSX1
-#define FCLOSE  #0x10		// Close file (FCB)				CPM MSX1
-#define FDELETE #0x13		// Delete file (FCB)			CPM MSX1
-#define RDSEQ   #0x14		// Sequential read (FCB)		CPM MSX1
-#define WRSEQ   #0x15		// Sequential write FCB)		CPM MSX1
-#define FMAKE   #0x16		// Create file (FCB)			CPM MSX1
+#define FOPEN   0x0F		// Open file (FCB)				CPM MSX1
+#define FCLOSE  0x10		// Close file (FCB)				CPM MSX1
+#define FDELETE 0x13		// Delete file (FCB)			CPM MSX1
+#define RDSEQ   0x14		// Sequential read (FCB)		CPM MSX1
+#define WRSEQ   0x15		// Sequential write FCB)		CPM MSX1
+#define FMAKE   0x16		// Create file (FCB)			CPM MSX1
 
-#define CURDRV  #0x19		// Get current drive			CPM MSX1
-#define SETDTA  #0x1A		// Set disk transfer address	CPM MSX1
+#define CURDRV  0x19		// Get current drive			CPM MSX1
+#define SETDTA  0x1A		// Set disk transfer address	CPM MSX1
 
-#define RDRND   #0x21		// Random read (FCB)			CPM MSX1
-#define WRRND   #0x22		// Random write (FCB)			CPM MSX1
-#define FSIZE   #0x23		// Get file size (FCB)			CPM MSX1
-#define WRBLK   #0x26		// Random block read (FCB)		    MSX1
-#define RDBLK   #0x27		// Random block write (FCB)		    MSX1
+#define RDRND   0x21		// Random read (FCB)			CPM MSX1
+#define WRRND   0x22		// Random write (FCB)			CPM MSX1
+#define FSIZE   0x23		// Get file size (FCB)			CPM MSX1
+#define WRBLK   0x26		// Random block read (FCB)		    MSX1
+#define RDBLK   0x27		// Random block write (FCB)		    MSX1
 // MSXDOS 2
-#define DPARM   #0x31		// Get disk parameters			         NEW
-#define FFIRST  #0x40		// Find first entry				         NEW
-#define FNEXT   #0x41		// Find next entry				         NEW
+#define DPARM   0x31		// Get disk parameters			         NEW
+#define FFIRST  0x40		// Find first entry				         NEW
+#define FNEXT   0x41		// Find next entry				         NEW
 
-#define OPEN    #0x43		// Open file handle				         NEW
-#define CREATE  #0x44		// Create file handle			         NEW
-#define CLOSE   #0x45		// Close file handle			         NEW
-#define READ    #0x48		// Read from file handle		         NEW
-#define WRITE   #0x49		// Write from file handle		         NEW
-#define SEEK    #0x4A		// Move file handle pointer 	         NEW
-#define IOCTL   #0x4B		// I/O control for devices		         NEW
+#define OPEN    0x43		// Open file handle				         NEW
+#define CREATE  0x44		// Create file handle			         NEW
+#define CLOSE   0x45		// Close file handle			         NEW
+#define READ    0x48		// Read from file handle		         NEW
+#define WRITE   0x49		// Write from file handle		         NEW
+#define SEEK    0x4A		// Move file handle pointer 	         NEW
+#define IOCTL   0x4B		// I/O control for devices		         NEW
 
-#define DELETE  #0x4D		// Delete file or subdirectory	         NEW
+#define DELETE  0x4D		// Delete file or subdirectory	         NEW
 
-#define GETCD   #0x59		// Get current directory		         NEW
-#define PARSE   #0x5B		// Parse pathname				         NEW
+#define GETCD   0x59		// Get current directory		         NEW
+#define PARSE   0x5B		// Parse pathname				         NEW
 
-#define TERM    #0x62		// Terminate with error code	         NEW
-#define EXPLAIN #0x66		// Explain error code			         NEW
+#define TERM    0x62		// Terminate with error code	         NEW
+#define EXPLAIN 0x66		// Explain error code			         NEW
 
-#define GENV    #0x6B		// Get environment item			         NEW
-#define DOSVER  #0x6F		// Get MSX-DOS version			         NEW
+#define GENV    0x6B		// Get environment item			         NEW
+#define DOSVER  0x6F		// Get MSX-DOS version			         NEW
 // Nextor
-#define FOUT    #0x71		
-#define RDDRV   #0x73
-#define WRDRV   #0x74
+#define FOUT    0x71		
+#define RDDRV   0x73
+#define WRDRV   0x74
 
 /* MSX DOS versions from dosver() */
+#define VER_UNKNOWN     0
 #define VER_MSXDOS1x    1
 #define VER_MSXDOS2x    2
 #define VER_NextorDOS   3
@@ -189,8 +193,8 @@ uint16_t fopen(char *fn, char mode);
 uint8_t  fclose(char fp);
 uint16_t fcreate(char *fn, char mode, char attributes);
 uint16_t remove(char *file);
-uint16_t fread(char* buf, unsigned int size, char fp);
-uint16_t fwrite(char* buf, unsigned int size, char fp);
+uint16_t fread(char* buf, uint16_t size, char fp);
+uint16_t fwrite(char* buf, uint16_t size, char fp);
 uint32_t fseek (char fp, uint32_t offset, char origin);
 uint16_t filesize(char *fn);
 char fileexists(char *fn);
@@ -206,5 +210,8 @@ void set_transfer_address(uint8_t *memaddress);
 char read_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
 char write_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
 
+void initializeMapper();
+void setMapperPage2(uint8_t page);
+void restoreMapperPage2();
 
 #endif //____DOS_H____

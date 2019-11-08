@@ -12,7 +12,7 @@ void exit(int code) __naked {
     pop ix
 
     ld b,(ix)
-    ld c, TERM
+    ld c,#TERM
     DOSCALL
 
     ret

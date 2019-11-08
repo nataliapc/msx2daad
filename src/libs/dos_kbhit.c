@@ -4,9 +4,15 @@
 int kbhit(void) __naked
 {
   __asm
-	ld c, CONST
+	push af
+	push bc
+
+	ld c,#CONST
 	DOSCALL
 	ld h,#0
+
+	pop bc
+	pop af
 	ret
   __endasm;
 }

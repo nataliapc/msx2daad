@@ -15,7 +15,7 @@ char get_env(char* name, char* buffer, char buffer_size) __naked {
     ld d,3(ix)
     ld b,4(ix)
 
-    ld c, GENV
+    ld c,#GENV
     DOSCALL
 
     ld 0(ix),l

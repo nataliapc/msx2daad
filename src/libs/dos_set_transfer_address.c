@@ -10,7 +10,7 @@ void set_transfer_address(uint8_t *memaddress) __naked {
 
     ld e,0(ix)
     ld d,1(ix)
-    ld c,SETDTA
+    ld c,#SETDTA
     DOSCALL
 
     pop ix

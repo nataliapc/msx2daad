@@ -13,7 +13,7 @@ int parse_pathname(char volume_name_flag, char* s) __naked {
     ld e,1(ix)
     ld d,2(ix)
 
-    ld c, PARSE
+    ld c,#PARSE
     DOSCALL
 
     pop ix

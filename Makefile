@@ -5,10 +5,10 @@ AR = sdar
 CC = sdcc
 HEX2BIN = hex2bin
 
-DEFINES := -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSX2 -D_MSXDOS2
+DEFINES := -D_TEST -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSXDOS1 -DMSX2
 LDFLAGS := -rc
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
-CCFLAGS := --code-loc 0x0106 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx --opt-code-size $(DEFINES) $(WRFLAGS)
+CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx --opt-code-size $(DEFINES) $(WRFLAGS)
 
 SRCDIR = src/
 SRCLIB = $(SRCDIR)libs/
@@ -19,11 +19,15 @@ DIR_GUARD=@mkdir -p $(OBJDIR)
 
 
 LIBS := dos.lib vdp.lib utils.lib
-REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos.rel heap.rel daad.rel daad_condacts.rel daad_platform_msx2.rel) $(addprefix $(LIBDIR), $(LIBS))
+REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel daad.rel daad_condacts.rel \
+								daad_platform_msx2.rel) $(addprefix $(LIBDIR), $(LIBS))
 
 PROGRAMS = msx2daad.com
 
-all: $(PROGRAMS)
+all: $(PROGRAMS) testdaad
+
+testdaad: bin/testdaad.c
+	gcc $^ -o bin/$@
 
 $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
@@ -84,7 +88,9 @@ test: release
 	; then \
 		echo "**** openmsx already running..." \
 	; else \
-		openmsx -machine msx2_eu -ext ram1mb -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+#		openmsx -machine Philips_VG_8230 -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+#		openmsx -machine turbor -ext ram1mb -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
 	; fi'
 
 

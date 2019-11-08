@@ -2,12 +2,12 @@
 #include "utils.h"
 
 
+#ifdef MSXDOS2
 uint32_t fseek (char fp, uint32_t offset, char origin) __naked
 {
   fp;
   offset;
   origin;
-#ifdef MSXDOS2
 
   __asm
     push ix
@@ -20,7 +20,7 @@ uint32_t fseek (char fp, uint32_t offset, char origin) __naked
     ld e,3(ix)
     ld d,4(ix)
     ld a,5(ix)
-    ld c, SEEK
+    ld c,#SEEK
     DOSCALL
 
     or a
@@ -32,10 +32,19 @@ uint32_t fseek (char fp, uint32_t offset, char origin) __naked
     pop ix
     ret
   __endasm;
-
-#else //MSXDOS1 (FCB)
-
-    die("fseek fail!");
-
-#endif
 }
+#else //MSXDOS1 / CPM (FCB)
+uint32_t fseek (char fp, uint32_t offset, char origin)
+{
+    FCB *fcb = (FCB*)SYSFCB;
+
+    if (origin==SEEK_SET) {
+        fcb->rndRecord = offset;
+    } else
+    if (origin==SEEK_CUR) {
+        fcb->rndRecord += offset;
+    } else {
+        die("fseek fail!");
+    }
+}
+#endif

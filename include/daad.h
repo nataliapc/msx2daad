@@ -1,3 +1,9 @@
+/*
+	Copyright (c) 2019 Natalia Pujol Cremades
+	natypclicense@gmail.com
+
+	See LICENSE file.
+*/
 #ifndef  __DAAD_H__
 #define  __DAAD_H__
 
@@ -6,13 +12,14 @@
 #include "daad_platform_api.h"
 #include "daad_defines.h"
 #include "utils.h"
-#ifdef MSX2
+#if defined(MSX2) || defined(CPM)
 	#include "heap.h"
 	#include "dos.h"
 #endif
 
 
 #define TEXT_BUFFER_LEN		100
+
 
 // Used in struct Object->location
 #define LOC_NOTCREATED		252
@@ -24,14 +31,20 @@
 #define NULLWORD			255
 
 // Used by HASHAT/HASNAT
-#define HA_WAREABLE			23		// Flag 57 Bit#7
-#define HA_CONTAINER		31		// Flag 56 Bit#7
-#define HA_LISTED			55		// Flag 53 Bit#7
-#define HA_TIMEOUT			87		// Flag 49 Bit#7
-#define HA_MOUSE			240		// Flag 29 Bit#0
-#define HA_GMODE			247		// Flag 29 Bit#7
+#define HAS_WAREABLE		23		// Flag 57 (fCOWR) Bit#7
+#define HAS_CONTAINER		31		// Flag 56 (fCOCon) Bit#7
+#define HAS_LISTED			55		// Flag 53 (fOFlags) Bit#7
+#define HAS_TIMEOUT			87		// Flag 49 (fTIFlags) Bit#7
+#define HAS_MOUSE			240		// Flag 29 (fGFlags) Bit#0
+#define HAS_GMODE			247		// Flag 29 (fGFlags) Bit#7
+// Bitmasks
+#define F57_WAREABLE		128		// (fCOWR) Bitmask: Current object is wearable
+#define F56_CONTAINER		128		// (fCOCon) Bitmask: Current object is a container
+#define F53_LISTED			128		// (fOFlags) Bitmask: If objects listed by LISTOBJ
+#define F29_MOUSE			1		// (fGFlags) Bitmask: Mouse available
+#define F29_GMODE			128		// (fGFlags) Bitmask: Graphics available
 
-// Used by TIME and flag fTIFlags
+// Bitmask used by TIME and flag fTIFlags
 #define TIME_FIRSTCHAR		1		// Set this so timeout can occur at start of input only
 #define TIME_MORE			2		// Set this so timeout can occur on "More..."
 #define TIME_ANYKEY			4		// Set this so timeout can occur on ANYKEY
@@ -41,6 +54,24 @@
 #define TIME_AVAILABLE		64		// TODO Set if data available for recall (not of use to writer)
 #define TIME_TIMEOUT		128		// Set if timeout occurred last frame
 
+// Used by MODE
+#define MODE_FORCEGCHAR		1		// Force the use of ^G (upper charset) in current window
+#define MODE_DISABLEMORE	2		// Disable SYS32 "More..." when current window text overflows
+
+// Machine system constants (DDB header)
+#define MACHINE_PC 			0
+#define MACHINE_SPECTRUM	1
+#define MACHINE_C64			2
+#define MACHINE_CPC			3
+#define MACHINE_MSX			4
+#define MACHINE_ST			5
+#define MACHINE_AMIGA		6
+#define MACHINE_PCW			7
+#define MACHINE_MSX2		15
+
+// Language constants (DDB header)
+#define LANGUAGE_EN			0
+#define LANGUAGE_ES			1
 
 // DDB header
 typedef struct {
@@ -102,6 +133,7 @@ typedef struct {
 	uint8_t winH;
 	uint8_t cursorX;
 	uint8_t cursorY;
+	uint8_t mode;			// See MODE condact
 } Window;
 
 // Object Entry
@@ -146,9 +178,9 @@ enum VOC_TYPE {
 #define fNOCarr    1	// Holds quantity of objects player is carrying (but not wearing)
 #define fWork1     2	// These are system as we consider the stack such
 #define fWork2     3
-#define fStack    24	// A small stack (always 2 bytes pushed) 10 pushes
-#define fEMPTY    23	// Stack can run from here
 #define fFULL      3	// to here - There will be an internal one soon
+#define fEMPTY    23	// Stack can run from here
+#define fStack    24	// A small stack (always 2 bytes pushed) 10 pushes
 #define fO2Num    25	// 1st free in system 64
 #define fO2Con    26	// Object 2 is a container
 #define fO2Loc    27
@@ -183,7 +215,7 @@ enum VOC_TYPE {
 #define fCOAtt    58	// Currently referenced objects user attribs
 #define fKey1     60	// Key returned by INKEY
 #define fKey2     61	// Key for IBM extended code only (0 otherwise)
-#define fScMode   62	// 2=Text, 4=CGA, 13=EGA, 141=VGA
+#define fScMode   62	// See gfxSetScreenModeFlags() comment for explanation
 #define fCurWin   63	// Which window is active at the moment (for read only)
 
 
@@ -195,29 +227,37 @@ extern char       *ramsave;			// Memory to store ram save
 
 extern char       *tmpMsg;			// MAX_TEXT_LEN
 extern uint8_t     offsetText;
-extern uint8_t     flags[256];		// DAAD flags
+extern uint8_t     flags[256];		// DAAD flags (256 bytes)
 
 extern Window      windows[8];		// 0-7 windows definitions
 extern Window     *cw;				// Pointer to current active window
+extern uint8_t 	printedLines;		// To know how many lines is printed at one time ("More..." feature)
 #ifndef DISABLE_SAVEAT
 extern uint8_t     savedPosX;		// For SAVEAT/BACKAT
 extern uint8_t     savedPosY;		//  "    "      "
 #endif
 
 // DAAD Core function definitions
-bool initDAAD();
+bool initDAAD(int argc, char **argv);
 void initFlags();
 void initObjects();
+void mainLoop();
+
 void prompt();
 void parser();
 void clearLogicalSentences();
 bool getLogicalSentence();
 void nextLogicalSentence();
+
 void printBase10(uint16_t value);
 bool waitForTimeout(uint16_t timerFlag);
-void mainLoop();
+void errorCode(uint8_t code);
 
 char* getToken(uint8_t num);
+void printMsg(char *p, bool print);
+void printOutMsg(char *str);
+void printChar(char c);
+void checkPrintedLines();
 void getSystemMsg(uint8_t num);
 void printSystemMsg(uint8_t num);
 void printUserMsg(uint8_t num);

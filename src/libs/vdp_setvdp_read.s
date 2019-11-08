@@ -1,7 +1,8 @@
 ;===============================================================================
 ; Set VDP address counter to read/write from address A+DE (17-bit)
-; SSRRRRRRRRCCCCCCC     SCREEN 5:  S=Screen  R=Row  C=Column
-; ADDDDDDDDEEEEEEEE
+; SSRRRRRRRRCCCCCCC     SCREEN 5/6:  S=Screen  R=Row  C=Column
+; SRRRRRRRRCCCCCCCC     SCREEN 7/8:  S=Screen  R=Row  C=Column
+; ADDDDDDDDEEEEEEEE     Registers
 ; In:  A+DE    VRAM address
 ;
 _setVDP_Read::

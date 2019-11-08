@@ -14,7 +14,7 @@ uint8_t fclose(char fp) __naked
     add ix,sp
 
     ld b,(ix)
-    ld c, CLOSE
+    ld c,#CLOSE
     DOSCALL
 
     ld h, #0x00
@@ -24,11 +24,11 @@ uint8_t fclose(char fp) __naked
     ret
   __endasm;
 
-#else //MSXDOS1 (FCB)
+#else //MSXDOS1 (FCB) or CPM
 
   __asm
-    ld      de,SYSFCB
-    ld      c,FCLOSE
+    ld      de,#SYSFCB
+    ld      c,#FCLOSE
     DOSCALL
 
     ld h,#0x00

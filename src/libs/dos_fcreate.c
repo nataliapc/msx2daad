@@ -17,7 +17,7 @@ uint16_t fcreate(char *fn, char mode, char attributes) __naked
     ld d,1(ix)
     ld a,2(ix)
     ld b,3(ix)
-    ld c, CREATE
+    ld c, #CREATE
     DOSCALL
 
     or a
@@ -46,8 +46,8 @@ uint16_t fcreate(char *fn, char mode, char attributes) __naked
 
     call    dos_copyFilenameToFCB
 
-    ld      de,SYSFCB
-    ld      c,FMAKE               ; Call FOPEN Bios function
+    ld      de,#SYSFCB
+    ld      c,#FMAKE              ; Call FOPEN Bios function
     DOSCALL
 
     or a                          ; Return result

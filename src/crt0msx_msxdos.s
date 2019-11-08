@@ -36,7 +36,8 @@ __pre_main:
 _heap_top::
 	.dw 0
 
-gsinit: .area   _GSINIT
+gsinit:
+	.area   _GSINIT
        
 	.area   _GSFINAL
 	ret

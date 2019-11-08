@@ -1,3 +1,9 @@
+/*
+	Copyright (c) 2019 Natalia Pujol Cremades
+	natypclicense@gmail.com
+
+	See LICENSE file.
+*/
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -7,9 +13,11 @@
 #include "daad_condacts.h"
 
 
-#define pPROC currProc->condact
+#define NUM_PROCS		10
+#define pPROC 			currProc->condact
 
-PROCstack  procStack[10];
+
+PROCstack  procStack[NUM_PROCS];
 PROCstack *currProc;
 
 uint8_t indirection;
@@ -149,6 +157,11 @@ const CONDACT_LIST condactList[] = {
 	{ do_RESET,		1 },
 };
 
+const char SAVEGAME[] = "SAVEGAME.000";
+
+void _internal_picture(uint8_t value);
+void _internal_display(uint8_t value);
+
 
 //==============================================================================
 
@@ -169,6 +182,8 @@ void pushPROC(uint8_t proc)
 printf("pushPROC(%u)\n",proc);
 #endif
 	currProc++;
+	if (currProc-procStack >= NUM_PROCS)
+		errorCode(3);
 	currProc->entryIni = getPROCess(proc);
 	currProc->entry = currProc->entryIni - 1;
 	checkEntry = false;
@@ -195,6 +210,7 @@ PROCentry* getPROCess(uint8_t proc)
 printf("getPROCess(%u)\n",proc);
 printf("    Pos: %p\n",*(((uint16_t*)hdr->prcLstPos) + proc));
 #endif
+	if (proc >= hdr->numPrc) errorCode(6);
 	return (PROCentry*)&ddb[*(((uint16_t*)hdr->prcLstPos) + proc)];
 }
 
@@ -236,9 +252,8 @@ printf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
 #ifdef VERBOSE
 printf("     [%p][%3u] %s ",(char*)(pPROC-1)-ddb, *((uint8_t*)currCondact), CONDACTS[currCondact->condact].name);
 if (CONDACTS[currCondact->condact].args>=1) {
-	if (indirection) printf("[");
+	if (indirection) printf("@");
 	printf("%u", *(pPROC));
-	if (indirection) printf("]");
 }
 if (CONDACTS[currCondact->condact].args>=2) printf(" %u", *(pPROC+1));
 printf("\n");
@@ -270,16 +285,12 @@ printf("  ======================> VERB+NOUN OK\n");
 }
 // TODO High Priority:
 //		DOALL
-//      MODE
 //      INPUT
-//      TIME		//TODO SYS32 "More..." if MODE option enabled
 //
 // TODO Low Priority:
-//      EXTERN
 //      CALL
 //		SAVE		//TODO get filename from player
 //		LOAD		//TODO get filename from player
-//      ANYKEY		//TODO check for timeout
 //      PARSE		//TODO PARSE 1
 //      GET 		//TODO cancel DOALL loop
 //      TAKEOUT 	//TODO cancel DOALL loop
@@ -289,7 +300,6 @@ printf("  ======================> VERB+NOUN OK\n");
 //      SFX 		//Undocumented
 //      GFX 		//Undocumented
 //      MOUSE 		//Undocumented
-//      BEEP 		//Undocumented
 
 //===============================================
 uint8_t getValueOrIndirection()
@@ -571,12 +581,12 @@ void _internal_hasat(uint8_t value, bool negate)
 		case 13: flag=fCOAtt+1; bit=0b00100000; break;
 		case 14: flag=fCOAtt+1; bit=0b01000000; break;
 		case 15: flag=fCOAtt+1; bit=0b10000000; break;
-		case HA_WAREABLE:  flag=fCOWR;    bit=0b10000000;   break; // Flag 57 Bit#7
-		case HA_CONTAINER: flag=fCOCon;   bit=0b10000000;   break; // Flag 56 Bit#7
-		case HA_LISTED:    flag=fOFlags;  bit=0b10000000;   break; // Flag 53 Bit#7
-		case HA_TIMEOUT:   flag=fTIFlags; bit=TIME_TIMEOUT; break; // Flag 49 Bit#7
-		case HA_MOUSE:     flag=fGFlags;  bit=0b00000001;   break; // Flag 29 Bit#0
-		case HA_GMODE:     flag=fGFlags;  bit=0b10000000;   break; // Flag 29 Bit#7
+		case HAS_WAREABLE:  flag=fCOWR;    bit=F57_WAREABLE;  break; // Flag 57 Bit#7
+		case HAS_CONTAINER: flag=fCOCon;   bit=F56_CONTAINER; break; // Flag 56 Bit#7
+		case HAS_LISTED:    flag=fOFlags;  bit=F53_LISTED;    break; // Flag 53 Bit#7
+		case HAS_TIMEOUT:   flag=fTIFlags; bit=TIME_TIMEOUT;  break; // Flag 49 Bit#7
+		case HAS_MOUSE:     flag=fGFlags;  bit=F29_MOUSE;     break; // Flag 29 Bit#0
+		case HAS_GMODE:     flag=fGFlags;  bit=F29_GMODE;     break; // Flag 29 Bit#7
 	#ifdef DEBUG
 		default:
 				die("===== HASAT/HASNAT value not implemented\n");
@@ -613,9 +623,10 @@ void do_HASNAT()	// value
 #ifndef DISABLE_INKEY
 void do_INKEY()
 {
-	while (kbhit()) getchar();
-	while (!kbhit());
+	clearKeyboardBuffer();
+	while (!checkKeyboardBuffer()) waitingForInput();
 	flags[fKey1] = getchar();
+	printedLines = 0;
 }
 #endif
 /*	SM12 ("Are you sure?") is printed and called. Will succeed if the player replies
@@ -1401,11 +1412,30 @@ void do_ABILITY()	// value1 value2
 // =============================================================================
 // Actions for screen mode/format flags [3 condacts]
 
+/*	Allows the current window to have its operation flags changed. In order to 
+	calculate the number to use for the option just add the numbers shown next 
+	to each item to achieve the required bitmask combination:
+		1 - Use the upper character set. (A permanent ^G)
+		2 - SM32 ("More...") will not appear when the window fills.
+	e.g. MODE 3 stops the 'More...' prompt and causes all to be translated to 
+	the 128-256 range. */
 #ifndef DISABLE_MODE
-void do_MODE() {printf("===== MODE not implemented\n"); pPROC++;}
+void do_MODE() {	// option
+	cw->mode = getValueOrIndirection();
+}
 #endif
+/*	The 'stream' parameter will set the bulk of input to come from the given 
+	window/stream. A value of 0 for 'stream' will not use the graphics stream 
+	as might be expected, but instead causes input to come from the current 
+	stream when the input occurs.
+	Bitmask options:
+		1 - Clear window after input.
+		2 - Reprint input line in current stream when complete.
+		4 - Reprint current text of input after a timeout. */
 #ifndef DISABLE_INPUT
-void do_INPUT() {printf("===== INPUT not implemented\n"); pPROC+=2;}
+void do_INPUT() {	// stream option
+	printf("===== INPUT not implemented\n"); pPROC+=2;
+}
 #endif
 /*	Allows input to be set to 'timeout' after a specific duration in 1 second 
 	intervals, i.e. the Process 2 table will be called again if the player types 
@@ -1442,11 +1472,21 @@ void do_WINDOW()	// window
 #endif
 /*	Sets current window to start at given line and column. Height and width to fit 
 	available screen. */
+#if !defined(DISABLE_WINAT) || !defined(DISABLE_WINSIZE)
+void internal_windowCheck()
+{
+	if (cw->winW + cw->winX >= MAX_COLUMNS) cw->winW = MAX_COLUMNS - cw->winX;
+	if (cw->winH + cw->winY >= MAX_LINES) cw->winH = MAX_LINES - cw->winY;
+}
+#endif
 #ifndef DISABLE_WINAT
 void do_WINAT()		// line col
 {
 	cw->winY = getValueOrIndirection();
 	cw->winX = *pPROC++;
+	internal_windowCheck();
+	cw->cursorX = cw->cursorY = 0;
+	printedLines = 0;
 }
 #endif
 /*	Sets current window size to given height and width. Clipping needed to fit 
@@ -1454,13 +1494,14 @@ void do_WINAT()		// line col
 #ifndef DISABLE_WINSIZE
 void do_WINSIZE()	// height width
 {
-	uint8_t aux = getValueOrIndirection();
-	cw->winH = aux+cw->winY > MAX_LINES ? MAX_LINES-cw->winY : aux;
-	aux = *pPROC++;
-	cw->winW = aux+cw->winX > MAX_COLUMNS ? MAX_COLUMNS-cw->winX : aux;
+	cw->winH = getValueOrIndirection();;
+	cw->winW = *pPROC++;
+	internal_windowCheck();
+	cw->cursorX = cw->cursorY = 0;
+	printedLines = 0;
 }
 #endif
-/*	Will ensure the current window is centred for the current column width of the 
+/*	Will ensure the current window is centered for the current column width of the 
 	screen. (Does not affect line position). */
 #ifndef DISABLE_CENTRE
 void do_CENTRE()
@@ -1474,6 +1515,7 @@ void do_CLS()
 {
 	gfxClearWindow();
 	cw->cursorX = cw->cursorY = 0;
+	printedLines = 0;
 }
 #endif
 /*	Save and Restore print position for current window. This allows you to 
@@ -1537,14 +1579,14 @@ void do_TAB()		// col
 #ifndef DISABLE_SPACE
 void do_SPACE()
 {
-	gfxPutCh(' ');
+	printChar(' ');
 }
 #endif
 /*	Prints a carriage return/line feed. */
 #ifndef DISABLE_NEWLINE
 void do_NEWLINE()
 {
-	gfxPutCh('\r');
+	printChar('\r');
 }
 #endif
 /*	Prints Message mesno. */
@@ -1601,20 +1643,21 @@ void do_DPRINT()	// flagno
 	If there are no objects then nothing is printed. */
 #ifndef DISABLE_LISTOBJ
 void do_LISTOBJ() {
-	flags[fOFlags] &= 0b01111111;
+	flags[fOFlags] &= (F53_LISTED ^ 255);
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		if (objects[i].location == flags[fPlayer]) {
-			if (!(flags[fOFlags] & 0b10000000)) {
+			if (!(flags[fOFlags] & F53_LISTED)) {
 				printSystemMsg(1);
-				do_SPACE();
-				flags[fOFlags] |= 0b10000000;
+				flags[fOFlags] |= F53_LISTED;
 			} else {
-				gfxPuts(", ");
+				printSystemMsg(46);	//", "
 			}
 			printObjectMsg(i);
 		}
 	}
-	if (flags[fOFlags] & 0b10000000) do_NEWLINE();
+	if (flags[fOFlags] & F53_LISTED) {
+		printSystemMsg(48);	//".\n"
+	}
 }
 #endif
 /*	If any objects are present then they are listed. Otherwise SM53 ("nothing.") 
@@ -1624,18 +1667,19 @@ void do_LISTOBJ() {
 void do_LISTAT()	// locno+
 {
 	uint8_t loc = *pPROC++;
-	flags[fOFlags] &= 0b01111111;
+	flags[fOFlags] &= (F53_LISTED ^ 255);
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		if (objects[i].location == loc) {
-			if (flags[fOFlags] & 0b10000000) gfxPuts(", ");
-			flags[fOFlags] |= 0b10000000;
+			if (flags[fOFlags] & F53_LISTED) 
+				printSystemMsg(46);	//", "
+			flags[fOFlags] |= F53_LISTED;
 			printObjectMsg(i);
 		} 
 	}
-	if (flags[fOFlags] & 0b10000000)
-		do_NEWLINE();
+	if (flags[fOFlags] & F53_LISTED)
+		printSystemMsg(51);	//".\n"
 	else
-		printSystemMsg(53);
+		printSystemMsg(53);	//"Nada.\n"
 }
 #endif
 
@@ -1650,8 +1694,8 @@ void do_LISTAT()	// locno+
 #ifndef DISABLE_SAVE
 void do_SAVE()		// opt
 {
-	//TODO get the filename from the player
-	uint16_t fh = fcreate("SAVEGAME.000", O_WRONLY, ATTR_ARCHIVE);
+	//TODO SAVE get the filename from the player
+	uint16_t fh = fcreate(SAVEGAME, O_WRONLY, ATTR_ARCHIVE);
 	if (fh<0xff00) {
 		fwrite((char*)flags, 256, fh);
 		fwrite((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
@@ -1668,8 +1712,8 @@ void do_SAVE()		// opt
 #ifndef DISABLE_LOAD
 void do_LOAD()		// opt
 {
-	//TODO get the filename from the player
-	uint16_t fh = fopen("SAVEGAME.000", O_RDONLY);
+	//TODO LOAD get the filename from the player
+	uint16_t fh = fopen(SAVEGAME, O_RDONLY);
 	if (fh<0xff00) {
 		fread((char*)flags, 256, fh);
 		fread((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
@@ -1718,10 +1762,10 @@ void do_RAMLOAD()	// flagno
 #ifndef DISABLE_ANYKEY
 void do_ANYKEY()
 {
-	//TODO timeout
 	printSystemMsg(16);
 	waitForTimeout(TIME_ANYKEY);
-	getchar();
+	clearKeyboardBuffer();
+	printedLines = 0;
 }
 #endif
 /*	Pauses for value/50 secs. However, if value is zero then the pause is for 
@@ -1752,7 +1796,7 @@ void do_PARSE()
 	if (getValueOrIndirection()==0) {
 		checkEntry = !getLogicalSentence();
 	} else {
-		//TODO PARSE 1
+		//TODO PARSE 1 not implemented
 		printf("===== 'PARSE 1' not implemented\n");		
 	}
 }
@@ -1780,8 +1824,10 @@ void do_NEWTEXT()
 #ifndef DISABLE_SYNONYM
 void do_SYNONYM()	// verb noun
 {
-	flags[fVerb] = getValueOrIndirection();
-	flags[fNoun1] = *pPROC++;
+	uint8_t value = getValueOrIndirection();
+	if (value!=NULLWORD) flags[fVerb] = value;
+	value = *pPROC++;
+	if (value!=NULLWORD) flags[fNoun1] = value;
 }
 #endif
 
@@ -1922,11 +1968,32 @@ void do_OK() {
 #ifndef DISABLE_EXTERN
 void do_EXTERN()	// value routine
 {
-	//TODO
-	#ifdef DEBUG
-	printf("===== EXTERN not implemented\n");
-	#endif
-	pPROC+=2;
+	//Emulating MALUVA EXTERN: https://github.com/Utodev/MALUVA
+	uint16_t value = (uint16_t)getValueOrIndirection();
+	uint8_t function = *pPROC++;
+
+	switch (function) {
+		//=================== PICTURE: Load Raster Graphic
+		case 0:
+			_internal_picture(value);
+			_internal_display(0);
+			break;
+		//=================== SAVE: Save Game
+		case 1:
+			pPROC--;
+			do_SAVE();
+			break;
+		//=================== LOAD: Load Game
+		case 2:
+			pPROC--;
+			do_LOAD();
+			break;
+		//=================== XMES: External message
+		case 3:
+			value |= (*pPROC++)<<8;
+			printXMES(value);
+			break;
+	}
 }
 #endif
 /*	Allows 'address' in memory (or in the database segment for 16bit) to be 
@@ -1934,7 +2001,7 @@ void do_EXTERN()	// value routine
 #ifndef DISABLE_CALL
 void do_CALL()		// address
 {
-	//TODO
+	//TODOCALL not implemented
 	#ifdef DEBUG
 	printf("===== CALL not implemented\n");
 	#endif
@@ -1949,7 +2016,7 @@ void do_CALL()		// address
 #ifndef DISABLE_SFX
 void do_SFX()		// value1 value2
 {
-	//TODO
+	//TODO SFX not implemented
 	#ifdef DEBUG
 	printf("===== SFX not implemented\n");
 	#endif
@@ -1963,7 +2030,7 @@ void do_SFX()		// value1 value2
 #ifndef DISABLE_GFX
 void do_GFX()		// value1 value2
 {
-	//TODO
+	//TODO GFX not implemented
 	#ifdef DEBUG
 	printf("===== GFX not implemented\n");
 	#endif
@@ -1977,10 +2044,8 @@ void do_GFX()		// value1 value2
 /*	Will load into the picture buffer the given picture. If there no corresponding
 	picture the next entry will be carried out, if there is then the next CondAct 
 	is executed. */
-#ifndef DISABLE_PICTURE
-void do_PICTURE()	// picno
-{
-	uint8_t newPic = getValueOrIndirection();
+#if !defined(DISABLE_PICTURE) && !defined(DISABLE_EXTERN)
+void _internal_picture(uint8_t newPic) {
 	lastPicShow = (newPic==lastPicLocation);
 	if (!lastPicShow) {
 		lastPicLocation = newPic;
@@ -1988,54 +2053,92 @@ void do_PICTURE()	// picno
 	}
 }
 #endif
+#ifndef DISABLE_PICTURE
+void do_PICTURE()	// picno
+{
+	_internal_picture(getValueOrIndirection());
+}
+#endif
 /*	If value=0 then the last buffered picture is placed onscreen. 
 	If value !=0 and the picture is not a subroutine then the given window area 
 	is cleared. This is normally used with indirection and a flag to check and 
 	display darkness. */
-#ifndef DISABLE_DISPLAY
-void do_DISPLAY()	// value
-{
-	if (getValueOrIndirection()) {
+#if !defined(DISABLE_DISPLAY) && !defined(DISABLE_EXTERN)
+void _internal_display(uint8_t value) {
+	if (value) {
 		do_CLS();
 		lastPicLocation = 255;
 		lastPicShow = false;
 	} else {
-		if (!lastPicShow) gfxPictureShow();
+		if (!lastPicShow) {
+			do_CLS();
+			gfxPictureShow();
+		}
 	}
+}
+#endif
+#ifndef DISABLE_DISPLAY
+void do_DISPLAY()	// value
+{
+	_internal_display(getValueOrIndirection());
 }
 #endif
 
 // =============================================================================
 // Actions miscellaneous [1 condacts]
 
+/*	This action in preparation for the hypercard system implements skeleton 
+	mouse handler on the IBM. */
 #ifndef DISABLE_MOUSE
-void do_MOUSE() { /* //TODO*/ }
+void do_MOUSE() {	// option
+	//TODO MOUSE not implemented
+	#ifdef DEBUG
+	printf("===== MOUSE not implemented\n");
+	#endif
+}
 #endif
-/*	Length is the duration in 1/100 seconds. Tone is like BEEP in ZX Basic but
-	adding 60 to it and divided by 2.
+/*	Length is the duration in 1/50 seconds. Tone is like BEEP in ZX Basic but
+	adding 60 to it and multiplied by 2.
 	http://www.worldofspectrum.org/ZXBasicManual/zxmanchap19.html
 	
 	Length:
-		1:400 2:200 4:100 8:50 16:25 32:12 64:6
+		1:200 2:100 4:50 8:25 16:12 32:6 64:3
 	
-	Tone:
-	      C  C# D  D# E  F  F# G  G# A  A# B
-	ZX    0  1  2  3  4  5  6  7  8  9  10 11
-	DAAD  30 
+	Tones (Octave 4):
+	      C   C#  D   D#  E   F   F#  G   G#  A   A#  B
+	ZX    0   1   2   3   4   5   6   7   8   9   10  11
+	DAAD  120 122 124 126 128 130 132 134 136 138 140 142
 	
-	i.e.  BEEP  1  144       ; O4 F# 64
-	      BEEP  1  156       ; O5 C  64
-	      BEEP  1  168       ; O5 F# 64
+	i.e.  BEEP  1  126       ; O4 D#
+	      BEEP  1  154       ; O5 F
+	      BEEP  1  170       ; O6 C#
+
+	Table DAAD BEEP Tones by octave:
+
+	Oct  C   C#  D   D#  E   F   F#  G   G#  A   A#  B
+	==== ===============================================
+	#1   48  50  52  54  56  58  60  62  64  66  68  70
+	#2   72  74  76  78  80  82  84  86  88  90  92  94
+	#3   96  98  100 102 104 106 108 110 112 114 116 118
+	#4   120 122 124 126 128 130 132 134 136 138 140 142
+	#5   144 146 148 150 152 154 156 158 160 162 164 166
+	#6   168 170 172 174 176 178 180 182 184 186 188 190
+	#7   192 194 196 198 200 202 204 206 208 210 212 214
+	#8   216 218 220 222 224 226 228 230 232 234 236 238
 */
 #ifndef DISABLE_BEEP
 void do_BEEP()		// length tone
 {
-	//TODO undocumented
 	sfxSound(getValueOrIndirection(), *pPROC++);
 }
 #endif
+
+// =============================================================================
+// Unused Condact (check daad_defines.h)
+
 void do_NOT_USED()
 {
+	errorCode(5);
 }
 
 

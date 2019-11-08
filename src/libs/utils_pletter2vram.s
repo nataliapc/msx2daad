@@ -9,12 +9,12 @@
 ; http://www.gamopat-forum.com/t75544-termine-pang-msx
 ; Size: 244 bytes
 ;-----------------------------------------------------------
-; Adapter to MSX2 by Natalia Pujol (VRAM Page 0 only)
+; Adapter to MSX2 (VRAM 128kb) by Natalia Pujol
 
  ; global from this code
 
     .globl  _pletter2vram
-    ; void pletter2vram(unsigned char* data, unsigned int vram_offset);
+    ; void pletter2vram(unsigned char* data, uint32 vram_offset);
  
 
 _pletter2vram::
@@ -25,17 +25,20 @@ _pletter2vram::
     ld h, 1(ix)
     ld e, 2(ix)
     ld d, 3(ix)
-    push af
+    ld a, 4(ix)
     push bc
     push de
     push hl
     push iy
 
 ; VRAM address setup
-	ld	a,d
-	rlca
-	rlca
-	and	#0b00000011
+    ld  (#page),a
+    rlc d
+    rla
+    rlc d
+    rla
+    srl d
+    srl d
     di
 	out	(0x99),a	; VRAM address A14-A15
 	ld	a,#128+14
@@ -146,10 +149,13 @@ offsok:
     pop bc
     push af
 $9:
-	ld	a,h
-	rlca
-	rlca
-	and	#0b11
+    ld  a,(#page)
+    rlc d
+    rla
+    rlc d
+    rla
+    srl d
+    srl d
     di
 	out	(0x99),a	; VRAM address A14-A15
 	ld	a,#128+14
@@ -165,10 +171,13 @@ $9:
 	in	a,(0x98)
     ex af,af'
 
-	ld	a,d
-	rlca
-	rlca
-	and	#0b11
+    ld  a,(#page)
+    rlc d
+    rla
+    rlc d
+    rla
+    srl d
+    srl d
     di
 	out	(0x99),a	; VRAM address A14-A15
 	ld	a,#128+14
@@ -212,7 +221,6 @@ Depack_out:
     pop hl
     pop de
     pop bc
-    pop af
     pop ix
     ret
 
@@ -224,3 +232,5 @@ modes:
     .dw mode5
     .dw mode6
     .dw mode7
+page:
+    .db 0

@@ -8,15 +8,16 @@ int putchar(int c) __naked {
     pop de
     push de
     push af
-    ld a,e
 
+    ld a,e
     cp #0x0a
+    
     ld e,a
-    ld c,CONOUT
+    ld c,#CONOUT
     jp nz,jumpPutchar$
 
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(TEST)
     push af            ; to use with openmsx and '-ext debugdevice' extension
     ld  a, #0x63
     out (#0x2e),a
@@ -30,7 +31,7 @@ int putchar(int c) __naked {
 jumpPutchar$:
     DOSCALL
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(TEST)
     push af            ; to use with openmsx and '-ext debugdevice' extension
     ld  a, #0x63
     out (#0x2e),a

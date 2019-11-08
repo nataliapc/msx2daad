@@ -12,7 +12,7 @@ char get_current_directory(char drive, char *path) __naked {
     ld e,1(ix)
     ld d,2(ix)
 
-    ld c, GETCD
+    ld c, #GETCD
     DOSCALL
 
     ld h, #0x00

@@ -1,13 +1,9 @@
 #include "dos.h"
 
-#include <stdio.h>
 
-
-uint16_t fread(char* buf, unsigned int size, char fp) __naked
+uint16_t fread(char* buf, uint16_t size, char fp) __naked
 {
-  buf;
-  size;
-  fp;
+  buf, size, fp;
 #ifdef MSXDOS2
 
   __asm
@@ -20,7 +16,7 @@ uint16_t fread(char* buf, unsigned int size, char fp) __naked
     ld l,2(ix)
     ld h,3(ix)
     ld b,4(ix)
-    ld c,READ
+    ld c,#READ
     DOSCALL
 
     or a
@@ -45,17 +41,17 @@ uint16_t fread(char* buf, unsigned int size, char fp) __naked
     ld h,3(ix)
 
     push  hl
-    ld    c,SETDTA                ; Set Disk transfer address (DTA)
+    ld    c,#SETDTA               ; Set Disk transfer address (DTA)
     DOSCALL
 
-    ld hl,SYSFCB+14               ; Set FCB Record size to 1 byte
+    ld hl,#SYSFCB+14              ; Set FCB Record size to 1 byte
     ld (hl),#1
     inc hl
     ld (hl),#0
     pop   hl
 
-    ld    de,SYSFCB
-    ld    c,RDBLK
+    ld    de,#SYSFCB
+    ld    c,#RDBLK
     DOSCALL
 
     or a

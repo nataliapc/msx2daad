@@ -1,3 +1,11 @@
+/*
+	Copyright (c) 2019 Natalia Pujol Cremades
+	natypclicense@gmail.com
+
+	See LICENSE file.
+
+	DAAD is a trademark of Andrés Samudio
+*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -15,7 +23,7 @@ extern void do_NEWLINE();
 uint8_t    *ddb;						// Where the DDB is allocated
 DDB_Header *hdr;						// Struct pointer to DDB Header
 Object     *objects;					// Memory allocation for objects data
-uint8_t     flags[256];					// DAAD flags
+uint8_t     flags[256];					// DAAD flags (256 bytes)
 char       *ramsave;					// Memory to store ram save (RAMSAVE)
 
 #ifndef DISABLE_WINDOW
@@ -24,6 +32,7 @@ Window      windows[8];					// 0-7 windows definitions
 Window      windows[1];					// Only one if WINDOW condact is not used
 #endif
 Window     *cw;							// Pointer to current active window
+uint8_t 	printedLines;				// For "More..." feature
 
 #ifndef DISABLE_SAVEAT
 uint8_t     savedPosX;					// For SAVEAT/BACKAT
@@ -36,6 +45,7 @@ char    tmpTok[6];
 char   *tmpMsg;							// TEXT_BUFFER_LEN
 char    lastPrompt;
 uint8_t offsetText;
+uint8_t doingPrompt;
 
 //=========================================================
 
@@ -46,19 +56,19 @@ uint8_t offsetText;
  * 
  * @return			none.
  */
-bool initDAAD()
+bool initDAAD(int argc, char **argv)
 {
 	uint16_t *p;
 	
-	loadFilesBin();
+	loadFilesBin(argc, argv);
 
 	hdr = (DDB_Header*)ddb;
 	p = (uint16_t *)&hdr->tokensPos;
 
 	#ifdef DEBUG
 		printf("Version.......... %u\n", hdr->version);
-		printf("Language......... %u\n", hdr->target.value.language);
 		printf("Machine.......... %u\n", hdr->target.value.machine);
+		printf("Language......... %u\n", hdr->target.value.language);
 		printf("Magic............ 0x%02x\n", hdr->magic);
 		printf("Num.Obj.......... %u\n", hdr->numObjDsc);
 		printf("Num.Locations.... %u\n", hdr->numLocDsc);
@@ -81,7 +91,7 @@ bool initDAAD()
 	#endif
 
 	//If not a valid DDB version exits
-	if (hdr->version != 2 || hdr->magic != 0x5f)
+	if (hdr->version != 2)
 		return false;
 
 	//Update header positions addresses
@@ -89,8 +99,12 @@ bool initDAAD()
 		*(p++) += (uint16_t)ddb;
 	}
 
+	//Skip first token
+	while ((*(char*)(hdr->tokensPos++) & 0x80) == 0);
+
 	//Get memory for RAMSAVE
 	ramsave = (char*)malloc(256+sizeof(Object)*hdr->numObjDsc);
+	memset(ramsave, 0, 1+256+sizeof(Object)*hdr->numObjDsc);
 	//Get memory for objects
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
 	//Get memory for tmpMsg
@@ -115,16 +129,7 @@ void initFlags()
 	//Clear flags
 	memset(flags, 0, 256);
 
-	//Set screen flags
-	#if SCREEN==5 || SCREEN==7
-		flags[fScMode] = 13;	// EGA
-	#endif
-	#if SCREEN==6
-		flags[fScMode] = 4;		// CGA
-	#endif
-	#if SCREEN==8
-		flags[fScMode] = 141;	// VGA
-	#endif
+	gfxSetScreenModeFlags();
 
 	//Initialize DAAD windows
 	memset(windows, 0, sizeof(windows));
@@ -143,6 +148,7 @@ void initFlags()
 	clearLogicalSentences();
 
 	offsetText = 0;
+	doingPrompt = false;
 }
 
 /*
@@ -200,31 +206,40 @@ void prompt()
 {
 	char c, *p = tmpMsg, *extChars;
 
-	while (kbhit()) getchar();
-	gfxPutCh('>');
+	doingPrompt = true;
+	printedLines = 0;
+	clearKeyboardBuffer();
+	printSystemMsg(33);	//">"
 	*p = '\0';
 	do {
 		// Check first char Timeout flag
 		if (p==tmpMsg) {
-			if (waitForTimeout(TIME_FIRSTCHAR)) return;
+			if (waitForTimeout(TIME_FIRSTCHAR)) {
+				doingPrompt = false;
+				return;
+			}
 		}
-		while (!kbhit()) waitForPrompt();
+		while (!checkKeyboardBuffer()) waitingForInput();
 		c = getchar();
-		if (c=='\r' && p==tmpMsg) { c = 0; continue; }	// Avoid enter an empty text order
-		if (c==0x08) {									// Back space (BS)
+		if ((c=='\r' || c==' ') && p<=tmpMsg) { c = 0; continue; }	// Avoid enter an empty text order
+		if (c==0x08) {												// Back space (BS)
 			if (p<=tmpMsg) continue;
-			p--;
+			*--p = '\0';
 			if (cw->cursorX>0) cw->cursorX--; else { cw->cursorX = cw->winW-1; cw->cursorY--; }
-			gfxPutChWindow(' ');
-		} else {
-			if (p-tmpMsg > TEXT_BUFFER_LEN) continue;
+			gfxPutInputEcho(c, true);
+		} else
+		if (c>=' ' || c=='\r') {
+			if (p-tmpMsg > TEXT_BUFFER_LEN) continue;				// Avoid chars at buffer limit end
 			extChars = strchr(getCharsTranslation(), c);
 			if (extChars) c = (char)(extChars-getCharsTranslation()+0x10);
-			gfxPutCh(c);
-			*p++ = toupper(c);
+			gfxPutInputEcho(c, false);
+			*p++ = toupper(c);										// TODO: revise this line
 		}
 	} while (c!='\r');
+	gfxPutInputEcho(c, false);
 	*--p = '\0';
+	printedLines = 0;
+	doingPrompt = false;
 }
 
 /*
@@ -304,7 +319,6 @@ bool getLogicalSentence()
 		if (!newPrompt)
 			while ((newPrompt=(rand()%4)+2)==lastPrompt);
 		printSystemMsg(newPrompt);
-		do_NEWLINE();
 		lastPrompt = newPrompt;
 
 		prompt();
@@ -415,11 +429,11 @@ printf("nextLogicalSentence()\n");
 void printBase10(uint16_t value)
 {
 	if (value<10) {
-		if (value) gfxPutCh('0'+(uint8_t)value);
+		if (value) printChar('0'+(uint8_t)value);
 		return;
 	}
 	printBase10(value/10);
-	gfxPutCh('0'+(uint8_t)(value%10));
+	printChar('0'+(uint8_t)(value%10));
 }
 
 /*
@@ -434,22 +448,40 @@ bool waitForTimeout(uint16_t timerFlag)
 {
 	uint16_t timeout = flags[fTime]*50;
 
-	while (kbhit()) getchar();
+	clearKeyboardBuffer();
 	if (flags[fTIFlags] & timerFlag) {
 		flags[fTIFlags] &= TIME_TIMEOUT^255;
 		setTime(0);
-		while (!kbhit()) {
-			waitForPrompt();
+		while (!checkKeyboardBuffer()) {
+			waitingForInput();
 			if (getTime() > timeout) {
 				flags[fTIFlags] |= TIME_TIMEOUT;
 				return true;
 			}
 		}	
 	} else {
-		while (!kbhit()) { waitForPrompt(); }
+		while (!checkKeyboardBuffer()) waitingForInput();
 	}
 	return false;
 }
+
+/*
+ * Function: errorCode
+ * --------------------------------
+ * Show a system error (see DAAD manual section 4.3)
+ * 
+ * @param   code	Error code to show (supported: 0 1 3 5 6 7 8).
+ * @return			none.
+ */
+void errorCode(uint8_t code)
+{
+	gfxSetInkCol(14);
+	gfxSetPaperCol(4);
+	printOutMsg("Game Error ");
+	printChar(code+'0');
+	for (;;);
+}
+
 
 //=========================================================
 
@@ -463,7 +495,7 @@ bool waitForTimeout(uint16_t timerFlag)
  */
 char* getToken(uint8_t num)
 {
-	char *p = (char*)hdr->tokensPos + 1;
+	char *p = (char*)hdr->tokensPos;
 	char i=0;
 
 	while (num) {
@@ -480,32 +512,31 @@ char* getToken(uint8_t num)
 }
 
 /*
- * Function: _printMsg
+ * Function: printMsg
  * --------------------------------
- * Uncompress a tokenized string and print it or not.
+ * Uncompress a tokenized string and can print it.
  * 
  * @param lst		List of tokenized string (sysmes, usermes, desc...).
  * @param num   	To get the string number 'num' in that list.
  * @param print		Output the string to the current window or not.
  * @return			none.
  */
-void _printMsg(uint16_t *lst, uint8_t num, bool print)
+void printMsg(char *p, bool print)
 {
-	char *p = &ddb[*(lst + num)];
 	char c, *token;
 	uint16_t i = 0;
 
 	tmpMsg[0]='\0';
 	do {
 		c = 255 - *p++;
-		if (c >= 128) {
-			token = getToken(c - 128);
+		if (c & 128) {
+			token = getToken(c & (128^255));
 			while (*token) {
 				tmpMsg[i++] = *token;
 				if (*token==' ' || *token=='\r' || *token=='\n') {
 					if (print) {
 						tmpMsg[i] = '\0';
-						gfxPuts(tmpMsg);
+						printOutMsg(tmpMsg);
 						i = 0;
 					}
 				}
@@ -522,12 +553,129 @@ void _printMsg(uint16_t *lst, uint8_t num, bool print)
 				if (c==0x0a) tmpMsg[--i] = '\0';
 				if (print) {
 					tmpMsg[i] = '\0';
-					gfxPuts(tmpMsg);
+					printOutMsg(tmpMsg);
 					i=0;
 				}
 			}
 		}
 	} while (c != 0x0a);		// = 255 - 0xf5
+}
+
+/*
+ * Function: printOutMsg
+ * --------------------------------
+ * Write a string in current DAAD Window.
+ * 
+ * @param str		String to write.
+ * @return			none.
+ */
+void printOutMsg(char *str)
+{
+	char *p = str, *aux = NULL, c;
+
+	while ((c = *p)) {
+		if (c==' ' || !aux) {
+			// Check if next word can be printed in current line
+			aux = p+1;
+			while (*aux && *aux!=' ' && *aux!='\n' && *aux!='\r') {
+				aux++;
+			}
+			if (cw->cursorX+(aux-(p+1)) >= cw->winW) {
+				if (c==' ') c = '\r'; else do_NEWLINE();
+			}
+		}
+		if (doingPrompt || p==str || !(c==' ' && cw->cursorX==0)) {	// If not a SPACE in column 0 then print char
+			printChar(c);
+		}
+		p++;
+	}
+}
+
+/*
+ * Function: printChar
+ * --------------------------------
+ * Write a char looking for escape chars and managing 
+ * DAAD Window.
+ * 
+ * @param c			Char to write.
+ * @return			none.
+ */
+void printChar(char c)
+{
+	#if defined(DEBUG) || defined(TEST)
+		putchar(c);
+	#endif
+
+	switch (c) {
+		case 11:		// \b    Clear screen
+			do_CLS(); return;
+		case 12:		// \k    Wait for a key
+			do_INKEY(); return;
+		case 14:		// \g    Enable graphical charset (128-255)
+			offsetText = 96; return;
+		case 15:		// \t    Enable text charset (0-127)
+			offsetText = 0; return;
+	}
+	if (c=='\r') {						// Carriage return
+		cw->cursorX = 0;
+		cw->cursorY++;
+		checkPrintedLines();
+	} else {
+		c += (cw->mode & MODE_FORCEGCHAR) ? 96 : offsetText;
+		gfxPutChWindow(c);
+		cw->cursorX++;
+		if (cw->cursorX >= cw->winW) {
+			cw->cursorX = 0;
+			cw->cursorY++;
+			checkPrintedLines();
+		}
+	}
+	if (cw->cursorY >= cw->winH) {		// Check for needed scroll
+		cw->cursorY--;
+		gfxScrollUp();
+	}
+}
+
+/*
+ * Function: checkPrintedLines
+ * --------------------------------
+ * Check for a screen overflow text and show "More..." message.
+ * 
+ * @return			none.
+ */
+void checkPrintedLines()
+{
+	if (cw->mode & MODE_DISABLEMORE) return;
+	if (++printedLines >= cw->winH-1) {	// Must show "More..."?
+		if (cw->cursorY >= cw->winH) {
+			cw->cursorX = 0;
+			cw->cursorY--;
+			gfxScrollUp();
+		}
+		// Print SYS32 "More..."
+		char *oldTmpMsg = tmpMsg;
+		tmpMsg = malloc(0);
+		printSystemMsg(32);
+		tmpMsg = oldTmpMsg;
+		waitForTimeout(TIME_MORE);
+		gfxClearCurrentLine();
+		cw->cursorX = 0;
+		printedLines=0;
+	}
+}
+
+/*
+ * Function: _ptrToMessage
+ * --------------------------------
+ * Return pointer to a DDB message.
+ * 
+ * @param lst		Section pointer.
+ * @param num		Message number to extract.
+ * @return			none.
+ */
+char* _ptrToMessage(uint16_t *lst, uint8_t num)
+{
+	return &ddb[*(lst + num)];
 }
 
 /*
@@ -540,7 +688,7 @@ void _printMsg(uint16_t *lst, uint8_t num, bool print)
  */
 void getSystemMsg(uint8_t num)
 {
-	_printMsg((uint16_t*)hdr->sysMsgPos, num, false);
+	printMsg(_ptrToMessage((uint16_t*)hdr->sysMsgPos, num), false);
 }
 
 /*
@@ -553,7 +701,7 @@ void getSystemMsg(uint8_t num)
  */
 void printSystemMsg(uint8_t num)
 {
-	_printMsg((uint16_t*)hdr->sysMsgPos, num, true);
+	printMsg(_ptrToMessage((uint16_t*)hdr->sysMsgPos, num), true);
 }
 
 /*
@@ -566,7 +714,8 @@ void printSystemMsg(uint8_t num)
  */
 void printUserMsg(uint8_t num)
 {
-	_printMsg((uint16_t*)hdr->usrMsgPos, num, true);
+	if (num > hdr->numUsrMsg) errorCode(7);
+	printMsg(_ptrToMessage((uint16_t*)hdr->usrMsgPos, num), true);
 }
 
 /*
@@ -579,7 +728,8 @@ void printUserMsg(uint8_t num)
  */
 void printLocationMsg(uint8_t num)
 {
-	_printMsg((uint16_t*)hdr->locLstPos, num, true);
+	if (num > hdr->numLocDsc) errorCode(1);
+	printMsg(_ptrToMessage((uint16_t*)hdr->locLstPos, num), true);
 }
 
 /*
@@ -592,7 +742,8 @@ void printLocationMsg(uint8_t num)
  */
 void printObjectMsg(uint8_t num)
 {
-	_printMsg((uint16_t*)hdr->objLstPos, num, true);
+	if (num > hdr->numObjDsc) errorCode(0);
+	printMsg(_ptrToMessage((uint16_t*)hdr->objLstPos, num), true);
 }
 
 /*
@@ -609,7 +760,7 @@ void printObjectMsg(uint8_t num)
 void printObjectMsgModif(uint8_t num, char modif)
 {
 	char *ini = tmpMsg, *p = tmpMsg;
-	_printMsg((uint16_t*)hdr->objLstPos, num, false);
+	printMsg(_ptrToMessage((uint16_t*)hdr->objLstPos, num), false);
 #ifdef LANG_ES
 	if (tmpMsg[2]==' ') {
 		tmpMsg[0] = modif=='@'?'E':'e';
@@ -624,10 +775,10 @@ void printObjectMsgModif(uint8_t num, char modif)
 		p++;
 	}
 #elif LANG_EN
-	gfxPuts(modif=='@'?"Th":"th");
+	printOutMsg(modif=='@'?"Th":"th");
 	tmpMsg[0] = 'e';
 #endif
-	gfxPuts(ini);
+	printOutMsg(ini);
 }
 
 /*

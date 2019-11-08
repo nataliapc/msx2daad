@@ -17,7 +17,7 @@ uint16_t fopen(char *fn, char mode) __naked
     ld e,0(ix)
     ld d,1(ix)
     ld a,2(ix)
-    ld c, OPEN
+    ld c, #OPEN
     DOSCALL
 
     or a
@@ -46,8 +46,8 @@ uint16_t fopen(char *fn, char mode) __naked
 
     call    dos_copyFilenameToFCB
 
-    ld      de,SYSFCB
-    ld      c,FOPEN               ; Call FOPEN Bios function
+    ld      de,#SYSFCB
+    ld      c,#FOPEN              ; Call FOPEN Bios function
     DOSCALL
 
     or a                          ; Check result

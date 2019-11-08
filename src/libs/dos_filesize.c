@@ -42,8 +42,8 @@ uint16_t filesize(char *fn) __naked
 
     call    dos_copyFilenameToFCB
 
-    ld      de,SYSFCB
-    ld      c,FOPEN               ; Call FOPEN Bios function
+    ld      de,#SYSFCB
+    ld      c,#FOPEN               ; Call FOPEN Bios function
     DOSCALL
 
     or a                          ; Return result

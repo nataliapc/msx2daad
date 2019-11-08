@@ -12,7 +12,7 @@ uint16_t remove(char *file) __naked
     ld e,0(ix)
     ld d,1(ix)
 
-    ld c, DELETE
+    ld c,#DELETE
     DOSCALL
 
     ld h, #0xff

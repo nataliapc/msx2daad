@@ -14,7 +14,7 @@ void explain(char* buffer, char error_code) __naked {
     ld d,1(ix)
     ld b,2(ix)
 
-    ld c, EXPLAIN
+    ld c,#EXPLAIN
     DOSCALL
 
     ld 0(ix),d

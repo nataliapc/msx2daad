@@ -1,3 +1,9 @@
+/*
+	Copyright (c) 2019 Natalia Pujol Cremades
+	natypclicense@gmail.com
+
+	See LICENSE file.
+*/
 #include "daad_defines.h"
 
 #ifndef __DAAD_CONDACTS_H__

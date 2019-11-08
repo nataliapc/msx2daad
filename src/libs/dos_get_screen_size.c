@@ -7,7 +7,7 @@ char get_screen_size(void) __naked {
 
     ld a, #0x04
 
-    ld c,IOCTL
+    ld c,#IOCTL
     DOSCALL
     ld l, e
 

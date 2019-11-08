@@ -1,7 +1,14 @@
 #!/usr/bin/php
 <?php
 /*
-	File output format:
+	Copyright (c) 2019 Natalia Pujol Cremades
+	natypclicense@gmail.com
+
+	See LICENSE file.
+
+	========================================================
+
+	Output file format:
 		Offset Size  Description
 		0x0000  3    Image magic string: "IMG"
 		0x0003  1    Source screen type ('5', '6', '7', '8')
@@ -47,11 +54,19 @@
 		array("rle", "rle", CHUNK_RLE),
 		array("pletter", "plet5", CHUNK_PLETTER),
 	);
+	define('RAW', 0);
+	define('RLE', 1);
+	define('PLETTER', 2);
 	define('COMP_APP', 0);
 	define('COMP_EXT', 1);
 	define('COMP_ID',  2);
 
+	$appname = basename($argv[0]);
 	$magic = "IMG";
+
+	if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+		$compressors[PLETTER][COMP_APP] = "pletter.exe";
+	}
 
 	if ($argc<3) {
 		showSyntax();
@@ -99,7 +114,7 @@
 		}
 		echo "### Compressor: ".$compress."\n";
 
-		compressChunks($fileIn, $lines, $comp);
+		compressChunks($fileIn, $lines, $comp, NULL, NULL);
 
 		exit;
 	}
@@ -109,13 +124,15 @@
 
 	//=================================================================================
 	function showSyntax() {
+		global $appname;
+		
 		echo "\nSyntax to list image content:\n".
-			 "    compress.php l <fileIn>\n\n".
+			 "    $appname l <fileIn>\n\n".
 			 "Syntax to create a image IMx:\n".
-			 "    compress.php c <fileIn> <lines> [compressor]\n\n".
+			 "    $appname c <fileIn> <lines> [compressor]\n\n".
 			 "Syntax to create a location redirection:\n".
-			 "    compress.php r <fileOut> <target_loc>\n\n".
-			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8)\n".
+			 "    $appname r <fileOut> <target_loc>\n\n".
+			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCC)\n".
 			 "               The palette can be inside SCx file or in PL5 PL6 PL7 files.\n".
 			 " <lines>       Image lines to get from input file.\n".
 			 " [compressor]  Compression type: RAW, RLE or PLETTER.\n".
@@ -126,6 +143,19 @@
 			 "                 ex: a 12 redirects to image 012.IMx\n".
 			 "\n";
 		exit(1);
+	}
+
+	//=================================================================================
+	function convertPalette89($pal) {
+		$out = "";
+		for ($i=0; $i<16; $i++) {
+			$r = ord($pal[0x29+$i*3]);
+			$g = ord($pal[0x29+$i*3+1]);
+			$b = ord($pal[0x29+$i*3+2]);
+			$grb = chr((($r & 0x0F)<<4) | ($b & 0x0F)).chr($g & 0x0F);
+			$out .= $grb;
+		}
+		return $out;
 	}
 
 	//=================================================================================
@@ -140,8 +170,8 @@
 			echo "ERROR: bad file type...\n";
 			exit;
 		}
-		$scr = substr($in, 3, 1);
-		if ($scr<'5' || $scr>'8') {
+		$scr = strtoupper(substr($in, 3, 1));
+		if (($scr<'5' || $scr>'8') && $scr!='C') {
 			echo "ERROR: bad screen mode ['$scr']...\n";
 			exit;
 		}
@@ -188,14 +218,38 @@
 	}
 
 	//=================================================================================
-	function compressChunks($file, $lines, $comp) {
+	function addPalette($file, $scr, $out, $pal) {
+		if ($pal===NULL) {
+			$filePalette = substr($file, 0, strlen($file)-3)."PL".$scr;
+			if (!file_exists($filePalette)) $filePalette = substr($file, 0, strlen($file)-3)."PAL";
+			if (!file_exists($filePalette)) $filePalette = "";
+		}
+
+		if ($pal!==NULL || $filePalette!="") {	// Add palette chunk
+			echo "### Adding image palette from file '$filePalette'\n";
+			if ($pal===NULL)
+				$pal = file_get_contents($filePalette);
+			if (strlen($pal)==32)
+				$out .= chr(CHUNK_PALETTE).pack("vv",32,32).$pal;
+			else if (strlen($pal)==89)
+				$out .= chr(CHUNK_PALETTE).pack("vv",32,32).convertPalette89($pal);
+			else
+				echo "@WARNING!!! Unknown Palette format...\n\n";
+		} else {
+			echo "### Palette not found [$filePalette]\n";
+		}
+	}
+
+	//=================================================================================
+	function compressChunks($file, $lines, $comp, $in=NULL, $pal=NULL) {
 		global $magic;
 
 		$tmp = "_0000000.tmp";
 		$out = $magic;
 
-		$scr = substr($file, -1);
-		if ($scr<'5' || $scr>'8') {
+		// Check screen mode
+		$scr = strtoupper(substr($file, -1));
+		if (($scr<'5' || $scr>'8') && $scr!='C') {
 			echo "ERROR: bad screen mode ['$scr']...\n";
 			exit;
 		}
@@ -203,28 +257,30 @@
 		$out .= $scr;
 		echo "### Lines $lines\n";
 
-		$filePalette = substr($file, strlen($file)-3)."PL".$scr;
-		if (file_exists($filePalette)) {	// Add palette chunk
-			echo "### Adding image palette from file '$filePalette'\n";
-			$out .= chr(CHUNK_PALETTE).pack("vv",32,32).substr(file_get_contents($filePalette), 0, 32);
-		} else {
-			if ($scr!=8) echo "### Palette not found\n";
+		// Add palette to paletted screen modes
+		if ($scr < 8 && $scr!='C') {
+			addPalette($file, $scr, $out, $pal);
 		}
 
-		$width = array(0,0,0,0,0,128,128,256,256);	// Bytes each Row in screen modes
-		$in = file_get_contents($file);
+		// Bytes each Row in screen modes
+		$width = array(0,0,0,0,0,128,128,256,256,'C'=>256);
+		
+		// Read file
+		if ($in===NULL)
+			$in = file_get_contents($file);
 		$in = substr($in, 7, $width[$scr]*$lines);
 		$pos = 0;
 		$i = 1;
 
+		$fullSize = strlen($in);
 		while ($pos < strlen($in)) {
 			$sizeIn = CHUNK_SIZE;
 			$sizeDelta = intval(CHUNK_SIZE/2);
 			$end = false;
 			do {
 				$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp);
-				if ($sizeIn+$pos>=strlen($in) && $sizeOut<CHUNK_SIZE) {
-					$sizeIn = strlen($in)-$pos;
+				if (($sizeIn+$pos >= $fullSize || $pos+CHUNK_SIZE <= $fullSize) && $sizeOut<=CHUNK_SIZE) {
+					$sizeIn = $fullSize-$pos;
 					$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp);
 					$end = true;
 				} else
@@ -232,11 +288,11 @@
 					$sizeIn += $sizeDelta;
 					$sizeDelta = intval($sizeDelta*0.96);
 				} else {
-				if ($sizeOut > CHUNK_SIZE) {
-					$sizeIn -= $sizeDelta;
-					$sizeDelta = intval($sizeDelta*0.95);
-				} else
-					$end = true;
+					if ($sizeOut > CHUNK_SIZE) {
+						$sizeIn -= $sizeDelta;
+						$sizeDelta = intval($sizeDelta*0.95);
+					} else
+						$end = true;
 				}
 				echo "\r\x1b[2K    #CHUNK ".strpad($i,2)." (".strpad($pos,5)."): sizeIn: $sizeIn bytes (out: $sizeOut bytes)";
 			} while (!$end);
@@ -246,12 +302,16 @@
 			$pos += $sizeIn;
 		}
 
-		echo "    In: ".strlen($in)." bytes\n    Out: ".strlen($out)." bytes [".number_format(strlen($out)/strlen($in)*100,1,'.','')."%]\n";
+		// Show result
+		echo "    In: ".$fullSize." bytes\n    Out: ".(strlen($out)+7)." bytes [".number_format(strlen($out)/$fullSize*100,1,'.','')."%]\n";
 		$file = basename($file);
 		$fileOut = substr($file, 0, strlen($file)-3)."IM".$scr;
+
+		// Write put file
 		echo "### Writing $fileOut\n";
 		file_put_contents($fileOut, $out);
 
+		// Delete temp files
 		@unlink($tmp);
 		@unlink($tmp.'.'.$comp[COMP_EXT]);
 		echo "### Done\n\n";

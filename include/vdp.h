@@ -57,6 +57,8 @@ void setRegVDP8(char reg, char value);
 void setVDP_Read(uint32_t vram);
 void setVDP_Write(uint32_t vram);
 
+void copyToVRAM(uint16_t source, uint32_t vram, uint16_t size);
+
 void enableVDP();
 void disableVDP();
 

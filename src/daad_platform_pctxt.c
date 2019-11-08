@@ -3,6 +3,8 @@
 	PC TXT: Platform dependent API functions
 =========================================================
 */
+#ifdef PCTXT
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -233,3 +235,5 @@ void sfxSound(uint8_t value1, uint8_t value2)
 {
 	//TODO
 }
+
+#endif //PCTXT

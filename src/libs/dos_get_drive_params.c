@@ -11,7 +11,7 @@ char get_drive_params(char drive, DPARM_info *param) __naked {
     ld l,0(ix)
     ld e,1(ix)
     ld d,2(ix)
-    ld c, DPARM
+    ld c,#DPARM
     DOSCALL
 
     ld h, #0x00
