@@ -9,7 +9,7 @@ You can see the classic interpreters [here](https://github.com/daad-adventure-wr
 **MSX2DAAD** is also compatible with [Maluva DAAD extension](https://github.com/Utodev/MALUVA), that add new functionalities to the classic interpreters like:
 
 - Load bitmap images from disk.
-- Load/Save the game from/to disk.
+- Load/Save your gameplay from/to disk.
 - Use of external texts in a disk file providing 64kb of additional compressed texts.
 
 ![](assets/msx2daad_sample.png) 
@@ -18,13 +18,14 @@ You can see the classic interpreters [here](https://github.com/daad-adventure-wr
 
 ### Compilation
 
-You need SDCC to compile the source code. Then just use the makefile.
+You need SDCC to compile the source code.  
+Then just use the makefile.
 
 ***
 
 ### Source and compiled adventure files
 
-You can use the classic [**DC**](https://github.com/daad-adventure-writer/daad) compiler using **.SCE** files to create your adeventure. You can also use the new [**DRC**](https://github.com/Utodev/DRC) compiler using **.DSF** files, a format very similar to **SCE** but improved to create the **DDB** compiled file.
+You can use the classic [**DC**](https://github.com/daad-adventure-writer/daad) compiler using **.SCE** files to create your adventure. You can also use the new [**DRC**](https://github.com/Utodev/DRC) compiler using **.DSF** files, a format very similar to **SCE** but improved to create the **DDB** compiled file.
 
 ### Supported languages
 
@@ -72,7 +73,7 @@ You can use the classic [**DC**](https://github.com/daad-adventure-writer/daad) 
 
 ***
 
-###Aditional tools in /bin folder
+### Aditional tools in /bin folder
 
 #### **imgwizard.php**
 A tool to convert SC5, SC6, SC7, SC8 and SCC images to the **msx2daad** and compressed format.  
@@ -103,12 +104,11 @@ You need **openMSX** emulator configured and in the path.
 
 ***
 
-###External tools
+### External tools
 
 #### **Online MSX Screen Converter (jannone)**
 You can use this page to convert yours original pictures to MSX format.  
-Palette files are not generated and must be done handmade, but *screen 8* and *screen 12* files can be generated easily.
-
+Palette files are not generated and must be done handmade, but *screen 8* and *screen 12* files can be generated easily.  
 http://msx.jannone.org/conv/
 
 #### **MSXViewer5 Screen Converter (MarMSX)**
