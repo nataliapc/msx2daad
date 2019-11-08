@@ -16,6 +16,12 @@ You can see the classic interpreters [here](https://github.com/daad-adventure-wr
 
 ***
 
+### Compilation
+
+You need SDCC to compile the source code. Then just use the makefile.
+
+***
+
 ### Source and compiled adventure files
 
 You can use the classic [**DC**](https://github.com/daad-adventure-writer/daad) compiler using **.SCE** files to create your adeventure. You can also use the new [**DRC**](https://github.com/Utodev/DRC) compiler using **.DSF** files, a format very similar to **SCE** but improved to create the **DDB** compiled file.
