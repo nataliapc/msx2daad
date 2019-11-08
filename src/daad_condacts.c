@@ -1854,7 +1854,32 @@ void do_REDO()
 }
 #endif
 #ifndef DISABLE_DOALL
-void do_DOALL() {printf("===== DOALL not implemented\n"); pPROC++;}
+/*	Another powerful action which allows the implementation 'ALL' type command.
+
+	1 - An attempt is made to find an object at Location locno. 
+	    If this is unsuccessful the DOALL is cancelled and action DONE is performed.
+	2 - The object number is converted into the LS Noun1 (and Adjective1 if present)
+	    by reference to the object definition section. If Noun(Adjective)1 matches
+	    Noun(Adjective)2 then a return is made to step 1. This implements the "Verb
+	    ALL EXCEPT object" facility of the parser.
+	3 - The next condact and/or entry in the table is then considered. This 
+	    effectively converts a phrase of "Verb All" into "Verb object" which is
+	    then processed by the table as if the player had typed it in.
+	4 - When an attempt is made to exit the current table, if the DOALL is still 
+	    active (i.e. has not been cancelled by an action) then the attention of 
+	    DAAD is returned to the DOALL as from step 1; with the object search 
+	    continuing from the next highest object number to that just considered.
+
+	The main ramification of the search method through the object definition 
+	section is; objects which have the Same Noun(Adjective) description (where the 
+	game works out which object is referred to by its presence) must be checked for 
+	in ascending order of object number, or one of them may be missed.
+	Use the of DOALL to implement things like OPEN ALL must account for fact that 
+	doors are often flags only and would have to bemade into objects if they were to 
+	be included in a DOALL. */
+void do_DOALL() {	// locno+
+	printf("===== DOALL not implemented\n"); pPROC++;
+}
 #endif
 /*	Skip a distance of -128 to 128, or to the specified label. Will move the 
 	current entry in a table back or fore. 0 means next entry (so is meaningless).
