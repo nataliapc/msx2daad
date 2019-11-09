@@ -70,6 +70,8 @@ msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
 	$(DIR_GUARD)
 	$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) asm.lib $(subst .com,.c,$^)
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
+	@echo "**** Copying .COM files to DSK/"
+	@cp *.com dsk/
 
 
 clean:
@@ -83,7 +85,7 @@ prepro: $(INCDIR)daad_defines.h clean
 	@php bin/precomp.php dsk/DAAD.DDB $(INCDIR)daad_defines.h
 
 
-test: release
+test:
 	@bash -c 'if pgrep -x "openmsx" > /dev/null \
 	; then \
 		echo "**** openmsx already running..." \

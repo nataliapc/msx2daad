@@ -55,8 +55,6 @@
 #ifndef  __PLATFORM_MSX2_H__
 #define  __PLATFORM_MSX2_H__
 
-#define VERSION		"MSX2DAAD v1.0"
-
 // ========================================================
 // Values to customize the MSX2 program
 
@@ -78,11 +76,20 @@
 #endif
 #ifndef DISABLE_GFXCHAR_COLOR
 	//#define DISABLE_GFXCHAR_COLOR	// Disable ink/paper with upper gfx chars (>=128)
+									// This is used if you create multicolor object icons in the upper charset
 #endif
 
 
 // ========================================================
 // MSX2 Platform API automatic constants
+
+#ifdef LANG_EN
+	#define LANG  	EN
+#endif 
+#ifdef LANG_ES
+	#define LANG  	ES
+#endif 
+#define VERSION		"MSX2DAAD v1.0#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
 
 #if SCREEN==6 || SCREEN==7
 	#define SCREEN_WIDTH    512
@@ -96,11 +103,11 @@
 	#define SCREEN_CHAR     SCREEN
 #endif
 
-#if !defined(FONTWIDTH)
+#ifndef FONTWIDTH
 	#error "FONTWIDTH constant must be 6 or 8!"
 #endif
 
-#if !defined(SCREEN_WIDTH)
+#ifndef SCREEN_WIDTH
 	#error "SCREEN_WIDTH must be defined!"
 #endif
 

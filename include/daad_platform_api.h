@@ -22,6 +22,9 @@
 	#include "daad_platform_pctxt.h"
 #endif
 
+#ifndef VERSION
+	#error "VERSION define must be declared in the daad_platform_XXX.c file."
+#endif
 
 // Macro helpers
 #define STRINGIFY2(x)	#x

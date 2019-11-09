@@ -2069,7 +2069,7 @@ void do_GFX()		// value1 value2
 /*	Will load into the picture buffer the given picture. If there no corresponding
 	picture the next entry will be carried out, if there is then the next CondAct 
 	is executed. */
-#if !defined(DISABLE_PICTURE) && !defined(DISABLE_EXTERN)
+#if !defined(DISABLE_PICTURE) || !defined(DISABLE_EXTERN)
 void _internal_picture(uint8_t newPic) {
 	lastPicShow = (newPic==lastPicLocation);
 	if (!lastPicShow) {
@@ -2088,7 +2088,7 @@ void do_PICTURE()	// picno
 	If value !=0 and the picture is not a subroutine then the given window area 
 	is cleared. This is normally used with indirection and a flag to check and 
 	display darkness. */
-#if !defined(DISABLE_DISPLAY) && !defined(DISABLE_EXTERN)
+#if !defined(DISABLE_DISPLAY) || !defined(DISABLE_EXTERN)
 void _internal_display(uint8_t value) {
 	if (value) {
 		do_CLS();

@@ -279,7 +279,7 @@
 			$end = false;
 			do {
 				$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp);
-				if (($sizeIn+$pos >= $fullSize || $pos+CHUNK_SIZE <= $fullSize) && $sizeOut<=CHUNK_SIZE) {
+				if (($sizeIn+$pos >= $fullSize) && $sizeOut<=CHUNK_SIZE) {
 					$sizeIn = $fullSize-$pos;
 					$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp);
 					$end = true;

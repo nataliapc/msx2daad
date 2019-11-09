@@ -110,7 +110,7 @@ If after that you do a clean compilation, you will obtain a thin **msx2daad** ex
 
 Execute this tool from the root folder of **msx2daad**:
 
-	$> php bin/precomp.php dsk/DAAD.DDB
+	$> php bin/precomp.php dsk/DAAD.DDB include/daad_defines.h
 
 #### **dsktool/dsktool.exe**
 A Linux/Win32 tool to create and manage disk images (FAT12) from commandline.  
