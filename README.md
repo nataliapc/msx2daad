@@ -16,16 +16,31 @@ You can see the classic interpreters [here](https://github.com/daad-adventure-wr
 
 ***
 
+### License
+
+There is a LICENSE file you can read. You have rights to use, copy, modify, etc, this interpreter in your own games. But if you do a commercial use of it, you must send me a copy of your game.  
+Contact email: natypclicense@gmail.com
+
+***
+
 ### Compilation
 
 You need SDCC to compile the source code.  
-Then just use the makefile.
+Then just use the makefile:
+
+To clean and compile the msx2daad\.com:
+> make clean all
+
+To test the /dsk folder content with openMSX (you need to add at least your DAAD\.DDB to /dsk):
+> make test
 
 ***
 
 ### Source and compiled adventure files
 
 You can use the classic [**DC**](https://github.com/daad-adventure-writer/daad) compiler using **.SCE** files to create your adventure. You can also use the new [**DRC**](https://github.com/Utodev/DRC) compiler using **.DSF** files, a format very similar to **SCE** but improved to create the **DDB** compiled file.
+
+***
 
 ### Supported languages
 
@@ -82,6 +97,11 @@ The compression can be: **raw** (no compression), **rle**, or **pletter** (needs
 #### **precomp.php**
 Read a *DDB* adventure file and generates the file */src/daad_defines.h* with a list of condacts not used in the input adventure file.  
 If after that you do a clean compilation, you will obtain a thin **msx2daad** executable.
+
+#### **dsktool/dsktool.exe**
+A Linux/Win32 tool to create and manage disk images (FAT12) from commandline.
+You can create disk images of 360Kb, 720Kb, 1440Kb and 2880Kb sizes.  
+List, add, delete, and update files of your MSX-DOS disk images.
 
 #### **testdaad.c**
 A command line program for testing your adventures using a text file with the commands and the expected texts in return.  
