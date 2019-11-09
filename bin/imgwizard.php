@@ -267,7 +267,11 @@
 		
 		// Read file
 		if ($in===NULL)
-			$in = file_get_contents($file);
+			$in = @file_get_contents($file);
+		if ($in===FALSE) {
+			echo "File not found...\n";
+			exit;
+		}
 		$in = substr($in, 7, $width[$scr]*$lines);
 		$pos = 0;
 		$i = 1;

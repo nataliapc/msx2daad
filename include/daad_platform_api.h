@@ -66,7 +66,7 @@ void gfxPutChWindow(uint8_t c);
 void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy);
 void gfxPutInputEcho(char c, bool keepPos);
 bool gfxPicturePrepare(uint8_t location);
-void gfxPictureShow();
+bool gfxPictureShow();
 
 
 // SFX functions

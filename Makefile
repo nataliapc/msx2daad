@@ -24,10 +24,10 @@ REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel daad.rel
 
 PROGRAMS = msx2daad.com
 
-all: $(PROGRAMS) testdaad
+all: $(PROGRAMS) bin/testdaad
 
-testdaad: bin/testdaad.c
-	gcc $^ -o bin/$@
+bin/testdaad: bin/testdaad.c
+	gcc $^ -o $@
 
 $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
@@ -85,7 +85,7 @@ prepro: $(INCDIR)daad_defines.h clean
 	@php bin/precomp.php dsk/DAAD.DDB $(INCDIR)daad_defines.h
 
 
-test:
+test: all
 	@bash -c 'if pgrep -x "openmsx" > /dev/null \
 	; then \
 		echo "**** openmsx already running..." \
@@ -95,6 +95,12 @@ test:
 		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
 	; fi'
 
+disk: all
+	@rm -f game.dsk
+	@cd dsk ; dsktool a ../game.dsk *.*
+	@echo "**** game.dsk generated ****"
+	bin/dsk2rom -c 0 -f game.dsk game.rom
+	@echo "**** game.rom generated ****"
 
 release: all
 	@echo "**** Copying .COM files to DSK/"

@@ -29,15 +29,17 @@ const char FILES_BIN[] = "FILES.BIN\0  ";
 
 //Default FILES.BIN content (overwrited if a FILES.BIN exists)
 const char FILES[] = 
-	"FONT.IM"STRINGIFY(SCREEN_CHAR)"\0    "		// Filename for Font file
-	"DAAD.DDB\0    "							// Filename for DDB file
-	"000.IM"STRINGIFY(SCREEN_CHAR)"\0     "		// Buffer to fill with the image to load (XPICTURE)
-	"TEXTS.XDB\0   ";							// Filename with externalized texts (XMES/XMESSAGE)
+	"FONT    IM"STRINGIFY(SCREEN_CHAR)"\n"		// Filename for Font file
+	"DAAD    DDB\n"								// Filename for DDB file
+	"TEXTS   XDB\n"								// Filename with externalized texts (XMES/XMESSAGE)
+	"LOADING IM"STRINGIFY(SCREEN_CHAR)"\n"		// Filename for loading screen
+	"000     IM"STRINGIFY(SCREEN_CHAR)"\n";		// Buffer to fill with the image to load (XPICTURE)
 
 #define FILE_FONT	&FILES[0]
-#define FILE_DDB	&FILES[13]
-#define FILE_IMG	&FILES[26]
-#define FILE_XDB	&FILES[39]
+#define FILE_DDB	&FILES[12]
+#define FILE_XDB	&FILES[24]
+#define FILE_LOAD	&FILES[36]
+#define FILE_IMG	&FILES[48]
 
 //MSX special chars (DAAD chars 16-31)
 const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\x80\x81\x9A";	//ª¡¿«»áéíóúñÑçÇüÜ
@@ -288,6 +290,7 @@ uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size)
  */
 void loadFilesBin(int argc, char **argv)
 {
+	bool loadingOk;
 	char *aux;
 	uint16_t size = 0;
 	// Commandline parameter with new FILES_BIN?
@@ -296,13 +299,22 @@ void loadFilesBin(int argc, char **argv)
 	}
 
 	// Load name replacements for files if exists
-	loadFile(FILES_BIN, FILES, sizeof(FILES));
+	loadFile(FILES_BIN, FILES, filesize(FILES));
 
-	// Load image FONT (old DMG)
+	// Replace \n for \0 chars
+	aux = FILES;
+	*(aux+11) = *(aux+23) = *(aux+35) = *(aux+47) = *(aux+59) = '\0';
+
+
 	aux = malloc(13);
 	memcpy(aux, FILE_IMG, 13);
+	//Show LOADING picture
+	memcpy(FILE_IMG, FILE_LOAD, 13);
+	posVRAM = 0;
+	loadingOk = gfxPictureShow();
+
+	// Load image FONT (old DMG) to VRAM 2nd page
 	memcpy(FILE_IMG, FILE_FONT, 13);
-	// Read FONT from file to VRAM 2nd page
 	posVRAM = 0x10000;
 	gfxPictureShow();
 	// Restore & free
@@ -321,6 +333,8 @@ void loadFilesBin(int argc, char **argv)
 			loadExtendedTexts(FILE_XDB);
 		}
 	#endif
+
+//	if (loadingOk) do_INKEY();
 }
 
 
@@ -710,7 +724,7 @@ bool gfxPicturePrepare(uint8_t location)
  * 
  * @return			none.
  */
-void gfxPictureShow()
+bool gfxPictureShow()
 {
 	uint16_t fp;
 	IMG_CHUNK *chunk = (IMG_CHUNK*)heap_top;
@@ -754,7 +768,9 @@ void gfxPictureShow()
 		} while (!(size & 0xff00));
 
 		fclose(fp);
+		return true;
 	}
+	return false;
 }
 
 

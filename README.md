@@ -105,7 +105,7 @@ Example to create an image (*LOC1.IM8*) from a *Screen 8 MSX file* using only th
 You can execute the tool without arguments to see examples of all the options and uses.
 
 #### **precomp.php**
-Read a *DDB* adventure file and generates the file */src/daad_defines.h* with a list of condacts not used in the input adventure file.  
+Read a *DDB* adventure file and generates the file */include/daad_defines.h* with a list of condacts not used in the input adventure file.  
 If after that you do a clean compilation, you will obtain a thin **msx2daad** executable.
 
 Execute this tool from the root folder of **msx2daad**:
