@@ -98,9 +98,19 @@ There are empty templates in several languages to start your adventure:
 A tool to convert SC5, SC6, SC7, SC8 and SCC images to the **msx2daad** and compressed format.  
 The compression can be: **raw** (no compression), **rle**, or **pletter** (needs pletter executable in the path).
 
+Example to create an image (*LOC1.IM8*) from a *Screen 8 MSX file* using only the first 96 lines and compressing with RLE:
+
+	$> php imgwizard.php c LOC1.SC8 96 rle
+
+You can execute the tool without arguments to see examples of all the options and uses.
+
 #### **precomp.php**
 Read a *DDB* adventure file and generates the file */src/daad_defines.h* with a list of condacts not used in the input adventure file.  
 If after that you do a clean compilation, you will obtain a thin **msx2daad** executable.
+
+Execute this tool from the root folder of **msx2daad**:
+
+	$> php bin/precomp.php dsk/DAAD.DDB
 
 #### **dsktool/dsktool.exe**
 A Linux/Win32 tool to create and manage disk images (FAT12) from commandline.  
