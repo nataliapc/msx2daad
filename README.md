@@ -40,6 +40,10 @@ To test the /dsk folder content with openMSX (you need to add at least your DAAD
 
 You can use the classic [**DC**](https://github.com/daad-adventure-writer/daad) compiler using **.SCE** files to create your adventure. You can also use the new [**DRC**](https://github.com/Utodev/DRC) compiler using **.DSF** files, a format very similar to **SCE** but improved to create the **DDB** compiled file.
 
+There are empty templates in several languages to start your adventure:
+- SCE format for DC compiler ([EN](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/BLANK.SCE) / [ES](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/SPANISH.SCE) / [DE](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/GERMAN.SCE))
+- DSF format for DRC compiler ([EN](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_EN.DSF) / [ES](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_ES.DSF))
+
 ***
 
 ### Supported languages
@@ -99,7 +103,7 @@ Read a *DDB* adventure file and generates the file */src/daad_defines.h* with a 
 If after that you do a clean compilation, you will obtain a thin **msx2daad** executable.
 
 #### **dsktool/dsktool.exe**
-A Linux/Win32 tool to create and manage disk images (FAT12) from commandline.
+A Linux/Win32 tool to create and manage disk images (FAT12) from commandline.  
 You can create disk images of 360Kb, 720Kb, 1440Kb and 2880Kb sizes.  
 List, add, delete, and update files of your MSX-DOS disk images.
 
