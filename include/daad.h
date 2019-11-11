@@ -26,6 +26,7 @@
 #define LOC_WORN			253
 #define LOC_CARRIED			254
 #define LOC_HERE			255
+#define LOC_CONTAINER		256		// Fake location to indicate the object location is a container. See getObjectId()
 
 // Vocabulary constant
 #define NULLWORD			255
@@ -264,7 +265,7 @@ void printUserMsg(uint8_t num);
 void printLocationMsg(uint8_t num);
 void printObjectMsg(uint8_t num);
 void printObjectMsgModif(uint8_t num, char modif);
-uint8_t getObjectById(uint8_t noun, uint8_t adjc);
+uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location);
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn);
 void referencedObject(uint8_t objno);
 

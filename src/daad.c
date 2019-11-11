@@ -167,13 +167,13 @@ void initObjects()
 
 	flags[fNOCarr] = 0;
 
-	for (int i=0; i<hdr->numObjDsc; i++) {
-		objects[i].location     = *(objLoc + i);
-		objects[i].attribs.byte = *(attrLoc + i);
-		objects[i].extAttr1     = *(extAttrLoc + i*2);
-		objects[i].extAttr2     = *(extAttrLoc + i*2 + 1);
-		objects[i].nounId       = *(nameObj + i*2);
-		objects[i].adjectiveId  = *(nameObj + i*2 + 1);
+	for (int i=0; i < hdr->numObjDsc; i++) {
+		objects[i].location     = *(objLoc++);
+		objects[i].attribs.byte = *(attrLoc++);
+		objects[i].extAttr1     = *(extAttrLoc++);
+		objects[i].extAttr2     = *(extAttrLoc++);
+		objects[i].nounId       = *(nameObj++);
+		objects[i].adjectiveId  = *(nameObj++);
 		if (objects[i].location==LOC_CARRIED) flags[fNOCarr]++;
 	}
 }
@@ -362,10 +362,19 @@ printf("populateLogicalSentence()\n");
 	}
 
 	if (flags[fNoun2]!=NULLWORD) {
-		uint8_t obj = getObjectById(flags[fNoun2], flags[fAdject2]);
-		if (obj!=NULLWORD) flags[fO2Con] = objects[obj].attribs.mask.isContainer;
+		uint8_t obj = getObjectId(flags[fNoun2], flags[fAdject2], LOC_HERE);
+		if (obj!=NULLWORD) {
+			flags[fO2Num] = obj;
+			flags[fO2Loc] = objects[obj].location;
+			flags[fO2Con] = objects[obj].attribs.mask.isContainer << 7;
+			flags[fO2Att] = objects[obj].extAttr1;
+			flags[fO2Att+1] = objects[obj].extAttr2;
+		} else {
+			flags[fO2Num] = LOC_NOTCREATED;							// TODO: check default values when Object2 is undefined
+			flags[fO2Loc] = LOC_NOTCREATED;
+			flags[fO2Con] = flags[fO2Att] = flags[fO2Att+1] = 0;
+		}
 	}
-
 #ifdef VERBOSE2
 printf("VERB:%u NOUN1:%u ADJ1:%u, ADVERB:%u PREP: %u NOUN2:%u, ADJ2:%u %u\n",flags[fVerb],flags[fNoun1],flags[fAdject1],flags[fAdverb],flags[fPrep],flags[fNoun2],flags[fAdject2]);
 #endif
@@ -782,19 +791,26 @@ void printObjectMsgModif(uint8_t num, char modif)
 }
 
 /*
- * Function: getObjectById
+ * Function: getObjectId
  * --------------------------------
  * Return de object ID by Noun+Adjc ID.
  *  
  * @param noun		Noun ID.
- * @param adjc		Adjective ID.
+ * @param adjc		Adjective ID, or NULLWORD to disable adjective filter.
+ * @location		Location where the object must be, LOC_HERE to disable location filter, or LOC_CONTAINER if location is a container.
  * @return			Object ID if found or NULLWORD.
  */
-uint8_t getObjectById(uint8_t noun, uint8_t adjc)
+uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
 {
 	for (int i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].nounId==noun && objects[i].adjectiveId==adjc)
+		if (objects[i].nounId==noun && 
+		   (adjc==NULLWORD || objects[i].adjectiveId==adjc) && 							// If 'adjc' not needed or 'adjc' matchs
+		   ((location==LOC_HERE || objects[i].location==location) ||					// It's in anywhere or placed in 'location'...
+		    (location==LOC_CONTAINER && location<hdr->numObjDsc && 
+										objects[location].attribs.mask.isContainer)))	// ...or if it's in a container
+		{
 			return i;
+		}
 	}
 	return NULLWORD;
 }

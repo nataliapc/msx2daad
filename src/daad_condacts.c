@@ -157,6 +157,140 @@ const CONDACT_LIST condactList[] = {
 	{ do_RESET,		1 },
 };
 
+#ifdef VERBOSE
+const CondactArgs const CONDACTS[256] = {
+	{ "AT",        1 },
+	{ "NOTAT",     1 },
+	{ "ATGT",      1 },
+	{ "ATLT",      1 },
+	{ "PRESENT",   1 },
+	{ "ABSENT",    1 },
+	{ "WORN",      1 },
+	{ "NOTWORN",   1 },
+	{ "CARRIED",   1 },
+	{ "NOTCARR",   1 },
+	{ "CHANCE",    1 },
+	{ "ZERO",      1 },
+	{ "NOTZERO",   1 },
+	{ "EQ",        2 },
+	{ "GT",        2 },
+	{ "LT",        2 },
+	{ "ADJECT1",   1 },
+	{ "ADVERB",    1 },
+	{ "SFX",       2 },
+	{ "DESC",      1 },
+	{ "QUIT",      0 },
+	{ "END",       0 },
+	{ "DONE",      0 },
+	{ "OK",        0 },
+	{ "ANYKEY",    0 },
+	{ "SAVE",      1 },
+	{ "LOAD",      1 },
+	{ "DPRINT",    1 },
+	{ "DISPLAY",   1 },
+	{ "CLS",       0 },
+	{ "DROPALL",   0 },
+	{ "AUTOG",     0 },
+	{ "AUTOD",     0 },
+	{ "AUTOW",     0 },
+	{ "AUTOR",     0 },
+	{ "PAUSE",     1 },
+	{ "SYNONYM",   2 },
+	{ "GOTO",      1 },
+	{ "MESSAGE",   1 },
+	{ "REMOVE",    1 },
+	{ "GET",       1 },
+	{ "DROP",      1 },
+	{ "WEAR",      1 },
+	{ "DESTROY",   1 },
+	{ "CREATE",    1 },
+	{ "SWAP",      2 },
+	{ "PLACE",     2 },
+	{ "SET",       1 },
+	{ "CLEAR",     1 },
+	{ "PLUS",      2 },
+	{ "MINUS",     2 },
+	{ "LET",       2 },
+	{ "NEWLINE",   0 },
+	{ "PRINT",     1 },
+	{ "SYSMESS",   1 },
+	{ "ISAT",      2 },
+	{ "SETCO",     1 },
+	{ "SPACE",     0 },
+	{ "HASAT",     1 },
+	{ "HASNAT",    1 },
+	{ "LISTOBJ",   0 },
+	{ "EXTERN",    2 },
+	{ "RAMSAVE",   0 },
+	{ "RAMLOAD",   1 },
+	{ "BEEP",      2 },
+	{ "PAPER",     1 },
+	{ "INK",       1 },
+	{ "BORDER",    1 },
+	{ "PREP",      1 },
+	{ "NOUN2",     1 },
+	{ "ADJECT2",   1 },
+	{ "ADD",       2 },
+	{ "SUB",       2 },
+	{ "PARSE",     1 },
+	{ "LISTAT",    1 },
+	{ "PROCESS",   1 },
+	{ "SAME",      2 },
+	{ "MES",       1 },
+	{ "WINDOW",    1 },
+	{ "NOTEQ",     2 },
+	{ "NOTSAME",   2 },
+	{ "MODE",      1 },
+	{ "WINAT",     2 },
+	{ "TIME",      2 },
+	{ "PICTURE",   1 },
+	{ "DOALL",     1 },
+	{ "MOUSE",     1 },
+	{ "GFX",       2 },
+	{ "ISNOTAT",   2 },
+	{ "WEIGH",     2 },
+	{ "PUTIN",     2 },
+	{ "TAKEOUT",   2 },
+	{ "NEWTEXT",   0 },
+	{ "ABILITY",   2 },
+	{ "WEIGHT",    1 },
+	{ "RANDOM",    1 },
+	{ "INPUT",     2 },
+	{ "SAVEAT",    0 },
+	{ "BACKAT",    0 },
+	{ "PRINTAT",   2 },
+	{ "WHATO",     0 },
+	{ "CALL",      1 },
+	{ "PUTO",      1 },
+	{ "NOTDONE",   0 },
+	{ "AUTOP",     1 },
+	{ "AUTOT",     1 },
+	{ "MOVE",      1 },
+	{ "WINSIZE",   2 },
+	{ "REDO",      0 },
+	{ "CENTRE",    0 },
+	{ "EXIT",      1 },
+	{ "INKEY",     0 },
+	{ "BIGGER",    2 },
+	{ "SMALLER",   2 },
+	{ "ISDONE",    0 },
+	{ "ISNDONE",   0 },
+	{ "SKIP",      1 },
+	{ "RESTART",   0 },
+	{ "TAB",       1 },
+	{ "COPYOF",    2 },
+	{ "NOT_USED1", 0 },
+	{ "COPYOO",    2 },
+	{ "NOT_USED2", 0 },
+	{ "COPYFO",    2 },
+	{ "NOT_USED3", 0 },
+	{ "COPYFF",    2 },
+	{ "COPYBF",    2 },
+	{ "RESET",     0 }
+};
+#endif	//VERBOSE
+
+
 const char SAVEGAME[] = "SAVEGAME.000";
 
 void _internal_picture(uint8_t value);
@@ -168,9 +302,9 @@ void _internal_display(uint8_t value);
 //===============================================
 void initializePROC()
 {
-#ifdef VERBOSE
-printf("initializePROC()\n");
-#endif
+//#ifdef VERBOSE
+//printf("initializePROC()\n");
+//#endif
 	memset(procStack, 0, sizeof(procStack));
 	currProc = procStack-1;
 }
@@ -178,9 +312,9 @@ printf("initializePROC()\n");
 //===============================================
 void pushPROC(uint8_t proc)
 {
-#ifdef VERBOSE
-printf("pushPROC(%u)\n",proc);
-#endif
+//#ifdef VERBOSE
+//printf("pushPROC(%u)\n",proc);
+//#endif
 	currProc++;
 	if (currProc-procStack >= NUM_PROCS)
 		errorCode(3);
@@ -193,7 +327,7 @@ printf("pushPROC(%u)\n",proc);
 bool popPROC()
 {
 #ifdef VERBOSE
-printf("popPROC()\n");
+//printf("popPROC()\n");
 #endif
 	if (currProc > procStack) memset(currProc, 0, sizeof(PROCstack));
 	currProc--;
@@ -206,10 +340,10 @@ printf("popPROC()\n");
 //===============================================
 PROCentry* getPROCess(uint8_t proc)
 {
-#ifdef VERBOSE
-printf("getPROCess(%u)\n",proc);
-printf("    Pos: %p\n",*(((uint16_t*)hdr->prcLstPos) + proc));
-#endif
+//#ifdef VERBOSE
+//printf("getPROCess(%u)\n",proc);
+//printf("    Pos: %p\n",*(((uint16_t*)hdr->prcLstPos) + proc));
+//#endif
 	if (proc >= hdr->numPrc) errorCode(6);
 	return (PROCentry*)&ddb[*(((uint16_t*)hdr->prcLstPos) + proc)];
 }
@@ -217,10 +351,10 @@ printf("    Pos: %p\n",*(((uint16_t*)hdr->prcLstPos) + proc));
 //===============================================
 char* getPROCEntryCondacts()
 {
-#ifdef VERBOSE
-printf("getPROCEntryCondacts()\n");
-printf("    Pos: %p\n",(uint16_t)(currProc->entry->pCondacts));
-#endif
+//#ifdef VERBOSE
+//printf("getPROCEntryCondacts()\n");
+//printf("    Pos: %p\n",(uint16_t)(currProc->entry->pCondacts));
+//#endif
 	return &ddb[(uint16_t)(currProc->entry->pCondacts)];
 }
 
@@ -234,10 +368,10 @@ char* stepPROCEntryCondacts(int8_t step)
 //===============================================
 void processPROC()
 {
-#ifdef VERBOSE
-printf("processPROC()\n");
-printf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
-#endif
+//#ifdef VERBOSE
+//printf("processPROC()\n");
+//printf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
+//#endif
 	CondactStruct *currCondact;
 	uint8_t temp;
 
@@ -270,9 +404,9 @@ printf("\n");
 				currProc->condactIni = getPROCEntryCondacts();
 				currProc->condact = currProc->condactIni;
 			}
-#ifdef VERBOSE
-printf("  VERB:%u NOUN:%u [Pos:%p]\n",currProc->entry->verb, currProc->entry->noun, (char*)currProc->entry-ddb);
-#endif
+//#ifdef VERBOSE
+//printf("  VERB:%u NOUN:%u [Pos:%p]\n",currProc->entry->verb, currProc->entry->noun, (char*)currProc->entry-ddb);
+//#endif
 		} while (!((currProc->entry->verb==NULLWORD || currProc->entry->verb==flags[fVerb]) &&
 				 (currProc->entry->noun==NULLWORD || currProc->entry->noun==flags[fNoun1])));
 #ifdef VERBOSE
@@ -309,24 +443,31 @@ uint8_t getValueOrIndirection()
 }
 
 
-
 // =============================================================================
 // Conditions of player locations [4 condacts]
+// =============================================================================
 
 /*	Succeeds if the current location is the same as locno. */
-#ifndef DISABLE_AT
+#if !defined(DISABLE_AT) || !defined(DISABLE_NOTAT)
 void do_AT()		// locno 
 {
 	checkEntry = (getValueOrIndirection() == flags[fPlayer]);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the current location is different to locno. */
 #ifndef DISABLE_NOTAT
 void do_NOTAT()		// locno
 {
-	checkEntry = (getValueOrIndirection() != flags[fPlayer]);
+	do_AT();
+	checkEntry = !checkEntry;
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the current location is greater than locno. */
 #ifndef DISABLE_ATGT
 void do_ATGT()		// locno
@@ -334,6 +475,9 @@ void do_ATGT()		// locno
 	checkEntry = (getValueOrIndirection() > flags[fPlayer]);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the current location is less than locno. */
 #ifndef DISABLE_ATLT
 void do_ATLT()		// locno
@@ -344,70 +488,96 @@ void do_ATLT()		// locno
 
 // =============================================================================
 // Conditions of object locations [8 condacts]
+// =============================================================================
 
 /*	Succeeds if Object objno. is carried (254), worn (253) or at the current 
 	location [fPlayer]. */
-#ifndef DISABLE_PRESENT
+#if !defined(DISABLE_PRESENT) || !defined(DISABLE_ABSENT)
 void do_PRESENT()	// objno
 {
 	Object *obj = &objects[getValueOrIndirection()];
 	checkEntry = (obj->location>LOC_NOTCREATED || obj->location==flags[fPlayer]);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Object objno. is not carried (254), not worn (253) and not at 
 	the current location [fPlayer]. */
 #ifndef DISABLE_ABSENT
 void do_ABSENT()	// objno
 {	
-	Object *obj = &objects[getValueOrIndirection()];
-	checkEntry = (obj->location<=LOC_NOTCREATED && obj->location!=flags[fPlayer]);
+	do_PRESENT();
+	checkEntry = !checkEntry;
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if object objno. is worn. */
-#ifndef DISABLE_WORN
+#if !defined(DISABLE_WORN) || !defined(DISABLE_NOTWORN)
 void do_WORN()		// objno
 {
 	checkEntry = (objects[getValueOrIndirection()].location==LOC_WORN);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Object objno. is not worn. */
 #ifndef DISABLE_NOTWORN
 void do_NOTWORN()	// objno
 {
-	checkEntry = (objects[getValueOrIndirection()].location!=LOC_WORN);
+	do_WORN();
+	checkEntry = !checkEntry;
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Object objno. is carried. */
-#ifndef DISABLE_CARRIED
+#if !defined(DISABLE_CARRIED) || !defined(DISABLE_NOTCARR)
 void do_CARRIED()	// objno
 {
 	checkEntry = (objects[getValueOrIndirection()].location==LOC_CARRIED);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Object objno. is not carried. */
 #ifndef DISABLE_NOTCARR
 void do_NOTCARR()
 {
-	checkEntry = (objects[getValueOrIndirection()].location!=LOC_CARRIED);
+	do_CARRIED();
+	checkEntry = !checkEntry;
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Object objno. is at Location locno. */
-#ifndef DISABLE_ISAT
+#if !defined(DISABLE_ISAT) || !defined(DISABLE_ISNOTAT)
 void do_ISAT()		// objno locno+
 {
 	checkEntry = (objects[getValueOrIndirection()].location==*pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Object objno. is not at Location locno. */
 #ifndef DISABLE_ISNOTAT
 void do_ISNOTAT()	// objno locno+
 {
-	checkEntry = (objects[getValueOrIndirection()].location!=*pPROC++);
+	do_ISAT();
+	checkEntry = !checkEntry;
 }
 #endif
 
 // =============================================================================
 // Conditions for values/flags comparation [10 condacts]
+// =============================================================================
 
 /*	Succeeds if Flag flagno. is set to zero. */
 #ifndef DISABLE_ZERO
@@ -416,6 +586,9 @@ void do_ZERO()		// flagno
 	checkEntry = !flags[getValueOrIndirection()];
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Flag flagno. is not set to zero. */
 #ifndef DISABLE_NOTZERO
 void do_NOTZERO()	// flagno
@@ -423,20 +596,30 @@ void do_NOTZERO()	// flagno
 	checkEntry = flags[getValueOrIndirection()];
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Flag flagno. is equal to value. */
-#ifndef DISABLE_EQ
+#if !defined(DISABLE_EQ) || !defined(DISABLE_NOTEQ)
 void do_EQ()		// flagno value
 {
 	checkEntry = (flags[getValueOrIndirection()] == *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Flag flagno. is not equal to value. */
 #ifndef DISABLE_NOTEQ
 void do_NOTEQ()		// flagno value
 {
-	checkEntry = (flags[getValueOrIndirection()] != *pPROC++);
+	do_EQ();
+	checkEntry = !checkEntry;
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Flag flagno. is greater than value. */
 #ifndef DISABLE_GT
 void do_GT()		// flagno value
@@ -444,6 +627,9 @@ void do_GT()		// flagno value
 	checkEntry = (flags[getValueOrIndirection()] > *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Flag flagno. is set to less than value. */
 #ifndef DISABLE_LT
 void do_LT()		// flagno value
@@ -451,20 +637,30 @@ void do_LT()		// flagno value
 	checkEntry = (flags[getValueOrIndirection()] < *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Flag flagno 1 has the same value as Flag flagno 2. */
-#ifndef DISABLE_SAME
+#if !defined(DISABLE_SAME) || !defined(DISABLE_NOTSAME)
 void do_SAME()		// flagno1 flagno2
 {
 	checkEntry = (flags[getValueOrIndirection()] == flags[*pPROC++]);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if Flag flagno 1 does not have the same value as Flag flagno 2 . */
 #ifndef DISABLE_NOTSAME
 void do_NOTSAME()	// flagno1 flagno2
 {
-	checkEntry = (flags[getValueOrIndirection()] != flags[*pPROC++]);
+	do_SAME();
+	checkEntry = !checkEntry;
 }
 #endif
+
+// =============================================================================
+
 /*	Will be true if flagno 1 is larger than flagno 2 */
 #ifndef DISABLE_BIGGER
 void do_BIGGER()	// flagno1 flagno2
@@ -472,6 +668,9 @@ void do_BIGGER()	// flagno1 flagno2
 	checkEntry = (flags[getValueOrIndirection()] > flags[*pPROC++]);
 }
 #endif
+
+// =============================================================================
+
 /*	Will be true if flagno 1 is smaller than flagno 2 */
 #ifndef DISABLE_SMALLER
 void do_SMALLER()	// flagno1 flagno2
@@ -482,6 +681,7 @@ void do_SMALLER()	// flagno1 flagno2
 
 // =============================================================================
 // Conditions to check logical sentence [5 condacts]
+// =============================================================================
 
 /*	Succeeds if the first noun's adjective in the current LS is word. */
 #ifndef DISABLE_ADJECT1
@@ -490,6 +690,9 @@ void do_ADJECT1()
 	checkEntry = (flags[fAdject1] == *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the adverb in the current LS is word. */
 #ifndef DISABLE_ADVERB
 void do_ADVERB()
@@ -497,6 +700,9 @@ void do_ADVERB()
 	checkEntry = (flags[fAdverb] == *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the preposition in the current LS is word. */
 #ifndef DISABLE_PREP
 void do_PREP()
@@ -504,6 +710,9 @@ void do_PREP()
 	checkEntry = (flags[fPrep] == *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the second noun in the current LS is word. */
 #ifndef DISABLE_NOUN2
 void do_NOUN2()
@@ -511,6 +720,9 @@ void do_NOUN2()
 	checkEntry = (flags[fNoun2] == *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the second noun's adjective in the current LS is word. */
 #ifndef DISABLE_ADJECT2
 void do_ADJECT2()
@@ -521,6 +733,7 @@ void do_ADJECT2()
 
 // =============================================================================
 // Conditions for random [1 condacts]
+// =============================================================================
 
 /*	Succeeds if percent is less than or equal to a random number in the range 
 	1-100 (inclusive). Thus a CHANCE 50 condition would allow PAW to look at the 
@@ -535,6 +748,7 @@ void do_CHANCE()	// percent
 
 // =============================================================================
 // Conditions for sub-process success/fail [2 condacts]
+// =============================================================================
 
 /*	Succeeds if the last table ended by exiting after executing at least one 
 	Action. This is useful to test for a single succeed/fail boolean value from 
@@ -548,6 +762,9 @@ void do_ISDONE()
 	checkEntry = lastIsDone;
 }
 #endif
+
+// =============================================================================
+
 /*	Succeeds if the last table ended without doing anything or with a NOTDONE 
 	action. */
 #ifndef DISABLE_ISNDONE
@@ -559,6 +776,7 @@ void do_ISNDONE()
 
 // =============================================================================
 // Conditions for object attributes [2 condacts]
+// =============================================================================
 
 #if !defined(DISABLE_HASAT) || !defined(DISABLE_HASNAT)
 void _internal_hasat(uint8_t value, bool negate)
@@ -597,6 +815,9 @@ void _internal_hasat(uint8_t value, bool negate)
 	checkEntry = flag;
 }
 #endif
+
+// =============================================================================
+
 /*	Checks the attribute specified by value. 0-15 are the object attributes for 
 	the current object. There are also several attribute numbers specified as 
 	symbols in SYMBOLS.SCE which check certain parts of the DAAD system flags */
@@ -615,6 +836,7 @@ void do_HASNAT()	// value
 
 // =============================================================================
 // Conditions for player interaction [2 condacts]
+// =============================================================================
 
 /*	Is a condition which will be satisfied if the player is pressing a key. 
 	In 16Bit machines Flags Key1 and Key2 (60 & 61) will be a standard IBM ASCII 
@@ -629,6 +851,9 @@ void do_INKEY()
 	printedLines = 0;
 }
 #endif
+
+// =============================================================================
+
 /*	SM12 ("Are you sure?") is printed and called. Will succeed if the player replies
 	starts with the first letter of SM30 ("Y") to then the remainder of the entry is 
 	discarded is carried out. */
@@ -648,6 +873,7 @@ void do_QUIT()
 
 // =============================================================================
 // Actions for object position manipulation [21 condacts]
+// =============================================================================
 
 /*	If Object objno. is worn or carried, SM25 ("I already have the _.") is printed 
 	and actions NEWTEXT & DONE are performed.
@@ -705,6 +931,9 @@ void do_GET()		// objno
 	_internal_get(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	If Object objno. is worn then SM24 ("I can't. I'm wearing the _.") is 
 	printed and actions NEWTEXT & DONE are performed.
 
@@ -725,8 +954,6 @@ void _internal_drop(uint8_t objno)
 	if (obj->location==LOC_CARRIED) {
 		obj->location = flags[fPlayer];
 		printSystemMsg(39);
-		do_NEWTEXT();
-		do_DONE();
 		flags[fNOCarr]--;
 	} else
 	if (obj->location==LOC_WORN) {
@@ -751,6 +978,9 @@ void do_DROP()		// objno
 	_internal_drop(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	If Object objno. is at the current location (but not carried or worn) SM49 
 	("I don't have the _.") is printed and actions NEWTEXT & DONE are 
 	performed.
@@ -804,6 +1034,9 @@ void do_WEAR()		// objno
 	_internal_wear(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	If Object objno. is carried or at the current location (but not worn) then 
 	SM50 ("I'm not wearing the _.") is printed and actions NEWTEXT & DONE are 
 	performed.
@@ -857,6 +1090,9 @@ void do_REMOVE()	// objno
 	_internal_remove(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	The position of Object objno. is changed to the current location and Flag 1
 	is decremented if the object was carried. */
 #ifndef DISABLE_CREATE
@@ -869,6 +1105,9 @@ void do_CREATE()	// objno
 	obj->location = flags[fPlayer];
 }
 #endif
+
+// =============================================================================
+
 /*	The position of Object objno. is changed to not-created and Flag 1 is 
 	decremented if the object was carried. */
 #ifndef DISABLE_DESTROY
@@ -881,6 +1120,9 @@ void do_DESTROY()	// objno
 	obj->location = LOC_NOTCREATED;
 }
 #endif
+
+// =============================================================================
+
 /*	The positions of the two objects are exchanged. Flag 1 is not adjusted. The 
 	currently referenced object is set to be Object objno 2. */
 #ifndef DISABLE_SWAP
@@ -895,6 +1137,9 @@ void do_SWAP()		// objno1 objno2
 	referencedObject(objno2);
 }
 #endif
+
+// =============================================================================
+
 /*	The position of Object objno. is changed to Location locno. Flag 1 is 
 	decremented if the object was carried. It is incremented if the object is 
 	placed at location 254 (carried). */
@@ -908,6 +1153,9 @@ void do_PLACE()		// objno locno+
 	obj->location = *pPROC++;
 }
 #endif
+
+// =============================================================================
+
 /*	The position of the currently referenced object (i.e. that object whose 
 	number is given in flag 51), is changed to be Location locno. Flag 54 
 	remains its old location. Flag 1 is decremented if the object was carried. 
@@ -921,6 +1169,9 @@ void do_PUTO()		// locno+
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
 }
 #endif
+
+// =============================================================================
+
 /*	If Object objno. is worn then SM24 ("I can't. I'm wearing the _.") is 
 	printed and actions NEWTEXT & DONE are performed.
 
@@ -939,26 +1190,27 @@ void do_PUTO()		// locno+
 void _internal_putin(uint8_t objno, uint8_t locno)
 {
 	Object *obj = objects + objno;
+	referencedObject(objno);					// TODO: check if must be referenced
 	if (obj->location==LOC_WORN) {
 		printSystemMsg(24);
 		do_NEWTEXT();
-		do_DONE();		
+		do_DONE();
 	} else
 	if (obj->location==flags[fPlayer]) {
 		printSystemMsg(49);
 		do_NEWTEXT();
-		do_DONE();		
+		do_DONE();
 	} else
 	if (obj->location!=flags[fPlayer] && obj->location!=LOC_CARRIED) {
 		printSystemMsg(28);
 		do_NEWTEXT();
-		do_DONE();		
+		do_DONE();
 	} else {
 		obj->location = locno;
 		flags[fNOCarr]--;
 		printSystemMsg(44);
 		do_SPACE();
-		printObjectMsg(objno);
+		printObjectMsgModif(flags[fO2Num], '_');
 		do_SPACE();
 		printSystemMsg(51);
 	}
@@ -970,6 +1222,9 @@ void do_PUTIN()		// objno locno
 	_internal_putin(getValueOrIndirection(), *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	If Object objno. is worn or carried, SM25 ("I already have the _.") is printed 
 	and actions NEWTEXT & DONE are performed.
 
@@ -999,6 +1254,7 @@ void do_PUTIN()		// objno locno
 void _internal_takeout(uint8_t objno, uint8_t locno)
 {
 	Object *obj = &objects[objno];
+	referencedObject(objno);					// TODO: check if must be referenced
 	if (obj->location==LOC_WORN || obj->location==LOC_CARRIED) {
 		printSystemMsg(25);
 		do_NEWTEXT();
@@ -1046,6 +1302,9 @@ void do_TAKEOUT()	// objno locno
 	_internal_takeout(getValueOrIndirection(), *pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	All objects which are carried or worn are created at the current location (i.e. 
 	all objects are dropped) and Flag 1 is set to 0. This is included for 
 	compatibility with older writing systems.
@@ -1056,11 +1315,15 @@ void do_DROPALL()
 {
 	int i=0;
 	do {
-		objects[i].location = flags[fPlayer];
+		if (objects[i].location==LOC_CARRIED || objects[i].location==LOC_WORN)
+			objects[i].location = flags[fPlayer];
 	} while(i++ < sizeof(objects));
 	flags[fNOCarr] = 0;
 }
 #endif
+
+// =============================================================================
+
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; here, carried, 
 	worn. i.e. The player is more likely to be trying to GET an object that is 
@@ -1073,13 +1336,22 @@ void do_DROPALL()
 #ifndef DISABLE_AUTOG
 void do_AUTOG()
 {
-	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
+	uint8_t objno = getObjectId(noun, adjc, flags[fPlayer]);
+	if (objno==NULLWORD) {
+		objno = getObjectId(noun, adjc, LOC_CARRIED);
+		if (objno==NULLWORD)
+			objno = getObjectId(noun, adjc, LOC_WORN);
+	}
 	if (objno==NULLWORD)
 		printSystemMsg(26);
 	else
 		_internal_get(objno);
 }
 #endif
+
+// =============================================================================
+
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; carried, worn, 
 	here. i.e. The player is more likely to be trying to DROP a carried object 
@@ -1089,16 +1361,30 @@ void do_AUTOG()
 	one of those.") is printed. Else SM8 ("I can't do that.") is printed (i.e. 
 	It is not a valid object but does exist in the game). Either way actions 
 	NEWTEXT & DONE are performed */
+uint8_t _internal_checkLocCARR_WORN_HERE()
+{
+	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
+	uint8_t objno = getObjectId(noun, adjc, LOC_CARRIED);
+	if (objno==NULLWORD) {
+		objno = getObjectId(noun, adjc, LOC_WORN);
+		if (objno==NULLWORD)
+			objno = getObjectId(noun, adjc, flags[fPlayer]);
+	}
+	return objno;
+}
 #ifndef DISABLE_AUTOD
 void do_AUTOD()
 {
-	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno==NULLWORD)
 		printSystemMsg(28);
 	else
 		_internal_drop(objno);
 }
 #endif
+
+// =============================================================================
+
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; carried, worn, 
 	here. i.e. The player is more likely to be trying to WEAR a carried object 
@@ -1111,13 +1397,16 @@ void do_AUTOD()
 #ifndef DISABLE_AUTOW
 void do_AUTOW()
 {
-	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno==NULLWORD)
 		printSystemMsg(28);
 	else
 		_internal_wear(objno);
 }
 #endif
+
+// =============================================================================
+
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; worn, carried, 
 	here. i.e. The player is more likely to be trying to REMOVE a worn object 
@@ -1130,13 +1419,22 @@ void do_AUTOW()
 #ifndef DISABLE_AUTOR
 void do_AUTOR()
 {
-	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
+	uint8_t objno = getObjectId(noun, adjc, LOC_WORN);
+	if (objno==NULLWORD) {
+		objno = getObjectId(noun, adjc, LOC_CARRIED);
+		if (objno==NULLWORD)
+			objno = getObjectId(noun, adjc, flags[fPlayer]);
+	}
 	if (objno==NULLWORD)
 		printSystemMsg(23);
 	else
 		_internal_remove(objno);
 }
 #endif
+
+// =============================================================================
+
 /*	A search for the object number represented by Noun(Adjective)1 is made in the 
 	object definition section in order of location priority; carried, worn, here. 
 	i.e. The player is more likely to be trying to PUT a carried object inside 
@@ -1149,13 +1447,16 @@ void do_AUTOR()
 #ifndef DISABLE_AUTOP
 void do_AUTOP()		// locno
 {
-	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno==NULLWORD)
 		printSystemMsg(28);
 	else
 		_internal_putin(objno, getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	A search for the object number represented by Noun(Adjective)1 is made in the 
 	object definition section in order of location priority; in container, 
 	carried, worn, here. i.e. The player is more likely to be trying to get an 
@@ -1169,13 +1470,26 @@ void do_AUTOP()		// locno
 #ifndef DISABLE_AUTOT
 void do_AUTOT()		// locno
 {
-	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
+	uint8_t objno = getObjectId(noun, adjc, LOC_CONTAINER);
+	if (objno==NULLWORD) {
+		objno = getObjectId(noun, adjc, LOC_CARRIED);
+		if (objno==NULLWORD) {
+			objno = getObjectId(noun, adjc, LOC_WORN);
+			if (objno==NULLWORD) {
+				objno = getObjectId(noun, adjc, flags[fPlayer]);
+			}
+		}
+	}
 	if (objno==NULLWORD)
 		printSystemMsg(28);
 	else
 		_internal_takeout(objno, getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	The position of Object objno2 is set to be the same as the position of 
 	Object Objno1. The currently referenced object is set to be Object objno2 */
 #ifndef DISABLE_COPYOO
@@ -1187,6 +1501,9 @@ void do_COPYOO()	// objno1 objno2
 	referencedObject(objno2);
 }
 #endif
+
+// =============================================================================
+
 /*	This Action bears no resemblance to the one with the same name in PAW. It has 
 	the pure function of placing all objects at the position given in the Object 
 	start table. It also sets the relevant flags dealing with no of objects 
@@ -1199,6 +1516,7 @@ void do_RESET() {
 
 // =============================================================================
 // Actions for object in flags manipulation [5 condacts]
+// =============================================================================
 
 /*	The position of Object objno. is copied into Flag flagno. This could be used 
 	to examine the location of an object in a comparison with another flag value. */
@@ -1209,6 +1527,9 @@ void do_COPYOF()	// objno flagno
 	flags[*pPROC++] = obj->location;
 }
 #endif
+
+// =============================================================================
+
 /*	The position of Object objno. is set to be the contents of Flag flagno. An 
 	attempt to copy from a flag containing 255 will result in a run time error. 
 	Setting an object to an invalid location will still be accepted as it 
@@ -1219,6 +1540,9 @@ void do_COPYFO()	// flagno objno
 	flags[getValueOrIndirection()] = (objects + *pPROC++)->location;
 }
 #endif
+
+// =============================================================================
+
 /*	A search for the object number represented by Noun(Adjective)1 is made in 
 	the object definition section in order of location priority; carried, worn, 
 	here. This is because it is assumed any use of WHATO will be related to 
@@ -1229,11 +1553,14 @@ void do_COPYFO()	// flagno objno
 #ifndef DISABLE_WHATO
 void do_WHATO()
 {
-	uint8_t objno = getObjectById(flags[fNoun1], flags[fAdject1]);
+	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno!=NULLWORD)
 		referencedObject(objno);
 }
 #endif
+
+// =============================================================================
+
 /*	Sets the currently referenced object to objno. */
 #ifndef DISABLE_SETCO
 void do_SETCO()		// objno
@@ -1241,6 +1568,9 @@ void do_SETCO()		// objno
 	referencedObject(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	The true weight of Object objno. is calculated (i.e. if it is a container, 
 	any objects inside have their weight added - don't forget that nested 
 	containers stop adding their contents after ten levels) and the value is 
@@ -1257,6 +1587,7 @@ void do_WEIGH()		// objno flagno
 
 // =============================================================================
 // Actions to manipulate flags [11 condacts]
+// =============================================================================
 
 /*	Flag flagno. is set to 255. */
 #ifndef DISABLE_SET
@@ -1265,6 +1596,9 @@ void do_SET()		// flagno
 	flags[getValueOrIndirection()] = 255;
 }
 #endif
+
+// =============================================================================
+
 /*	Flag flagno. is cleared to 0. */
 #ifndef DISABLE_CLEAR
 void do_CLEAR()		// flagno
@@ -1272,6 +1606,9 @@ void do_CLEAR()		// flagno
 	flags[getValueOrIndirection()] = 0;
 }
 #endif
+
+// =============================================================================
+
 /*	Flag flagno. is set to value. */
 #ifndef DISABLE_LET
 void do_LET()		// flagno value
@@ -1279,6 +1616,9 @@ void do_LET()		// flagno value
 	flags[getValueOrIndirection()] = *pPROC++;
 }
 #endif
+
+// =============================================================================
+
 /*	Flag flagno. is increased by value. If the result exceeds 255 the flag is
 	set to 255. */
 #ifndef DISABLE_PLUS
@@ -1290,6 +1630,9 @@ void do_PLUS()		// flagno value
 	flags[flagno] = (uint8_t)value;
 }
 #endif
+
+// =============================================================================
+
 /*	Flag flagno. is decreased by value. If the result is negative the flag is 
 	set to 0. */
 #ifndef DISABLE_MINUS
@@ -1300,6 +1643,9 @@ void do_MINUS()		// flagno value
 	flags[flagno] = value > flags[flagno] ? 0 : flags[flagno]-value;
 }
 #endif
+
+// =============================================================================
+
 /*	Flag flagno 2 has the contents of Flag flagno 1 added to it. If the result 
 	exceeds 255 the flag is set to 255. */
 #ifndef DISABLE_ADD
@@ -1311,6 +1657,9 @@ void do_ADD()		// flagno1 flagno2
 	flags[flagno2] = sum>255 ? 255 : (uint8_t)sum;
 }
 #endif
+
+// =============================================================================
+
 /*	Flag flagno 2 has the contents of Flag flagno 1 subtracted from it. If the
 	result is negative the flag is set to 0. */
 #ifndef DISABLE_SUB
@@ -1321,6 +1670,9 @@ void do_SUB()		// flagno1 flagno2
 	flags[flagno2] = subs > flags[flagno2] ? 0 : flags[flagno2]-subs;
 }
 #endif
+
+// =============================================================================
+
 /*	The contents of Flag flagno 1 is copied to Flag flagno 2. */
 #ifndef DISABLE_COPYFF
 void do_COPYFF()	// flagno1 flagno2
@@ -1329,6 +1681,9 @@ void do_COPYFF()	// flagno1 flagno2
 	flags[*pPROC++] = flags[flagno1];
 }
 #endif
+
+// =============================================================================
+
 /*	Same as COPYFF but the source and destination are reversed, so that 
 	indirection can be used. */
 #ifndef DISABLE_COPYBF
@@ -1337,6 +1692,9 @@ void do_COPYBF()	// flagno1 flagno2
 	flags[getValueOrIndirection()] = flags[*pPROC++];
 }
 #endif
+
+// =============================================================================
+
 /*	Flag flagno. is set to a number from the Pseudo-random sequence from 1 
 	to 100. */
 #ifndef DISABLE_RANDOM
@@ -1345,6 +1703,9 @@ void do_RANDOM()	// flagno
 	flags[*pPROC++] = (rand()%100)+1;
 }
 #endif
+
+// =============================================================================
+
 /*	This is a very powerful action designed to manipulate PSI's. It allows the
 	current LS Verb to be used to scan the connections section for the location 
 	given in Flag flagno. 
@@ -1374,6 +1735,7 @@ void do_MOVE()		// flagno
 
 // =============================================================================
 // Actions to manipulate player flags [3 condacts]
+// =============================================================================
 
 /*	Changes the current location to locno. This effectively sets flag 38 to the value
 	locno. */
@@ -1383,6 +1745,9 @@ void do_GOTO()		// locno
 	flags[fPlayer] = getValueOrIndirection();
 }
 #endif
+
+// =============================================================================
+
 /*	Calculates the true weight of all objects carried and worn by the player 
 	(i.e. any containers will have the weight of their contents added up to a 
 	maximum of 255), this value is then placed in Flag flagno.
@@ -1394,6 +1759,9 @@ void do_WEIGHT()	// flagno
 	flags[getValueOrIndirection()] = getObjectWeight(NULLWORD, true);
 }
 #endif
+
+// =============================================================================
+
 /*	This sets Flag 37, the maximum number of objects conveyable, to value 1 and 
 	Flag 52, the maximum weight of objects the player may carry and wear at any 
 	one time (or their strength), to be value 2 .
@@ -1411,6 +1779,7 @@ void do_ABILITY()	// value1 value2
 
 // =============================================================================
 // Actions for screen mode/format flags [3 condacts]
+// =============================================================================
 
 /*	Allows the current window to have its operation flags changed. In order to 
 	calculate the number to use for the option just add the numbers shown next 
@@ -1424,6 +1793,9 @@ void do_MODE() {	// option
 	cw->mode = getValueOrIndirection();
 }
 #endif
+
+// =============================================================================
+
 /*	The 'stream' parameter will set the bulk of input to come from the given 
 	window/stream. A value of 0 for 'stream' will not use the graphics stream 
 	as might be expected, but instead causes input to come from the current 
@@ -1437,6 +1809,9 @@ void do_INPUT() {	// stream option
 	printf("===== INPUT not implemented\n"); pPROC+=2;
 }
 #endif
+
+// =============================================================================
+
 /*	Allows input to be set to 'timeout' after a specific duration in 1 second 
 	intervals, i.e. the Process 2 table will be called again if the player types 
 	nothing for the specified period. This action alters flags 48 & 49. 'option' 
@@ -1461,6 +1836,7 @@ void do_TIME()		// duration option
 
 // =============================================================================
 // Actions for screen control & output [20 condacts]
+// =============================================================================
 
 /*	Selects window (0-7) as current print output stream. */
 #ifndef DISABLE_WINDOW
@@ -1470,10 +1846,13 @@ void do_WINDOW()	// window
 	cw = &windows[flags[fCurWin]];
 }
 #endif
+
+// =============================================================================
+
 /*	Sets current window to start at given line and column. Height and width to fit 
 	available screen. */
 #if !defined(DISABLE_WINAT) || !defined(DISABLE_WINSIZE)
-void internal_windowCheck()
+void _internal_windowCheck()
 {
 	if (cw->winW + cw->winX >= MAX_COLUMNS) cw->winW = MAX_COLUMNS - cw->winX;
 	if (cw->winH + cw->winY >= MAX_LINES) cw->winH = MAX_LINES - cw->winY;
@@ -1484,11 +1863,14 @@ void do_WINAT()		// line col
 {
 	cw->winY = getValueOrIndirection();
 	cw->winX = *pPROC++;
-	internal_windowCheck();
+	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
 	printedLines = 0;
 }
 #endif
+
+// =============================================================================
+
 /*	Sets current window size to given height and width. Clipping needed to fit 
 	available screen. */
 #ifndef DISABLE_WINSIZE
@@ -1496,11 +1878,14 @@ void do_WINSIZE()	// height width
 {
 	cw->winH = getValueOrIndirection();;
 	cw->winW = *pPROC++;
-	internal_windowCheck();
+	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
 	printedLines = 0;
 }
 #endif
+
+// =============================================================================
+
 /*	Will ensure the current window is centered for the current column width of the 
 	screen. (Does not affect line position). */
 #ifndef DISABLE_CENTRE
@@ -1509,6 +1894,9 @@ void do_CENTRE()
 	cw->winX = (MAX_COLUMNS - cw->winW) >> 1;
 }
 #endif
+
+// =============================================================================
+
 /*	Clears the current window. */
 #ifndef DISABLE_CLS
 void do_CLS()
@@ -1518,6 +1906,9 @@ void do_CLS()
 	printedLines = 0;
 }
 #endif
+
+// =============================================================================
+
 /*	Save and Restore print position for current window. This allows you to 
 	maintain the print position for example while printing elsewhere in the 
 	window. You should consider using a seperate window for most tasks. This 
@@ -1530,6 +1921,9 @@ void do_SAVEAT()
 	savedPosY = cw->cursorY;
 }
 #endif
+
+// =============================================================================
+
 #ifndef DISABLE_BACKAT
 void do_BACKAT()
 {
@@ -1537,6 +1931,9 @@ void do_BACKAT()
 	cw->cursorY = savedPosY;
 }
 #endif
+
+// =============================================================================
+
 /*	Set paper colour acording to the lookup table given in the graphics editors */
 #ifndef DISABLE_PAPER
 void do_PAPER()		// colour
@@ -1544,6 +1941,9 @@ void do_PAPER()		// colour
 	gfxSetPaperCol(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	Set text colour acording to the lookup table given in the graphics editors */
 #ifndef DISABLE_INK
 void do_INK()		// colour
@@ -1551,6 +1951,9 @@ void do_INK()		// colour
 	gfxSetInkCol(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	Set border colour acording to the lookup table given in the graphics editors */
 #ifndef DISABLE_BORDER
 void do_BORDER()	// colour
@@ -1558,6 +1961,9 @@ void do_BORDER()	// colour
 	do_PAPER();
 }
 #endif
+
+// =============================================================================
+
 /*	Sets current print position to given point if in current window. If not then 
 	print position becomes top left of window. */
 #ifndef DISABLE_PRINTAT
@@ -1567,6 +1973,9 @@ void do_PRINTAT()	// line col
 	cw->cursorX = *pPROC++;
 }
 #endif
+
+// =============================================================================
+
 /*	Sets current print position to given column on current line. */
 #ifndef DISABLE_TAB
 void do_TAB()		// col
@@ -1574,6 +1983,9 @@ void do_TAB()		// col
 	cw->cursorX = *pPROC++;
 }
 #endif
+
+// =============================================================================
+
 /*	Will simply print a space to the current output stream. Shorter than MES 
 	Space! */
 #ifndef DISABLE_SPACE
@@ -1582,6 +1994,9 @@ void do_SPACE()
 	printChar(' ');
 }
 #endif
+
+// =============================================================================
+
 /*	Prints a carriage return/line feed. */
 #ifndef DISABLE_NEWLINE
 void do_NEWLINE()
@@ -1589,6 +2004,9 @@ void do_NEWLINE()
 	printChar('\r');
 }
 #endif
+
+// =============================================================================
+
 /*	Prints Message mesno. */
 #ifndef DISABLE_MES
 void do_MES()		// mesno
@@ -1596,6 +2014,9 @@ void do_MES()		// mesno
 	printUserMsg(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	Prints Message mesno., then carries out a NEWLINE action. */
 #ifndef DISABLE_MESSAGE
 void do_MESSAGE()	// mesno
@@ -1604,6 +2025,9 @@ void do_MESSAGE()	// mesno
 	do_NEWLINE();
 }
 #endif
+
+// =============================================================================
+
 /*	Prints System Message sysno. */
 #ifndef DISABLE_SYSMESS
 void do_SYSMESS()	// sysno
@@ -1611,6 +2035,9 @@ void do_SYSMESS()	// sysno
 	printSystemMsg(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	Prints the text for location locno. without a NEWLINE. */
 #ifndef DISABLE_DESC
 void do_DESC()		// locno
@@ -1618,6 +2045,9 @@ void do_DESC()		// locno
 	printLocationMsg(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	The decimal contents of Flag flagno. are displayed without leading or 
 	trailing spaces. */
 #ifndef DISABLE_PRINT
@@ -1626,6 +2056,9 @@ void do_PRINT()		// flagno
 	printBase10(flags[getValueOrIndirection()]);
 }
 #endif
+
+// =============================================================================
+
 /*	Will print the contents of flagno and flagno+1 as a two byte number. */
 #ifndef DISABLE_DPRINT
 void do_DPRINT()	// flagno
@@ -1637,6 +2070,7 @@ void do_DPRINT()	// flagno
 
 // =============================================================================
 // Actions for listing objects [2 condacts]
+// =============================================================================
 
 /*	If any objects are present then SM1 ("I can also see:") is printed, followed 
 	by a list of all objects present at the current location.
@@ -1660,6 +2094,9 @@ void do_LISTOBJ() {
 	}
 }
 #endif
+
+// =============================================================================
+
 /*	If any objects are present then they are listed. Otherwise SM53 ("nothing.") 
 	is printed - note that you will usually have to precede this action with a 
 	message along the lines of "In the bag is:" etc. */
@@ -1685,6 +2122,7 @@ void do_LISTAT()	// locno+
 
 // =============================================================================
 // Actions for current game state save/load [4 condacts]
+// =============================================================================
 
 /*	This action saves the current game position on disc or tape. SM60 ("Type in 
 	name of file.") is printed and the input routine is called to get the filename 
@@ -1704,6 +2142,9 @@ void do_SAVE()		// opt
 	pPROC++;
 }
 #endif
+
+// =============================================================================
+
 /*	This action loads a game position from disc or tape. A filename is obtained 
 	in the same way as for SAVE. A variety of errors may appear on each machine 
 	if the file is not found or suffers a load error. Usually 'I/O Error'. The 
@@ -1722,6 +2163,9 @@ void do_LOAD()		// opt
 	pPROC++;
 }
 #endif
+
+// =============================================================================
+
 /*	In a similar way to SAVE this action saves all the information relevant to 
 	the game in progress not onto disc but into a memory buffer. This buffer is 
 	of course volatile and will be destroyed when the machine is turned off 
@@ -1734,6 +2178,9 @@ void do_RAMSAVE()
 	memcpy(ramsave+256, objects, sizeof(Object)*hdr->numObjDsc);
 }
 #endif
+
+// =============================================================================
+
 /*	This action is the counterpart of RAMSAVE and allows the saved buffer to be 
 	restored. The parameter specifies the last flag to be reloaded which can be 
 	used to preserve values over a restore.
@@ -1756,6 +2203,7 @@ void do_RAMLOAD()	// flagno
 
 // =============================================================================
 // Actions to pause game [2 condacts]
+// =============================================================================
 
 /*	SM16 ("Press any key to continue") is printed and the keyboard is scanned until 
 	a key is pressed or until the timeout duration has elapsed if enabled. */
@@ -1768,6 +2216,9 @@ void do_ANYKEY()
 	printedLines = 0;
 }
 #endif
+
+// =============================================================================
+
 /*	Pauses for value/50 secs. However, if value is zero then the pause is for 
 	256/50 secs. */
 #ifndef DISABLE_PAUSE
@@ -1783,6 +2234,7 @@ void do_PAUSE()		// value
 
 // =============================================================================
 // Actions to control the parse [3 condacts]
+// =============================================================================
 
 /*	The parameter 'n' controls which level of string indentation is to be 
 	searched. At the moment only two are supported by the interpreters so only 
@@ -1801,6 +2253,9 @@ void do_PARSE()
 	}
 }
 #endif
+
+// =============================================================================
+
 /*	Forces the loss of any remaining phrases on the current input line. You 
 	would use this to prevent the player continuing without a fresh input 
 	should something go badly for his situation. e.g. the GET action carries 
@@ -1814,6 +2269,9 @@ void do_NEWTEXT()
 	clearLogicalSentences();
 }
 #endif
+
+// =============================================================================
+
 /*	Substitutes the given verb and noun in the LS. Nullword (Usually '_') can be 
 	used to suppress substitution for one or the other - or both I suppose! e.g.
 	        MATCH    ON         SYNONYM LIGHT MATCH
@@ -1833,6 +2291,7 @@ void do_SYNONYM()	// verb noun
 
 // =============================================================================
 // Actions for flow control [7 condacts]
+// =============================================================================
 
 /*	This powerful action transfers the attention of DAAD to the specified Process 
 	table number. Note that it is a true subroutine call and any exit from the 
@@ -1845,6 +2304,9 @@ void do_PROCESS()	// procno
 	pushPROC(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	Will restart the currently executing table, allowing */
 #ifndef DISABLE_REDO
 void do_REDO()
@@ -1853,7 +2315,9 @@ void do_REDO()
 	checkEntry = false;
 }
 #endif
-#ifndef DISABLE_DOALL
+
+// =============================================================================
+
 /*	Another powerful action which allows the implementation 'ALL' type command.
 
 	1 - An attempt is made to find an object at Location locno. 
@@ -1877,10 +2341,14 @@ void do_REDO()
 	Use the of DOALL to implement things like OPEN ALL must account for fact that 
 	doors are often flags only and would have to bemade into objects if they were to 
 	be included in a DOALL. */
+#ifndef DISABLE_DOALL
 void do_DOALL() {	// locno+
 	printf("===== DOALL not implemented\n"); pPROC++;
 }
 #endif
+
+// =============================================================================
+
 /*	Skip a distance of -128 to 128, or to the specified label. Will move the 
 	current entry in a table back or fore. 0 means next entry (so is meaningless).
 	-1 means restart current entry (Dangerous). */
@@ -1890,6 +2358,9 @@ void do_SKIP()		// distance
 	stepPROCEntryCondacts(*pPROC++);
 }
 #endif
+
+// =============================================================================
+
 /*	Will cancel any DOALL loop, any sub-process calls and make a jump
 	to execute process 0 again from the start.*/
 #ifndef DISABLE_RESTART
@@ -1901,6 +2372,9 @@ void do_RESTART()
 	checkEntry = false;
 }
 #endif
+
+// =============================================================================
+
 /*	SM13 ("Would you like to play again?") is printed and the input routine called.
 	Any DOALL loop and sub-process calls are cancelled. If the reply does not start 
 	with the first character of SM31 a jump is made to Initialise.
@@ -1929,6 +2403,9 @@ void do_END()
 	checkEntry = false;
 }
 #endif
+
+// =============================================================================
+
 /*	If value is 0 then will return directly to the operating system. 
 	Any value other than 0 will restart the whole game. Note that unlike RESTART 
 	which only restarts processing, this will clear and reset windows etc. The 
@@ -1964,6 +2441,9 @@ void do_DONE()
 	popPROC();
 }
 #endif
+
+// =============================================================================
+
 /*	This action jumps to the end of the process table and flags PAW that #no# 
 	action has been carried out. i.e. no more condacts or entries are considered. 
 	A return will thus be made to the previous calling process table or to the 
@@ -1977,6 +2457,9 @@ void do_NOTDONE()
 	popPROC();
 }
 #endif
+
+// =============================================================================
+
 /*	SM15 ("OK") is printed and action DONE is performed. */
 #ifndef DISABLE_OK
 void do_OK() {
@@ -1987,6 +2470,7 @@ void do_OK() {
 
 // =============================================================================
 // Actions to call external routines [4 condacts]
+// =============================================================================
 
 /*	Calls external routine with parameter value. The address is set by linking 
 	the #extern pre-compiler command */
@@ -2021,6 +2505,9 @@ void do_EXTERN()	// value routine
 	}
 }
 #endif
+
+// =============================================================================
+
 /*	Allows 'address' in memory (or in the database segment for 16bit) to be 
 	executed. See the extern secion for more details. */
 #ifndef DISABLE_CALL
@@ -2033,6 +2520,9 @@ void do_CALL()		// address
 	pPROC+=2;
 }
 #endif
+
+// =============================================================================
+
 /*	This is a second EXTERN type action designed for Sound Effects extensions. 
 	e.g. It has a 'default' function which allows value 'value1' to be written 
 	to register 'value2' of the sound chip on 8 bit machines. This can be 
@@ -2048,6 +2538,9 @@ void do_SFX()		// value1 value2
 	pPROC+=2;
 }
 #endif
+
+// =============================================================================
+
 /*	An EXTERN which is meant to deal with any graphics extensions to DAAD. On 
 	16bit it is used to implement the screen switching facilities. This can be 
 	changed with #gfx or through linking. See the machine details and extern 
@@ -2065,6 +2558,7 @@ void do_GFX()		// value1 value2
 
 // =============================================================================
 // Actions for show pictures [2 condacts]
+// =============================================================================
 
 /*	Will load into the picture buffer the given picture. If there no corresponding
 	picture the next entry will be carried out, if there is then the next CondAct 
@@ -2084,6 +2578,9 @@ void do_PICTURE()	// picno
 	_internal_picture(getValueOrIndirection());
 }
 #endif
+
+// =============================================================================
+
 /*	If value=0 then the last buffered picture is placed onscreen. 
 	If value !=0 and the picture is not a subroutine then the given window area 
 	is cleared. This is normally used with indirection and a flag to check and 
@@ -2111,6 +2608,7 @@ void do_DISPLAY()	// value
 
 // =============================================================================
 // Actions miscellaneous [1 condacts]
+// =============================================================================
 
 /*	This action in preparation for the hypercard system implements skeleton 
 	mouse handler on the IBM. */
@@ -2122,6 +2620,9 @@ void do_MOUSE() {	// option
 	#endif
 }
 #endif
+
+// =============================================================================
+
 /*	Length is the duration in 1/50 seconds. Tone is like BEEP in ZX Basic but
 	adding 60 to it and multiplied by 2.
 	http://www.worldofspectrum.org/ZXBasicManual/zxmanchap19.html
@@ -2160,11 +2661,10 @@ void do_BEEP()		// length tone
 
 // =============================================================================
 // Unused Condact (check daad_defines.h)
+// =============================================================================
 
 void do_NOT_USED()
 {
 	errorCode(5);
 }
-
-
 

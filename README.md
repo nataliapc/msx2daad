@@ -119,8 +119,8 @@ List, add, delete, and update files of your MSX-DOS disk images.
 
 #### **testdaad.c**
 A command line program for testing your adventures using a text file with the commands and the expected texts in return.  
-You need **openMSX** emulator configured and in the path.  
-**testdaad** can be compiled with GCC/MinGW.
+You need **openMSX** emulator configured and in the path and compile **msx2daad** with test support using *-DTEST* parameter.  
+The **testdaad** program can be compiled with GCC/MinGW.
 
 	#
 	# Example of testing input file

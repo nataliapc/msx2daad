@@ -741,8 +741,7 @@ bool gfxPictureShow()
 			if (chunk->type==IMG_CHUNK_REDIRECT) {		// Redirect to another picture
 				fclose(fp);
 				gfxPicturePrepare(chunk->chunkSize);
-				gfxPictureShow();
-				return;
+				return gfxPictureShow();
 			} else
 			if (chunk->type==IMG_CHUNK_PALETTE) {		// Load image palette
 				#if SCREEN < 8
