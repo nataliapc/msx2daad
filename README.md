@@ -10,7 +10,7 @@ You can see the classic interpreters [here](https://github.com/daad-adventure-wr
 
 - Load bitmap images from disk.
 - Load/Save your gameplay from/to disk.
-- Use of external texts in a disk file providing 64kb of additional compressed texts.
+- Use of external texts in a disk file providing 64kb of additional compressed texts and leaving free *RAM* memory for your adventure.
 
 ![](assets/msx2daad_sample.png) 
 
@@ -25,7 +25,9 @@ Contact email: natypclicense@gmail.com
 
 ### Compilation
 
-You need SDCC to compile the source code.  
+You can download the last binaries release, or compile the binaries yourself.
+
+To compile the binaries you need [SDCC](http://sdcc.sourceforge.net/) compiler.  
 Then just use the makefile:
 
 To clean and compile the msx2daad\.com:
@@ -36,13 +38,24 @@ To test the /dsk folder content with openMSX (you need to add at least your DAAD
 
 ***
 
-### Source and compiled adventure files
+### Create your own Adventure: Sources and Compilers
 
-You can use the classic [**DC**](https://github.com/daad-adventure-writer/daad) compiler using **.SCE** files to create your adventure. You can also use the new [**DRC**](https://github.com/Utodev/DRC) compiler using **.DSF** files, a format very similar to **SCE** but improved to create the **DDB** compiled file.
+To create your own adventure you need a text source file (**.SCE** or **.DSF**), with the definition of your game, and must be compiled to **DAAD** tokens (**.DDB** file) using a compiler:
+
+- The classic [**DC**](https://github.com/daad-adventure-writer/daad) (for **.SCE** files) that needs to be executed under [DOSBOX](https://www.dosbox.com/), and the source file must be encoded with *CP437* charset.
+
+- Or you can use the new [**DRC**](https://github.com/Utodev/DRC) (for **.DSF** files). The source file must be encoded with *Windows-1252* or *ISO-8859-1* charsets. **DSF** is a text source format very similar to **SCE** but improved in several ways to create the **.DDB** compiled file.
 
 There are empty templates in several languages to start your adventure:
+
 - SCE format for DC compiler ([EN](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/BLANK.SCE) / [ES](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/SPANISH.SCE) / [DE](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/GERMAN.SCE))
 - DSF format for DRC compiler ([EN](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_EN.DSF) / [ES](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_ES.DSF))
+
+The compiled **DDB** file must be renamed to **DAAD.DDB** and added to the disk where you have the interpreter (**MSX2DAAD.COM**) and the font image (**FONT.IM8** for Screen8, etc...).
+
+To learn more about to create your own adventure game you can follow this great [**DAAD Tutorial for beginners**](https://medium.com/@uto_dev/a-daad-tutorial-for-beginners-1-b2568ec4df05) writed by the author of the **DRC** compiler.
+
+![](https://miro.medium.com/max/850/1*z9MyH15Pv3HZxB47NPR2Jg.png) 
 
 ***
 
@@ -53,7 +66,7 @@ There are empty templates in several languages to start your adventure:
 
 ***
 
-### MSX graphical modes
+### MSX graphical modes & limitations
 
 #### **Screen 5**
 
@@ -129,12 +142,12 @@ The **testdaad** program can be compiled with GCC/MinGW.
 	# > is used to send commands
 	# < is used to expect output texts
 	#
-	> go north
-	< bad direction
-	> go east
-	< bad direction
-	> take sword
-	< you have now a sword
+	>go north
+	<bad direction
+	>go east
+	<bad direction
+	>take sword
+	<taken
 
 ***
 

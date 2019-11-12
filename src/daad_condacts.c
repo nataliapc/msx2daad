@@ -158,7 +158,7 @@ const CONDACT_LIST condactList[] = {
 };
 
 #ifdef VERBOSE
-const CondactArgs const CONDACTS[256] = {
+const CondactArgs const CONDACTS[128] = {
 	{ "AT",        1 },
 	{ "NOTAT",     1 },
 	{ "ATGT",      1 },
@@ -2479,20 +2479,20 @@ void do_EXTERN()	// value routine
 {
 	//Emulating MALUVA EXTERN: https://github.com/Utodev/MALUVA
 	uint16_t value = (uint16_t)getValueOrIndirection();
-	uint8_t function = *pPROC++;
+	uint8_t  routine = *pPROC++;
 
-	switch (function) {
-		//=================== PICTURE: Load Raster Graphic
+	switch (routine) {
+		//=================== XPICTURE: Load Raster Graphic
 		case 0:
 			_internal_picture(value);
 			_internal_display(0);
 			break;
-		//=================== SAVE: Save Game
+		//=================== XSAVE: Save Game
 		case 1:
 			pPROC--;
 			do_SAVE();
 			break;
-		//=================== LOAD: Load Game
+		//=================== XLOAD: Load Game
 		case 2:
 			pPROC--;
 			do_LOAD();
@@ -2544,15 +2544,52 @@ void do_SFX()		// value1 value2
 /*	An EXTERN which is meant to deal with any graphics extensions to DAAD. On 
 	16bit it is used to implement the screen switching facilities. This can be 
 	changed with #gfx or through linking. See the machine details and extern 
-	section for specifics. */
+	section for specifics.
+	
+	GFX pa routine
+
+	where routine can be:
+       0	Back->Phys
+       1    Phys->Back
+       2    SWAP (Phys<>Back) (In CGA this is a bit rough...)
+       3    Graphics Write to Phys
+       4    Graphics Write to Back
+       5    Clear Phys
+       6    Clear Back
+       7    Text Write to Phys      -ST only
+       8    Text Write to Back      -ST only
+       9    Set Palette value (Value is offset of 4 flag data block containing 
+	   	    Num,Red,Green,Blue. RGB values are 0-255
+      10    Read Palette value (Value is offset of 4 flag data block)
+
+	N.B. SWAP in CGA is so slow as it uses the processor, there is no real
+	page switching so you may want to code for that special case (ScMode=4)
+
+	9 and 10 use the first GFX parameter 'pa' to point at a four flag data block:
+		0 - palette no
+		1 - RED 0-255
+		2 - GREEN 0-255
+		3 - BLUE 0-255
+	Note that our machines only use the most significant bits. E.g PC the top 6, 
+	ST (and MSX2) the top 3 and Amiga the top 4! This system allows the same 
+	numbers to represent the same colours in each machine. */
 #ifndef DISABLE_GFX
-void do_GFX()		// value1 value2
+void do_GFX()		// pa routine
 {
-	//TODO GFX not implemented
-	#ifdef DEBUG
-	printf("===== GFX not implemented\n");
-	#endif
-	pPROC+=2;
+	//TODO GFX not fully implemented
+	uint16_t value = (uint16_t)getValueOrIndirection();
+	uint8_t  routine = *pPROC++;
+
+	switch (routine) {
+		//=================== SET PALETTE
+		case 9:
+		//TODO: not implemented yet
+		break;
+		//=================== GET PALETTE
+		case 10:
+		//TODO: not implemented yet
+		break;
+	}
 }
 #endif
 
