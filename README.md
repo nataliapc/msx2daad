@@ -12,7 +12,7 @@ You can see the classic interpreters [here](https://github.com/daad-adventure-wr
 - Load/Save your gameplay from/to disk.
 - Use of external texts in a disk file providing 64kb of additional compressed texts and leaving free *RAM* memory for your adventure.
 
-![](assets/msx2daad_sample.png) 
+![](https://www.eslamejor.com/img/msx2daad_sample.png) 
 
 ***
 
@@ -55,7 +55,7 @@ The compiled **DDB** file must be renamed to **DAAD.DDB** and added to the disk 
 
 To learn more about to create your own adventure game you can follow this great [**DAAD Tutorial for beginners**](https://medium.com/@uto_dev/a-daad-tutorial-for-beginners-1-b2568ec4df05) writed by the author of the **DRC** compiler.
 
-![](https://miro.medium.com/max/850/1*z9MyH15Pv3HZxB47NPR2Jg.png) 
+![](https://www.eslamejor.com/img/msx2daad_tutorial.png) 
 
 ***
 
