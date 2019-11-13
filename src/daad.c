@@ -8,10 +8,12 @@
 */
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "daad.h"
+#if defined(DEBUG) || defined(VERBOSE) || defined(VERBOSE2)
+	#include <stdio.h>
+#endif
 
 
 // External

@@ -8,285 +8,79 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include <stdio.h>
 #include "daad.h"
 #include "daad_condacts.h"
-
+#if defined(DEBUG) || defined(VERBOSE) || defined(VERBOSE2)
+	#include <stdio.h>
+#endif
 
 #define NUM_PROCS		10
 #define pPROC 			currProc->condact
 
 
-PROCstack  procStack[NUM_PROCS];
-PROCstack *currProc;
+PROCstack  procStack[NUM_PROCS];// Stack of calls using PROCESS condact.
+PROCstack *currProc;			// Pointer to current active condact.
 
-uint8_t indirection;
-uint8_t checkEntry;
-uint8_t isDone, lastIsDone;
-uint8_t lastPicLocation;
-uint8_t lastPicShow;
+bool    indirection;			// True if the current condact use indirection for the first argument.
+bool    checkEntry;				// Boolean to check if a Process entry must continue or a condition fails.
+bool    isDone, lastIsDone;		// Variables for ISDONE/ISNOTDONE condacts.
+bool    lastPicShow;			// True if last location picture was drawed.
+uint8_t lastPicLocation;		// Location number of last pictured drawed.
 
 const CONDACT_LIST condactList[] = {
-	{ do_AT, 		0 },
-	{ do_NOTAT,		0 },
-	{ do_ATGT,		0 },
-	{ do_ATLT,		0 },
-	{ do_PRESENT,	0 },
-	{ do_ABSENT,	0 },
-	{ do_WORN,		0 },
-	{ do_NOTWORN,	0 },
-	{ do_CARRIED,	0 },
-	{ do_NOTCARR,	0 },
-	{ do_CHANCE,	0 },
-	{ do_ZERO,		0 },
-	{ do_NOTZERO,	0 },
-	{ do_EQ,		0 },
-	{ do_GT,		0 },
-	{ do_LT,		0 },
-	{ do_ADJECT1,	0 },
-	{ do_ADVERB,	0 },
-	{ do_SFX,		1 },
-	{ do_DESC,		1 },
-	{ do_QUIT,		0 },
-	{ do_END,		1 },
-	{ do_DONE,		1 },
-	{ do_OK,		1 },
-	{ do_ANYKEY,	1 },
-	{ do_SAVE,		1 },
-	{ do_LOAD,		1 },
-	{ do_DPRINT,	1 },
-	{ do_DISPLAY,	1 },
-	{ do_CLS,		1 },
-	{ do_DROPALL,	1 },
-	{ do_AUTOG,		1 },
-	{ do_AUTOD,		1 },
-	{ do_AUTOW,		1 },
-	{ do_AUTOR,		1 },
-	{ do_PAUSE,		1 },
-	{ do_SYNONYM,	1 },
-	{ do_GOTO,		1 },
-	{ do_MESSAGE,	1 },
-	{ do_REMOVE,	1 },
-	{ do_GET,		1 },
-	{ do_DROP,		1 },
-	{ do_WEAR,		1 },
-	{ do_DESTROY,	1 },
-	{ do_CREATE,	1 },
-	{ do_SWAP,		1 },
-	{ do_PLACE,		1 },
-	{ do_SET,		1 },
-	{ do_CLEAR,		1 },
-	{ do_PLUS,		1 },
-	{ do_MINUS,		1 },
-	{ do_LET,		1 },
-	{ do_NEWLINE,	1 },
-	{ do_PRINT,		1 },
-	{ do_SYSMESS,	1 },
-	{ do_ISAT,		0 },
-	{ do_SETCO,		1 },
-	{ do_SPACE,		1 },
-	{ do_HASAT,		0 },
-	{ do_HASNAT,	0 },
-	{ do_LISTOBJ,	1 },
-	{ do_EXTERN,	1 },
-	{ do_RAMSAVE,	1 },
-	{ do_RAMLOAD,	1 },
-	{ do_BEEP,		1 },
-	{ do_PAPER,		1 },
-	{ do_INK,		1 },
-	{ do_BORDER,	1 },
-	{ do_PREP,		0 },
-	{ do_NOUN2,		0 },
-	{ do_ADJECT2,	0 },
-	{ do_ADD,		1 },
-	{ do_SUB,		1 },
-	{ do_PARSE,		1 },
-	{ do_LISTAT,	1 },
-	{ do_PROCESS,	1 },
-	{ do_SAME,		0 },
-	{ do_MES,		1 },
-	{ do_WINDOW,	1 },
-	{ do_NOTEQ,		0 },
-	{ do_NOTSAME,	0 },
-	{ do_MODE,		1 },
-	{ do_WINAT,		1 },
-	{ do_TIME,		1 },
-	{ do_PICTURE,	1 },
-	{ do_DOALL,		1 },
-	{ do_MOUSE,		1 },
-	{ do_GFX,		1 },
-	{ do_ISNOTAT,	0 },
-	{ do_WEIGH,		1 },
-	{ do_PUTIN,		1 },
-	{ do_TAKEOUT,	1 },
-	{ do_NEWTEXT,	1 },
-	{ do_ABILITY,	1 },
-	{ do_WEIGHT,	1 },
-	{ do_RANDOM,	1 },
-	{ do_INPUT,		1 },
-	{ do_SAVEAT,	1 },
-	{ do_BACKAT,	1 },
-	{ do_PRINTAT,	1 },
-	{ do_WHATO,		1 },
-	{ do_CALL,		1 },
-	{ do_PUTO,		1 },
-	{ do_NOTDONE,	0 },
-	{ do_AUTOP,		1 },
-	{ do_AUTOT,		1 },
-	{ do_MOVE,		1 },
-	{ do_WINSIZE,	1 },
-	{ do_REDO,		1 },
-	{ do_CENTRE,	1 },
-	{ do_EXIT,		1 },
-	{ do_INKEY,		0 },
-	{ do_BIGGER,	0 },
-	{ do_SMALLER,	0 },
-	{ do_ISDONE,	0 },
-	{ do_ISNDONE,	0 },
-	{ do_SKIP,		1 },
-	{ do_RESTART,	1 },
-	{ do_TAB,		1 },
-	{ do_COPYOF,	1 },
-	{ do_NOT_USED,	1 },
-	{ do_COPYOO,	1 },
-	{ do_NOT_USED,	1 },
-	{ do_COPYFO,	1 },
-	{ do_NOT_USED,	1 },
-	{ do_COPYFF,	1 },
-	{ do_COPYBF,	1 },
-	{ do_RESET,		1 },
+	{ do_AT,        0 }, { do_NOTAT,     0 }, { do_ATGT,      0 }, { do_ATLT,      0 },	{ do_PRESENT,	0 },	// 0-4
+	{ do_ABSENT,    0 }, { do_WORN,      0 }, { do_NOTWORN,   0 }, { do_CARRIED,   0 }, { do_NOTCARR,   0 },	// 5-9
+	{ do_CHANCE,    0 }, { do_ZERO,      0 }, { do_NOTZERO,   0 }, { do_EQ,        0 }, { do_GT,        0 },	// 10-14
+	{ do_LT,        0 }, { do_ADJECT1,   0 }, { do_ADVERB,    0 }, { do_SFX,       1 }, { do_DESC,      1 },	// 15-19
+	{ do_QUIT,      0 }, { do_END,       1 }, { do_DONE,      1 }, { do_OK,        1 }, { do_ANYKEY,    1 },	// 20-24
+	{ do_SAVE,      1 }, { do_LOAD,      1 }, { do_DPRINT,    1 }, { do_DISPLAY,   1 }, { do_CLS,       1 },	// 25-29
+	{ do_DROPALL,   1 }, { do_AUTOG,     1 }, { do_AUTOD,     1 }, { do_AUTOW,     1 }, { do_AUTOR,     1 },	// 30-34
+	{ do_PAUSE,     1 }, { do_SYNONYM,   1 }, { do_GOTO,      1 }, { do_MESSAGE,   1 }, { do_REMOVE,    1 },	// 35-39
+	{ do_GET,       1 }, { do_DROP,      1 }, { do_WEAR,      1 }, { do_DESTROY,   1 }, { do_CREATE,    1 },	// 40-44
+	{ do_SWAP,      1 }, { do_PLACE,     1 }, { do_SET,       1 }, { do_CLEAR,     1 }, { do_PLUS,      1 },	// 45-49
+	{ do_MINUS,     1 }, { do_LET,       1 }, { do_NEWLINE,   1 }, { do_PRINT,     1 }, { do_SYSMESS,   1 },	// 50-54
+	{ do_ISAT,      0 }, { do_SETCO,     1 }, { do_SPACE,     1 }, { do_HASAT,     0 }, { do_HASNAT,    0 },	// 55-59
+	{ do_LISTOBJ,   1 }, { do_EXTERN,    1 }, { do_RAMSAVE,   1 }, { do_RAMLOAD,   1 }, { do_BEEP,      1 },	// 60-64
+	{ do_PAPER,     1 }, { do_INK,       1 }, { do_BORDER,    1 }, { do_PREP,      0 }, { do_NOUN2,     0 },	// 65-69
+	{ do_ADJECT2,   0 }, { do_ADD,       1 }, { do_SUB,       1 }, { do_PARSE,     1 }, { do_LISTAT,    1 },	// 70-74
+	{ do_PROCESS,   1 }, { do_SAME,      0 }, { do_MES,       1 }, { do_WINDOW,    1 }, { do_NOTEQ,     0 },	// 75-79
+	{ do_NOTSAME,   0 }, { do_MODE,      1 }, { do_WINAT,     1 }, { do_TIME,      1 }, { do_PICTURE,   1 },	// 80-84
+	{ do_DOALL,     1 }, { do_MOUSE,     1 }, { do_GFX,       1 }, { do_ISNOTAT,   0 }, { do_WEIGH,     1 },	// 85-89
+	{ do_PUTIN,     1 }, { do_TAKEOUT,   1 }, { do_NEWTEXT,   1 }, { do_ABILITY,   1 }, { do_WEIGHT,    1 },	// 90-94
+	{ do_RANDOM,    1 }, { do_INPUT,     1 }, { do_SAVEAT,    1 }, { do_BACKAT,    1 }, { do_PRINTAT,   1 },	// 95-99
+	{ do_WHATO,     1 }, { do_CALL,      1 }, { do_PUTO,      1 }, { do_NOTDONE,   0 }, { do_AUTOP,     1 },	// 100-104
+	{ do_AUTOT,     1 }, { do_MOVE,      1 }, { do_WINSIZE,   1 }, { do_REDO,      1 }, { do_CENTRE,    1 },	// 105-109
+	{ do_EXIT,      1 }, { do_INKEY,     0 }, { do_BIGGER,    0 }, { do_SMALLER,   0 }, { do_ISDONE,    0 },	// 110-114
+	{ do_ISNDONE,   0 }, { do_SKIP,      1 }, { do_RESTART,   1 }, { do_TAB,       1 }, { do_COPYOF,    1 },	// 115-119
+	{ do_NOT_USED,  1 }, { do_COPYOO,    1 }, { do_NOT_USED,  1 }, { do_COPYFO,    1 }, { do_NOT_USED,  1 },	// 120-124
+	{ do_COPYFF,    1 }, { do_COPYBF,    1 }, { do_RESET,     1 },												// 125-127
 };
 
 #ifdef VERBOSE
+// CONDACT Name + Num.arguments to show in VERBOSE mode
 const CondactArgs const CONDACTS[128] = {
-	{ "AT",        1 },
-	{ "NOTAT",     1 },
-	{ "ATGT",      1 },
-	{ "ATLT",      1 },
-	{ "PRESENT",   1 },
-	{ "ABSENT",    1 },
-	{ "WORN",      1 },
-	{ "NOTWORN",   1 },
-	{ "CARRIED",   1 },
-	{ "NOTCARR",   1 },
-	{ "CHANCE",    1 },
-	{ "ZERO",      1 },
-	{ "NOTZERO",   1 },
-	{ "EQ",        2 },
-	{ "GT",        2 },
-	{ "LT",        2 },
-	{ "ADJECT1",   1 },
-	{ "ADVERB",    1 },
-	{ "SFX",       2 },
-	{ "DESC",      1 },
-	{ "QUIT",      0 },
-	{ "END",       0 },
-	{ "DONE",      0 },
-	{ "OK",        0 },
-	{ "ANYKEY",    0 },
-	{ "SAVE",      1 },
-	{ "LOAD",      1 },
-	{ "DPRINT",    1 },
-	{ "DISPLAY",   1 },
-	{ "CLS",       0 },
-	{ "DROPALL",   0 },
-	{ "AUTOG",     0 },
-	{ "AUTOD",     0 },
-	{ "AUTOW",     0 },
-	{ "AUTOR",     0 },
-	{ "PAUSE",     1 },
-	{ "SYNONYM",   2 },
-	{ "GOTO",      1 },
-	{ "MESSAGE",   1 },
-	{ "REMOVE",    1 },
-	{ "GET",       1 },
-	{ "DROP",      1 },
-	{ "WEAR",      1 },
-	{ "DESTROY",   1 },
-	{ "CREATE",    1 },
-	{ "SWAP",      2 },
-	{ "PLACE",     2 },
-	{ "SET",       1 },
-	{ "CLEAR",     1 },
-	{ "PLUS",      2 },
-	{ "MINUS",     2 },
-	{ "LET",       2 },
-	{ "NEWLINE",   0 },
-	{ "PRINT",     1 },
-	{ "SYSMESS",   1 },
-	{ "ISAT",      2 },
-	{ "SETCO",     1 },
-	{ "SPACE",     0 },
-	{ "HASAT",     1 },
-	{ "HASNAT",    1 },
-	{ "LISTOBJ",   0 },
-	{ "EXTERN",    2 },
-	{ "RAMSAVE",   0 },
-	{ "RAMLOAD",   1 },
-	{ "BEEP",      2 },
-	{ "PAPER",     1 },
-	{ "INK",       1 },
-	{ "BORDER",    1 },
-	{ "PREP",      1 },
-	{ "NOUN2",     1 },
-	{ "ADJECT2",   1 },
-	{ "ADD",       2 },
-	{ "SUB",       2 },
-	{ "PARSE",     1 },
-	{ "LISTAT",    1 },
-	{ "PROCESS",   1 },
-	{ "SAME",      2 },
-	{ "MES",       1 },
-	{ "WINDOW",    1 },
-	{ "NOTEQ",     2 },
-	{ "NOTSAME",   2 },
-	{ "MODE",      1 },
-	{ "WINAT",     2 },
-	{ "TIME",      2 },
-	{ "PICTURE",   1 },
-	{ "DOALL",     1 },
-	{ "MOUSE",     1 },
-	{ "GFX",       2 },
-	{ "ISNOTAT",   2 },
-	{ "WEIGH",     2 },
-	{ "PUTIN",     2 },
-	{ "TAKEOUT",   2 },
-	{ "NEWTEXT",   0 },
-	{ "ABILITY",   2 },
-	{ "WEIGHT",    1 },
-	{ "RANDOM",    1 },
-	{ "INPUT",     2 },
-	{ "SAVEAT",    0 },
-	{ "BACKAT",    0 },
-	{ "PRINTAT",   2 },
-	{ "WHATO",     0 },
-	{ "CALL",      1 },
-	{ "PUTO",      1 },
-	{ "NOTDONE",   0 },
-	{ "AUTOP",     1 },
-	{ "AUTOT",     1 },
-	{ "MOVE",      1 },
-	{ "WINSIZE",   2 },
-	{ "REDO",      0 },
-	{ "CENTRE",    0 },
-	{ "EXIT",      1 },
-	{ "INKEY",     0 },
-	{ "BIGGER",    2 },
-	{ "SMALLER",   2 },
-	{ "ISDONE",    0 },
-	{ "ISNDONE",   0 },
-	{ "SKIP",      1 },
-	{ "RESTART",   0 },
-	{ "TAB",       1 },
-	{ "COPYOF",    2 },
-	{ "NOT_USED1", 0 },
-	{ "COPYOO",    2 },
-	{ "NOT_USED2", 0 },
-	{ "COPYFO",    2 },
-	{ "NOT_USED3", 0 },
-	{ "COPYFF",    2 },
-	{ "COPYBF",    2 },
-	{ "RESET",     0 }
+	{ "AT",        1 }, { "NOTAT",     1 }, { "ATGT",      1 }, { "ATLT",      1 }, { "PRESENT",   1 }, { "ABSENT",    1 },
+	{ "WORN",      1 }, { "NOTWORN",   1 }, { "CARRIED",   1 }, { "NOTCARR",   1 }, { "CHANCE",    1 }, { "ZERO",      1 },
+	{ "NOTZERO",   1 }, { "EQ",        2 }, { "GT",        2 }, { "LT",        2 }, { "ADJECT1",   1 }, { "ADVERB",    1 },
+	{ "SFX",       2 }, { "DESC",      1 }, { "QUIT",      0 }, { "END",       0 }, { "DONE",      0 }, { "OK",        0 },
+	{ "ANYKEY",    0 }, { "SAVE",      1 }, { "LOAD",      1 }, { "DPRINT",    1 }, { "DISPLAY",   1 }, { "CLS",       0 },
+	{ "DROPALL",   0 }, { "AUTOG",     0 }, { "AUTOD",     0 }, { "AUTOW",     0 }, { "AUTOR",     0 }, { "PAUSE",     1 },
+	{ "SYNONYM",   2 }, { "GOTO",      1 }, { "MESSAGE",   1 }, { "REMOVE",    1 }, { "GET",       1 }, { "DROP",      1 },
+	{ "WEAR",      1 }, { "DESTROY",   1 }, { "CREATE",    1 }, { "SWAP",      2 }, { "PLACE",     2 }, { "SET",       1 },
+	{ "CLEAR",     1 }, { "PLUS",      2 }, { "MINUS",     2 }, { "LET",       2 }, { "NEWLINE",   0 }, { "PRINT",     1 },
+	{ "SYSMESS",   1 }, { "ISAT",      2 }, { "SETCO",     1 }, { "SPACE",     0 }, { "HASAT",     1 }, { "HASNAT",    1 },
+	{ "LISTOBJ",   0 }, { "EXTERN",    2 }, { "RAMSAVE",   0 }, { "RAMLOAD",   1 }, { "BEEP",      2 }, { "PAPER",     1 },
+	{ "INK",       1 }, { "BORDER",    1 }, { "PREP",      1 }, { "NOUN2",     1 }, { "ADJECT2",   1 }, { "ADD",       2 },
+	{ "SUB",       2 }, { "PARSE",     1 }, { "LISTAT",    1 }, { "PROCESS",   1 }, { "SAME",      2 }, { "MES",       1 },
+	{ "WINDOW",    1 }, { "NOTEQ",     2 }, { "NOTSAME",   2 }, { "MODE",      1 }, { "WINAT",     2 }, { "TIME",      2 },
+	{ "PICTURE",   1 }, { "DOALL",     1 }, { "MOUSE",     1 }, { "GFX",       2 }, { "ISNOTAT",   2 }, { "WEIGH",     2 },
+	{ "PUTIN",     2 }, { "TAKEOUT",   2 }, { "NEWTEXT",   0 }, { "ABILITY",   2 }, { "WEIGHT",    1 }, { "RANDOM",    1 },
+	{ "INPUT",     2 }, { "SAVEAT",    0 }, { "BACKAT",    0 }, { "PRINTAT",   2 }, { "WHATO",     0 }, { "CALL",      1 },
+	{ "PUTO",      1 }, { "NOTDONE",   0 }, { "AUTOP",     1 }, { "AUTOT",     1 }, { "MOVE",      1 }, { "WINSIZE",   2 },
+	{ "REDO",      0 }, { "CENTRE",    0 }, { "EXIT",      1 }, { "INKEY",     0 }, { "BIGGER",    2 }, { "SMALLER",   2 },
+	{ "ISDONE",    0 }, { "ISNDONE",   0 }, { "SKIP",      1 }, { "RESTART",   0 }, { "TAB",       1 }, { "COPYOF",    2 },
+	{ "NOT_USED1", 0 }, { "COPYOO",    2 }, { "NOT_USED2", 0 }, { "COPYFO",    2 }, { "NOT_USED3", 0 }, { "COPYFF",    2 },
+	{ "COPYBF",    2 }, { "RESET",     0 }
 };
 #endif	//VERBOSE
 
@@ -422,17 +216,17 @@ printf("  ======================> VERB+NOUN OK\n");
 //      INPUT
 //
 // TODO Low Priority:
-//      CALL
+//      GFX 		//TODO implement MSX2 compliant routines
 //		SAVE		//TODO get filename from player
 //		LOAD		//TODO get filename from player
 //      PARSE		//TODO PARSE 1
 //      GET 		//TODO cancel DOALL loop
 //      TAKEOUT 	//TODO cancel DOALL loop
 //      RESTART 	//TODO cancel DOALL loop
+//      CALL
 //
 // TODO Undocumented:
 //      SFX 		//Undocumented
-//      GFX 		//Undocumented
 //      MOUSE 		//Undocumented
 
 //===============================================
@@ -687,7 +481,7 @@ void do_SMALLER()	// flagno1 flagno2
 #ifndef DISABLE_ADJECT1
 void do_ADJECT1()
 {
-	checkEntry = (flags[fAdject1] == *pPROC++);
+	checkEntry = (flags[fAdject1] == getValueOrIndirection());
 }
 #endif
 
@@ -697,7 +491,7 @@ void do_ADJECT1()
 #ifndef DISABLE_ADVERB
 void do_ADVERB()
 {
-	checkEntry = (flags[fAdverb] == *pPROC++);
+	checkEntry = (flags[fAdverb] == getValueOrIndirection());
 }
 #endif
 
@@ -707,7 +501,7 @@ void do_ADVERB()
 #ifndef DISABLE_PREP
 void do_PREP()
 {
-	checkEntry = (flags[fPrep] == *pPROC++);
+	checkEntry = (flags[fPrep] == getValueOrIndirection());
 }
 #endif
 
@@ -717,7 +511,7 @@ void do_PREP()
 #ifndef DISABLE_NOUN2
 void do_NOUN2()
 {
-	checkEntry = (flags[fNoun2] == *pPROC++);
+	checkEntry = (flags[fNoun2] == getValueOrIndirection());
 }
 #endif
 
@@ -727,7 +521,7 @@ void do_NOUN2()
 #ifndef DISABLE_ADJECT2
 void do_ADJECT2()
 {
-	checkEntry = (flags[fAdject2] == *pPROC++);
+	checkEntry = (flags[fAdject2] == getValueOrIndirection());
 }
 #endif
 
@@ -1700,7 +1494,7 @@ void do_COPYBF()	// flagno1 flagno2
 #ifndef DISABLE_RANDOM
 void do_RANDOM()	// flagno
 {
-	flags[*pPROC++] = (rand()%100)+1;
+	flags[getValueOrIndirection()] = (rand()%100)+1;
 }
 #endif
 
@@ -1806,7 +1600,8 @@ void do_MODE() {	// option
 		4 - Reprint current text of input after a timeout. */
 #ifndef DISABLE_INPUT
 void do_INPUT() {	// stream option
-	printf("===== INPUT not implemented\n"); pPROC+=2;
+	//TODO: INPUT not implemented yet
+	do_NOT_USED();
 }
 #endif
 
@@ -1954,11 +1749,15 @@ void do_INK()		// colour
 
 // =============================================================================
 
-/*	Set border colour acording to the lookup table given in the graphics editors */
+/*	Set border colour acording to the lookup table given in the graphics editors.
+
+	MSX2 note: For Screen 8/12 the color value is using a standard EGA palette 
+			   unless you use the GFX condact to change it. But Screen 5/6/7 are 
+			   paletted modes and must use the current Picture palette. */
 #ifndef DISABLE_BORDER
 void do_BORDER()	// colour
 {
-	do_PAPER();
+	gfxSetBorderCol(getValueOrIndirection());
 }
 #endif
 
@@ -1969,7 +1768,7 @@ void do_BORDER()	// colour
 #ifndef DISABLE_PRINTAT
 void do_PRINTAT()	// line col
 {
-	cw->cursorY = *pPROC++;
+	cw->cursorY = getValueOrIndirection();
 	cw->cursorX = *pPROC++;
 }
 #endif
@@ -1980,7 +1779,7 @@ void do_PRINTAT()	// line col
 #ifndef DISABLE_TAB
 void do_TAB()		// col
 {
-	cw->cursorX = *pPROC++;
+	cw->cursorX = getValueOrIndirection();
 }
 #endif
 
@@ -2103,7 +1902,7 @@ void do_LISTOBJ() {
 #ifndef DISABLE_LISTAT
 void do_LISTAT()	// locno+
 {
-	uint8_t loc = *pPROC++;
+	uint8_t loc = getValueOrIndirection();
 	flags[fOFlags] &= (F53_LISTED ^ 255);
 	for (int i=0; i<hdr->numObjDsc; i++) {
 		if (objects[i].location == loc) {
@@ -2248,8 +2047,8 @@ void do_PARSE()
 	if (getValueOrIndirection()==0) {
 		checkEntry = !getLogicalSentence();
 	} else {
-		//TODO PARSE 1 not implemented
-		printf("===== 'PARSE 1' not implemented\n");		
+		//TODO: PARSE 1 not implemented
+		do_NOT_USED();
 	}
 }
 #endif
@@ -2343,7 +2142,8 @@ void do_REDO()
 	be included in a DOALL. */
 #ifndef DISABLE_DOALL
 void do_DOALL() {	// locno+
-	printf("===== DOALL not implemented\n"); pPROC++;
+	//TODO: DOALL not implemented yet
+	do_NOT_USED();
 }
 #endif
 
@@ -2355,7 +2155,7 @@ void do_DOALL() {	// locno+
 #ifndef DISABLE_SKIP
 void do_SKIP()		// distance
 {
-	stepPROCEntryCondacts(*pPROC++);
+	stepPROCEntryCondacts(getValueOrIndirection());
 }
 #endif
 
@@ -2511,13 +2311,10 @@ void do_EXTERN()	// value routine
 /*	Allows 'address' in memory (or in the database segment for 16bit) to be 
 	executed. See the extern secion for more details. */
 #ifndef DISABLE_CALL
-void do_CALL()		// address
+void do_CALL()		// address(dword)
 {
-	//TODOCALL not implemented
-	#ifdef DEBUG
-	printf("===== CALL not implemented\n");
-	#endif
-	pPROC+=2;
+	//TODO: CALL not implemented yet
+	do_NOT_USED();
 }
 #endif
 
@@ -2531,11 +2328,8 @@ void do_CALL()		// address
 #ifndef DISABLE_SFX
 void do_SFX()		// value1 value2
 {
-	//TODO SFX not implemented
-	#ifdef DEBUG
-	printf("===== SFX not implemented\n");
-	#endif
-	pPROC+=2;
+	//TODO: SFX not implemented yet
+	do_NOT_USED();
 }
 #endif
 
@@ -2651,10 +2445,8 @@ void do_DISPLAY()	// value
 	mouse handler on the IBM. */
 #ifndef DISABLE_MOUSE
 void do_MOUSE() {	// option
-	//TODO MOUSE not implemented
-	#ifdef DEBUG
-	printf("===== MOUSE not implemented\n");
-	#endif
+	//TODO: MOUSE not implemented yet
+	do_NOT_USED();
 }
 #endif
 

@@ -89,7 +89,7 @@
 #ifdef LANG_ES
 	#define LANG  	ES
 #endif 
-#define VERSION		"MSX2DAAD v1.0#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
+#define VERSION		"MSX2DAAD v1.1#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
 
 #if SCREEN==6 || SCREEN==7
 	#define SCREEN_WIDTH    512
@@ -140,10 +140,11 @@
 // System calls
 #define CALSLT	0x1C		// Interslot call
 // System variables
-#define CLIKSW	0xf3db		// (BYTE) SCREEN ,,n will write to this address (0:disables_keys_click 1:enables_keys_click)
-#define FNKSTR	0xf87f		// (10*16 bytes) Value of the function keys
-#define HTIMI   0xfd9f		// Hook VBLANK interrupt
-#define MODE	0xfafc		/*Flag for screen mode. (1B/R)
+#define TPA_LIMIT	0x0006
+#define CLIKSW		0xf3db	// (BYTE) SCREEN ,,n will write to this address (0:disables_keys_click 1:enables_keys_click)
+#define FNKSTR		0xf87f	// (10*16 bytes) Value of the function keys
+#define HTIMI   	0xfd9f	// Hook VBLANK interrupt
+#define MODE		0xfafc	/*Flag for screen mode. (1B/R)
 								bit 7: 1 = conversion to Katakana; 0 = conversion to Hiragana. (MSX2+~)
 								bit 6: 1 if Kanji ROM level 2. (MSX2+~)
 								bit 5: 0/1 to draw in RGB / YJK mode SCREEN 10 or 11. (MSX2+~)
@@ -155,8 +156,8 @@
 											10 for 128kB
 											11 for 192kB
 								bit 0: 1 if the conversion of Romaji to Kana is possible. (MSX2~)*/
-#define NEWKEY  0xfbe5		// (11 bytes) with key matrix
-#define JIFFY   0xfc9e		// (WORD) Contains value of the software clock, each interrupt of the VDP 
+#define NEWKEY  	0xfbe5	// (11 bytes) with key matrix
+#define JIFFY   	0xfc9e	// (WORD) Contains value of the software clock, each interrupt of the VDP 
 							//        it is increased by 1 (50/60Hz)
 
 

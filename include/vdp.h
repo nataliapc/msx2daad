@@ -83,6 +83,7 @@ void setPalette(char *paletteAddress);
 void setColorPal(uint8_t colIndex, uint16_t grb);	// grb bitfield: 00000GGG.0RRR0BBB
 
 void setColor(char forecolor, char background, char border);
+void setBorder(char border);
 
 void clearSC5();
 void clearSC5lines(uint16_t startline, uint16_t numLines);

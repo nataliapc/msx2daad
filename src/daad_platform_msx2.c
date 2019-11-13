@@ -13,12 +13,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include <stdio.h>
 #include "daad_condacts.h"
 #include "daad_platform_msx2.h"
 #include "daad.h"
 #include "vdp.h"
 #include "dos.h"
+#if defined(DEBUG) || defined(VERBOSE) || defined(VERBOSE2)
+	#include <stdio.h>
+#endif
+
 
 //=========================================================
 // Constants
@@ -52,6 +55,7 @@ const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\
 	const char FUNC_KEYS[5][8]  = { "examine ", "get \0   ", "drop \0  ", "search \0", "throw \0 " };
 #endif
 
+
 //=========================================================
 // Variables
 //=========================================================
@@ -65,6 +69,7 @@ uint32_t posVRAM;
 	uint8_t PAGE2_RAMSEG;
 	uint8_t FIRST_RAMSEG[4];
 #endif
+
 
 //=========================================================
 // SYSTEM FUNCTIONS
@@ -111,7 +116,7 @@ bool checkPlatformSystem()
  */
 uint16_t getFreeMemory()
 {
-    return ADDR_POINTER_WORD(0x0006)-heap_top+hdr->fileLength;
+    return ADDR_POINTER_WORD(TPA_LIMIT) - heap_top + hdr->fileLength;
 }
 
 /*
@@ -175,6 +180,96 @@ void clearKeyboardBuffer()
 void waitingForInput()
 {
 }
+
+
+//=========================================================
+// FILESYSTEM
+//=========================================================
+
+/*
+ * Function: loadFile
+ * --------------------------------
+ * Change the system time.
+ * 
+ * @param filename 		File name to read.
+ * @param destaddress 	Destination address.
+ * @param size			Size to read.
+ * @return				Return >= 0xff00 if error.
+ */
+uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size)
+{
+	uint16_t fp = fopen(filename, O_RDONLY);
+	uint16_t len;
+	char *error;
+	if (fp & 0xff00) {
+		len = 0;
+		if ((uint8_t)fp != 0xd7) {
+			explain(error, (uint8_t)fp);
+			die(error);
+		}
+	} else {
+		len = fread(destaddress, size, fp);
+		fclose(fp);
+	}
+	return len;
+}
+
+/*
+ * Function: loadFilesBin
+ * --------------------------------
+ * Load optional file containing alternate names for 
+ * FONT and DDB files, and read them.
+ * 
+ * @return			none.
+ */
+void loadFilesBin(int argc, char **argv)
+{
+	char *aux;
+	size_t size = 0;
+
+	// Commandline parameter with new FILES_BIN?
+	if (argc>0) {
+		memcpy(FILES_BIN, argv[0], 13);
+	}
+
+	// Load name replacements for files if exists
+	loadFile(FILES_BIN, FILES, filesize(FILES));
+
+	// Replace \n for \0 chars
+	aux = FILES;
+	*(aux+11) = *(aux+23) = *(aux+35) = *(aux+47) = *(aux+59) = '\0';
+
+
+	aux = malloc(13);
+	memcpy(aux, FILE_IMG, 13);
+	//Show LOADING picture
+	memcpy(FILE_IMG, FILE_LOAD, 13);
+	posVRAM = 0;
+	gfxPictureShow();
+
+	// Load image FONT (old DMG) to VRAM 2nd page
+	memcpy(FILE_IMG, FILE_FONT, 13);
+	posVRAM = 0x10000;
+	gfxPictureShow();
+	// Restore & free
+	memcpy(FILE_IMG, aux, 13);
+	free(13);
+
+	// Load DDB file
+	size = filesize(FILE_DDB);
+	if (getFreeMemory() - size < 0) die("Max. DDB size exceeded.");
+	ddb = malloc(size);
+	loadFile(FILE_DDB, ddb, size);
+
+	// Load External Texts DDB file (max 64kb in this version)
+	#ifdef RAM_MAPPER
+		// There is at least 4x16kb of paged RAM & file exists?
+		if (MAX_MAPPER_PAGES>=4 && fileexists(FILE_XDB)) {
+			loadExtendedTexts(FILE_XDB);
+		}
+	#endif
+}
+
 
 //=========================================================
 // EXTERNAL TEXTS
@@ -247,95 +342,6 @@ void printXMES(uint16_t address)
 }
 
 #endif //DISABLE_EXTERN
-
-//=========================================================
-// FILESYSTEM
-//=========================================================
-
-/*
- * Function: loadFile
- * --------------------------------
- * Change the system time.
- * 
- * @param filename 		File name to read.
- * @param destaddress 	Destination address.
- * @param size			Size to read.
- * @return				Return >= 0xff00 if error.
- */
-uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size)
-{
-	uint16_t fp = fopen(filename, O_RDONLY);
-	uint16_t len;
-	char *error;
-	if (fp & 0xff00) {
-		len = 0;
-		if ((uint8_t)fp != 0xd7) {
-			explain(error, (uint8_t)fp);
-			die(error);
-		}
-	} else {
-		len = fread(destaddress, size, fp);
-		fclose(fp);
-	}
-	return len;
-}
-
-/*
- * Function: loadFilesBin
- * --------------------------------
- * Load optional file containing alternate names for 
- * FONT and DDB files, and read them.
- * 
- * @return			none.
- */
-void loadFilesBin(int argc, char **argv)
-{
-	bool loadingOk;
-	char *aux;
-	uint16_t size = 0;
-	// Commandline parameter with new FILES_BIN?
-	if (argc>0) {
-		memcpy(FILES_BIN, argv[0], 13);
-	}
-
-	// Load name replacements for files if exists
-	loadFile(FILES_BIN, FILES, filesize(FILES));
-
-	// Replace \n for \0 chars
-	aux = FILES;
-	*(aux+11) = *(aux+23) = *(aux+35) = *(aux+47) = *(aux+59) = '\0';
-
-
-	aux = malloc(13);
-	memcpy(aux, FILE_IMG, 13);
-	//Show LOADING picture
-	memcpy(FILE_IMG, FILE_LOAD, 13);
-	posVRAM = 0;
-	loadingOk = gfxPictureShow();
-
-	// Load image FONT (old DMG) to VRAM 2nd page
-	memcpy(FILE_IMG, FILE_FONT, 13);
-	posVRAM = 0x10000;
-	gfxPictureShow();
-	// Restore & free
-	memcpy(FILE_IMG, aux, 13);
-	free(13);
-
-	// Load DDB file
-	size = filesize(FILE_DDB);
-	ddb = malloc(size);
-	loadFile(FILE_DDB, ddb, size);
-
-	// Load External Texts DDB file (max 64kb in this version)
-	#ifdef RAM_MAPPER
-		// There is at least 4x16kb of paged RAM & file exists?
-		if (MAX_MAPPER_PAGES>=4 && fileexists(FILE_XDB)) {
-			loadExtendedTexts(FILE_XDB);
-		}
-	#endif
-
-//	if (loadingOk) do_INKEY();
-}
 
 
 //=========================================================
@@ -571,9 +577,9 @@ void gfxSetPaperCol(uint8_t col)
 {
 	col;
 	#if SCREEN == 8
-		COLOR_PAPER = colorTranslation[col];
+		COLOR_PAPER = colorTranslation[col % 16];
 	#elif SCREEN < 8
-		setColorPal(COLOR_PAPER, colorTranslation[col]);
+		setColorPal(COLOR_PAPER, colorTranslation[col] % 16);
 	#else
 		// No PAPER color change
 	#endif
@@ -591,7 +597,7 @@ void gfxSetInkCol(uint8_t col)
 {
 	col;
 	#if SCREEN == 8
-		COLOR_INK = colorTranslation[col];
+		COLOR_INK = colorTranslation[col % 16];
 	#elif SCREEN < 8
 		setColorPal(COLOR_INK, colorTranslation[col]);
 	#else
@@ -602,14 +608,15 @@ void gfxSetInkCol(uint8_t col)
 /*
  * Function: gfxSetBorderCol
  * --------------------------------
- * Set BORDER colour from a EGA like palette.
+ * Set BORDER colour from a EGA like palette (SCR 8/12), or the current
+ * Picture palette (SCR 5/6/7).
  * 
  * @param col		EGA color to set.
  * @return			none.
  */
-inline void gfxSetBorderCol(uint8_t col)
+void gfxSetBorderCol(uint8_t col)
 {
-	gfxSetPaperCol(col);	//TODO revise for real border change code
+	setBorder(colorTranslation[col % 16]);
 }
 
 /*
@@ -776,7 +783,6 @@ bool gfxPictureShow()
 //=========================================================
 // SOUND (SFX)
 //=========================================================
-
 
 #ifndef DISABLE_BEEP
 // MSX PSG Tones from https://www.konamiman.com/msx/msx2th/th-5a.txt and upgraded

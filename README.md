@@ -6,7 +6,7 @@ This project is a **DAAD** interpreter created from scratch for **MSX2**/**MSX2+
 
 You can see the classic interpreters [here](https://github.com/daad-adventure-writer/daad).
 
-**MSX2DAAD** is also compatible with [Maluva DAAD extension](https://github.com/Utodev/MALUVA), that add new functionalities to the classic interpreters like:
+**MSX2DAAD** is also compatible with [Maluva DAAD extension](https://github.com/Utodev/MALUVA) emulating his new functionalities to the classic interpreters like:
 
 - Load bitmap images from disk.
 - Load/Save your gameplay from/to disk.
