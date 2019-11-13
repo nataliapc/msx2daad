@@ -44,6 +44,7 @@ uint8_t     savedPosY;					//  "    "      "
 // Internal variables
 uint8_t lsBuffer[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id]
 char   *tmpMsg;							// TEXT_BUFFER_LEN
+char   *tmpTok;							// Token temp buffer
 char    lastPrompt;
 uint8_t offsetText;
 uint8_t doingPrompt;
@@ -108,7 +109,8 @@ bool initDAAD(int argc, char **argv)
 	memset(ramsave, 0, 1+256+sizeof(Object)*hdr->numObjDsc);
 	//Get memory for objects
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
-	//Get memory for tmpMsg
+	//Get memory for tmpTok & tmpMsg
+	tmpTok = (char*)malloc(32);
 	tmpMsg = (char*)malloc(TEXT_BUFFER_LEN);
 
 	#ifdef DEBUG
@@ -505,15 +507,16 @@ void errorCode(uint8_t code)
  */
 char* getToken(uint8_t num)
 {
-	char *tmpTok = heap_top;
 	char *p = (char*)hdr->tokensPos;
-	char i=0;
+	uint8_t i=0;
 
+	// Skip previous tokens
 	while (num) {
 		if (*p > 127) num--;
 		p++;
 		if (!num) break;
 	}
+	// Copy selected token
 	do {
 		tmpTok[i++] = *p & 0x7f;
 	} while (*p++ < 127);

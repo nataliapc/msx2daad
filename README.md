@@ -40,16 +40,15 @@ To test the /dsk folder content with openMSX (you need to add at least your DAAD
 
 ### Create your own Adventure: Sources and Compilers
 
-To create your own adventure you need a text source file (**.SCE** or **.DSF**), with the definition of your game, and must be compiled to **DAAD** tokens (**.DDB** file) using a compiler:
+To create your own adventure you need a text source file (**.SCE** or **.DSF**), with the definition of your game, and must be compiled to **DAAD** tokens (**.DDB** file) using a compiler. The **.SCE** files are used by the original [**DC**](https://github.com/daad-adventure-writer/daad) compiler, that needs [DOSBOX](https://www.dosbox.com/) and source files using *CP437* encoding, so we discourage the use of this files.
 
-- The classic [**DC**](https://github.com/daad-adventure-writer/daad) (for **.SCE** files) that needs to be executed under [DOSBOX](https://www.dosbox.com/), and the source file must be encoded with *CP437* charset.
-
-- Or you can use the new [**DRC**](https://github.com/Utodev/DRC) (for **.DSF** files). The source file must be encoded with *Windows-1252* or *ISO-8859-1* charsets. **DSF** is a text source format very similar to **SCE** but improved in several ways to create the **.DDB** compiled file.
+We recommend the use of the new [**DRC**](https://github.com/Utodev/DRC) compiler (for **.DSF** files). The source file must be encoded with *Windows-1252* or *ISO-8859-1* charsets.  
+The **DSF** format is an adventure text source very similar to **SCE** but improved in several ways to create the **.DDB** compiled file.
 
 There are empty templates in several languages to start your adventure:
 
-- SCE format for DC compiler ([EN](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/BLANK.SCE) / [ES](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/SPANISH.SCE) / [DE](https://github.com/daad-adventure-writer/daad/blob/master/DAAD/SCE/GERMAN.SCE))
-- DSF format for DRC compiler ([EN](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_EN.DSF) / [ES](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_ES.DSF))
+- [English DSF blank template](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_EN.DSF)
+- [Spanish DSF blank template](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_ES.DSF))
 
 The compiled **DDB** file must be renamed to **DAAD.DDB** and added to the disk where you have the interpreter (**MSX2DAAD.COM**) and the font image (**FONT.IM8** for Screen8, etc...).
 
@@ -71,6 +70,7 @@ To learn more about to create your own adventure game you can follow this great 
 #### **Screen 5**
 
 - 256x212 16 colors (Paletted GRB332)
+- 42x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
@@ -79,6 +79,7 @@ To learn more about to create your own adventure game you can follow this great 
 #### **Screen 6**
 
 - 512x212 4 colors  (Paletted GRB332)
+- 85x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-2: For bitmap images
 - Color 3: Always INK (default: white)
@@ -87,6 +88,7 @@ To learn more about to create your own adventure game you can follow this great 
 #### **Screen 7**
 
 - 512x212 16 colors (Paletted GRB332)
+- 85x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
@@ -95,11 +97,13 @@ To learn more about to create your own adventure game you can follow this great 
 ### **Screen 8**
 
 - 256x212 256 colors (fixed palette GRB332) **[*DEFAULT MODE*]**
+- 42x26 characters (6x8 font)
 - Bitmap mode with fixed palette (0-255)
 - INK/PAPER color changes will change color of writed new text or when clear screen. Old text remains unchanged.
 
 ### **Screen 12**
 - 256x212 19268 colors (fixed palette YJK. Y vary each pixel, J & K remains each 4 pixels providing something like ~RGB555)
+- 42x26 characters (6x8 font)
 - Bitmap mode with fixed palette (0-19268)
 - INK/PAPER color changes don't have effect. INK is always white and PAPER is always black.
 
