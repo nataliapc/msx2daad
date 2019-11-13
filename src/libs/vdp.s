@@ -6,6 +6,8 @@
 .globl setRegVDP8
 .globl fastVCopy
 .globl waitVDPready
+.globl setVDP_Read
+.globl setVDP_Write
 
 
 ; System variables

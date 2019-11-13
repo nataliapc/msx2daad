@@ -33,6 +33,7 @@ _pletter2vram::
 
 ; VRAM address setup
     ld  (#page),a
+    push de
     rlc d
     rla
     rlc d
@@ -44,12 +45,13 @@ _pletter2vram::
 	ld	a,#128+14
 	out	(0x99),a	; VRAM access base address register
     ld	a,e
+    nop
 	out	(0x99),a	; VRAM a0-7  
 	ld	a,d
-	and	#0b00111111
 	or	#0b01000000	; Write
     ei
 	out	(0x99),a	; VRAM a8-13
+    pop de
 
 ; Initialization
     ld a,(hl)
@@ -150,28 +152,31 @@ offsok:
     push af
 $9:
     ld  a,(#page)
-    rlc d
+    push hl
+    rlc h
     rla
-    rlc d
+    rlc h
     rla
-    srl d
-    srl d
+    srl h
+    srl h
     di
 	out	(0x99),a	; VRAM address A14-A15
 	ld	a,#128+14
 	out	(0x99),a	; VRAM access base address register
     ld	a,l
+    nop
 	out	(0x99),a	; VRAM a0-7  
 	ld	a,h
-	and	#0b00111111	; Read
     ei
 	out	(0x99),a	; VRAM a8-13
 	nop
 	nop
 	in	a,(0x98)
     ex af,af'
+    pop hl
 
     ld  a,(#page)
+    push de
     rlc d
     rla
     rlc d
@@ -183,14 +188,15 @@ $9:
 	ld	a,#128+14
 	out	(0x99),a	; VRAM access base address register
     ld	a,e
+    nop
 	out	(0x99),a	; VRAM a0-7  
 	ld	a,d
-	and	#0b00111111
 	or	#0b01000000	; Write
     ei
 	out	(0x99),a	; VRAM a8-13
     ex af,af'
     out (0x98),a
+    pop de
 
     inc de
     cpi
