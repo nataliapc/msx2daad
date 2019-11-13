@@ -43,7 +43,6 @@ uint8_t     savedPosY;					//  "    "      "
 
 // Internal variables
 uint8_t lsBuffer[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id]
-char    tmpTok[6];
 char   *tmpMsg;							// TEXT_BUFFER_LEN
 char    lastPrompt;
 uint8_t offsetText;
@@ -254,7 +253,7 @@ void prompt()
  */
 void parser()
 {
-	char *p = tmpMsg, *p2;
+	char *tmpVOC = heap_top, *p = tmpMsg, *p2;
 	uint8_t ils = 0;
 	Vocabulary *voc;
 
@@ -262,22 +261,22 @@ void parser()
 	clearLogicalSentences();
 
 	while (*p) {
-		//Clear tmpTok
-		memset(tmpTok, ' ', 5);
+		//Clear tmpVOC
+		memset(tmpVOC, ' ', 5);
 
 		//Copy first 5 chars max of word
 		p2 = p;
 		while (p2-p<5 && *p2!=' ' && *p2!='\0') p2++;
-		memcpy(tmpTok, p, p2-p);
+		memcpy(tmpVOC, p, p2-p);
 #ifdef VERBOSE2
-printf("%u %c%c%c%c%c: ",p2-p, tmpTok[0],tmpTok[1],tmpTok[2],tmpTok[3],tmpTok[4]);
+printf("%u %c%c%c%c%c: ",p2-p, tmpVOC[0],tmpVOC[1],tmpVOC[2],tmpVOC[3],tmpVOC[4]);
 #endif
-		for (int i=0; i<5; i++) tmpTok[i] = 255 - tmpTok[i];
+		for (int i=0; i<5; i++) tmpVOC[i] = 255 - tmpVOC[i];
 
 		//Search it in VOCabulary table
 		voc = (Vocabulary*)hdr->vocPos;
 		while (voc->word[0]) {
-			if (!memcmp(tmpTok, voc->word, 5)) {
+			if (!memcmp(tmpVOC, voc->word, 5)) {
 				lsBuffer[ils++] = voc->id;
 				lsBuffer[ils++] = voc->type;
 #ifdef VERBOSE2
@@ -506,6 +505,7 @@ void errorCode(uint8_t code)
  */
 char* getToken(uint8_t num)
 {
+	char *tmpTok = heap_top;
 	char *p = (char*)hdr->tokensPos;
 	char i=0;
 
@@ -762,7 +762,7 @@ void printObjectMsg(uint8_t num)
  * --------------------------------
  * Extract object message, change the article and print it:
  * "Una linterna" -> "La linterna"
- * "A lantern" -> "The Lantern"
+ * "A lantern" -> "Lantern"
  *  
  * @param num		Number of object name.
  * @param modif		Modifier for uppercase.
@@ -786,8 +786,9 @@ void printObjectMsgModif(uint8_t num, char modif)
 		p++;
 	}
 #elif LANG_EN
-	printOutMsg(modif=='@'?"Th":"th");
-	tmpMsg[0] = 'e';
+	if (tmpMsg[1]==' ') ini+=2;
+	else
+	if (tmpMsg[2]==' ') ini+=3;
 #endif
 	printOutMsg(ini);
 }
