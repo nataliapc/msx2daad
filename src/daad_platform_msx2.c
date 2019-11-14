@@ -52,7 +52,7 @@ const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\
 	const char FUNC_KEYS[5][10] = { "examinar ", "coger \0  ", "soltar \0 ", "buscar \0 ", "lanzar \0 " };
 #endif
 #ifdef LANG_EN
-	const char FUNC_KEYS[5][8]  = { "examine ", "get \0   ", "drop \0  ", "search \0", "throw \0 " };
+	const char FUNC_KEYS[5][9]  = { "examine ", "get \0   ", "drop \0  ", "search \0", "throw \0 " };
 #endif
 
 

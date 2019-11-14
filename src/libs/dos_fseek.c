@@ -36,6 +36,7 @@ uint32_t fseek (char fp, uint32_t offset, char origin) __naked
 #else //MSXDOS1 / CPM (FCB)
 uint32_t fseek (char fp, uint32_t offset, char origin)
 {
+    fp;
     FCB *fcb = (FCB*)SYSFCB;
 
     if (origin==SEEK_SET) {

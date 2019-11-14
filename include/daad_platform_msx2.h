@@ -58,6 +58,9 @@
 // ========================================================
 // Values to customize the MSX2 program
 
+#ifndef VERSION
+	#define VERSION				1.1
+#endif
 #ifndef SCREEN
 	#define SCREEN 				8	// Screen 5/6/7/8/12
 #endif
@@ -89,7 +92,7 @@
 #ifdef LANG_ES
 	#define LANG  	ES
 #endif 
-#define VERSION		"MSX2DAAD v1.1#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
+#define VERSION_STR			"MSX2DAAD v"STRINGIFY(VERSION)"#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
 
 #if SCREEN==6 || SCREEN==7
 	#define SCREEN_WIDTH    512

@@ -1,5 +1,20 @@
 # **MSX2DAAD**
 
+**Content index**
+
+- [Description](#description)
+- [License](#license)
+- [Compilation](#compilation)
+- [Create your own Adventure: Sources and Compilers](#create-your-own-adventure-sources-and-compilers)
+- [Supported languages](#supported-languages)
+- [MSX graphical modes & limitations](#msx-graphical-modes-limitations)
+- [Aditional tools in /bin folder](#aditional-tools-in-bin-folder)
+- [External tools](#external-tools)
+
+***
+
+### Description
+
 This project is a **DAAD** interpreter created from scratch for **MSX2**/**MSX2+** systems and using the graphical capabilities of this machines.
 
 **DAAD** is a multi-machine and multi-graphics adventure writer, enabling you to target a broad range of 8-bit and 16-bit systems.
@@ -48,7 +63,7 @@ The **DSF** format is an adventure text source very similar to **SCE** but impro
 There are empty templates in several languages to start your adventure:
 
 - [English DSF blank template](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_EN.DSF)
-- [Spanish DSF blank template](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_ES.DSF))
+- [Spanish DSF blank template](https://github.com/daad-adventure-writer/DRC/blob/master/BLANK_ES.DSF)
 
 The compiled **DDB** file must be renamed to **DAAD.DDB** and added to the disk where you have the interpreter (**MSX2DAAD.COM**) and the font image (**FONT.IM8** for Screen8, etc...).
 
@@ -74,7 +89,7 @@ To learn more about to create your own adventure game you can follow this great 
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
-- INK/PAPER color changes will change the 0/15 color palette for all the text/background.
+- INK/PAPER color changes will change the 0/15 color palette for all the on screen text/background.
 		
 #### **Screen 6**
 
@@ -83,7 +98,7 @@ To learn more about to create your own adventure game you can follow this great 
 - Color 0: Always PAPER (default: black)
 - Color 1-2: For bitmap images
 - Color 3: Always INK (default: white)
-- INK/PAPER color changes will change the 0/3 color palette for all the text/background.
+- INK/PAPER color changes will change the 0/3 color palette for all the on screen text/background.
 
 #### **Screen 7**
 
@@ -92,7 +107,7 @@ To learn more about to create your own adventure game you can follow this great 
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
-- INK/PAPER color changes will change the 0/15 color palette for all the text/background.
+- INK/PAPER color changes will change the 0/15 color palette for all the on screen text/background.
 
 ### **Screen 8**
 
@@ -129,8 +144,12 @@ Execute this tool from the root folder of **msx2daad**:
 
 	$> php bin/precomp.php dsk/DAAD.DDB include/daad_defines.h
 
+You can also use this feature using the makefile target:
+
+	$> make precomp
+
 #### **dsktool/dsktool.exe**
-A Linux/Win32 tool to create and manage disk images (FAT12) from commandline.  
+A Linux/Win32 tool to create and manage disk images (FAT12) from command line.  
 You can create disk images of 360Kb, 720Kb, 1440Kb and 2880Kb sizes.  
 List, add, delete, and update files of your MSX-DOS disk images.
 
@@ -156,6 +175,11 @@ The **testdaad** program can be compiled with GCC/MinGW.
 ***
 
 ### External tools
+
+#### **WebMSX Emulator**
+
+Easy to use online MSX Emulator where you can test your adventure without instalations.
+https://webmsx.org/
 
 #### **Online MSX Screen Converter (jannone)**
 You can use this page to convert yours original pictures to MSX format.  

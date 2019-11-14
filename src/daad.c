@@ -773,6 +773,7 @@ void printObjectMsg(uint8_t num)
  */
 void printObjectMsgModif(uint8_t num, char modif)
 {
+	modif;
 	char *ini = tmpMsg, *p = tmpMsg;
 	printMsg(_ptrToMessage((uint16_t*)hdr->objLstPos, num), false);
 #ifdef LANG_ES

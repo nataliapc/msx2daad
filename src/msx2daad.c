@@ -44,7 +44,7 @@
 #include "utils.h"
 #include "daad.h"
 
-const char *version = VERSION;
+const char *version = VERSION_STR;
 
 int main(char** argv, int argc)
 {
