@@ -4,10 +4,11 @@
 
 - [Description](#description)
 - [License](#license)
+- [Download](https://github.com/nataliapc/msx2daad/releases)
 - [Compilation](#compilation)
 - [Create your own Adventure: Sources and Compilers](#create-your-own-adventure-sources-and-compilers)
 - [Supported languages](#supported-languages)
-- [MSX graphical modes & limitations](#msx-graphical-modes-limitations)
+- [MSX graphical modes & limitations](#msx-graphical-modes--limitations)
 - [Aditional tools in /bin folder](#aditional-tools-in-bin-folder)
 - [External tools](#external-tools)
 

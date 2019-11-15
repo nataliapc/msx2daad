@@ -147,6 +147,10 @@ void initFlags()
 		savedPosX = savedPosY = 0;
 	#endif
 
+	//Initialize last onscreen picture
+	lastPicLocation = 255;
+	lastPicShow = false;
+
 	//Clear logical sentences
 	clearLogicalSentences();
 
@@ -482,7 +486,24 @@ bool waitForTimeout(uint16_t timerFlag)
  * --------------------------------
  * Show a system error (see DAAD manual section 4.3)
  * 
- * @param   code	Error code to show (supported: 0 1 3 5 6 7 8).
+ * Print "Game error n" where n is one of:
+ * 		0 - Invalid object number
+ * 		1 - Illegal assignment to HERE (Flag 38)
+ * 		2 - Attempt to set object to loc 255
+ * 		3 - Limit reached on PROCESS calls
+ * 		4 - Attempt to nest DOALL
+ * 		5 - Illegal CondAct (corrupt or old db!)
+ * 		6 - Invalid process call
+ * 		7 - Invalid message number
+ * 		8 - Invalid PICTURE (drawstring only)
+ * 
+ * In the TEST version the error are followed by four numbers:
+ * 		p:v,n>c
+ * Where p is the process number, v and n are the word numbers 
+ * of the verb and noun of the entry which caused the error, 
+ * and c is the CondAct number
+ * 
+ * @param   code	Error code to show (supported: 0 1 3 5 6 7).
  * @return			none.
  */
 void errorCode(uint8_t code)
@@ -491,6 +512,17 @@ void errorCode(uint8_t code)
 	gfxSetPaperCol(4);
 	printOutMsg("Game Error ");
 	printChar(code+'0');
+// TODO
+//	#ifdef TEST
+//		printChar(' ');
+//		printfBase10(currProc->num);
+//		printChar(':');
+//		printfBase10(currProc->entry->verb);
+//		printChar(',');
+//		printfBase10(currProc->entry->noun);
+//		printChar('>');
+//		printfBase10(currCondact->condact);
+//	#endif
 	for (;;);
 }
 

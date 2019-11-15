@@ -114,10 +114,11 @@ typedef struct {
 
 // Process call stack
 typedef struct {
+	uint8_t    num;				// Process number
 	PROCentry *entryIni;		// First entry in current PROCess
 	PROCentry *entry;			// Current entry in current PROCess
-	char *condactIni;			// First condact in current entry
-	char *condact;				// Current condact in current entry
+	char      *condactIni;		// First condact in current entry
+	char      *condact;			// Current condact in current entry
 } PROCstack;
 
 // Condact struct
@@ -237,6 +238,10 @@ extern uint8_t 	printedLines;		// To know how many lines is printed at one time 
 extern uint8_t     savedPosX;		// For SAVEAT/BACKAT
 extern uint8_t     savedPosY;		//  "    "      "
 #endif
+
+extern bool    lastPicShow;			// True if last location picture was drawed.
+extern uint8_t lastPicLocation;		// Location number of last pictured drawed.
+
 
 // DAAD Core function definitions
 bool initDAAD(int argc, char **argv);

@@ -112,6 +112,7 @@ void pushPROC(uint8_t proc)
 	currProc++;
 	if (currProc-procStack >= NUM_PROCS)
 		errorCode(3);
+	currProc->num = proc;
 	currProc->entryIni = getPROCess(proc);
 	currProc->entry = currProc->entryIni - 1;
 	checkEntry = false;
@@ -211,6 +212,7 @@ printf("  ======================> VERB+NOUN OK\n");
 		checkEntry = true;
 	}
 }
+
 // TODO High Priority:
 //		DOALL
 //      INPUT
