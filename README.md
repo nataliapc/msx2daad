@@ -110,14 +110,14 @@ To learn more about to create your own adventure game you can follow this great 
 - Color 15: Always INK (default: white)
 - INK/PAPER color changes will change the 0/15 color palette for all the on screen text/background.
 
-### **Screen 8**
+#### **Screen 8**
 
 - 256x212 256 colors (fixed palette GRB332) **[*DEFAULT MODE*]**
 - 42x26 characters (6x8 font)
 - Bitmap mode with fixed palette (0-255)
 - INK/PAPER color changes will change color of writed new text or when clear screen. Old text remains unchanged.
 
-### **Screen 12**
+#### **Screen 12**
 - 256x212 19268 colors (fixed palette YJK. Y vary each pixel, J & K remains each 4 pixels providing something like ~RGB555)
 - 42x26 characters (6x8 font)
 - Bitmap mode with fixed palette (0-19268)
@@ -179,7 +179,7 @@ The **testdaad** program can be compiled with GCC/MinGW.
 
 #### **WebMSX Emulator**
 
-Easy to use online MSX Emulator where you can test your adventure without instalations.
+Easy to use online MSX Emulator where you can test your adventure without instalations.  
 https://webmsx.org/
 
 #### **Online MSX Screen Converter (jannone)**

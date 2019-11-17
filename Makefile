@@ -22,6 +22,7 @@ INCDIR = include/
 OBJDIR = obj/
 PKGDIR = package/
 DIR_GUARD=@mkdir -p $(OBJDIR)
+LIB_GUARD=@mkdir -p $(LIBDIR)
 
 
 LIBS := dos.lib vdp.lib utils.lib
@@ -56,24 +57,24 @@ $(OBJDIR)%.s.rel: $(SRCLIB)%.s
 
 $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos_*))
 	@echo "######## Compiling $@"
-	$(DIR_GUARD)
+	$(LIB_GUARD)
 	$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)vdp.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)vdp_*))
 	@echo "######## Compiling $@"
-	$(DIR_GUARD)
+	$(LIB_GUARD)
 	$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)utils_*))
 	@echo "######## Compiling $@"
-	$(DIR_GUARD)
+	$(LIB_GUARD)
 	$(AR) $(LDFLAGS) $@ $^
 
 
 msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
 	@echo "######## Compiling $@"
 	$(DIR_GUARD)
-	$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) asm.lib $(subst .com,.c,$^)
+	$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^)
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
 	@echo "**** Copying .COM files to DSK/"
 	@cp *.com dsk/
