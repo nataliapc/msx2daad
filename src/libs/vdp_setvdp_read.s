@@ -3,7 +3,8 @@
 ; SSRRRRRRRRCCCCCCC     SCREEN 5/6:  S=Screen  R=Row  C=Column
 ; SRRRRRRRRCCCCCCCC     SCREEN 7/8:  S=Screen  R=Row  C=Column
 ; ADDDDDDDDEEEEEEEE     Registers
-; In:  A+DE    VRAM address
+; In:   A+DE    VRAM address
+; Used: A,C,D
 ;
 _setVDP_Read::
         pop     af

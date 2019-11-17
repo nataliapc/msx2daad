@@ -23,8 +23,8 @@ _unRLE::	; Entry point from C: void unRLE(char *source, char *target);
 		push af
 
 unRLE::		; Entry point from ASM
-		inc     hl
-		inc     hl
+;		inc     hl				; skip output size
+;		inc     hl
 		ld      c,(hl)          ; coge mark
 		inc     hl
 .dec_loop:

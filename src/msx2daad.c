@@ -51,6 +51,7 @@ int main(char** argv, int argc)
 	// Platform system checks
 	checkPlatformSystem();
 
+	sfxInit();
 	gfxSetScreen();
 
 	//Load files (DDB, Font, ...)

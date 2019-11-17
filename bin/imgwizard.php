@@ -97,7 +97,24 @@
 		exit;
 	}
 
-	// Create image
+	// Create selected rectangle image
+	if ($cmd == 's' && $argv!=6) {
+		$fileIn = $argv[2];
+		echo "### Loading $fileIn\n";
+		$x = intval($argv[3]);
+		$y = intval($argv[4]);
+		$w = intval($argv[5]);
+		$h = intval($argv[6]);
+		if (!is_numeric($x) || !is_numeric($y) || !is_numeric($w) || !is_numeric($h)) {
+			echo "ERROR: x, y, w, and h must be numeric and greater than zero...\n";
+			showSyntax();
+		}
+		echo "### Compressor: RLE (forced)\n";
+		compressRectangle($fileIn, $x, $y, $w, $h, NULL, NULL);
+		exit;
+	}
+
+	// Create full width image
 	if ($cmd == 'c' && $argv>=4) {
 		$fileIn = $argv[2];
 		echo "### Loading $fileIn\n";
@@ -126,11 +143,13 @@
 	function showSyntax() {
 		global $appname;
 		
-		echo "\nSyntax to list image content:\n".
+		echo "\nList image content:\n".
 			 "    $appname l <fileIn>\n\n".
-			 "Syntax to create a image IMx:\n".
+			 "Create an image IMx:\n".
 			 "    $appname c <fileIn> <lines> [compressor]\n\n".
-			 "Syntax to create a location redirection:\n".
+			 "Create an image from a rectangle:\n".
+			 "    $appname s <fileIn> <x> <y> <w> <h>\n\n".
+			 "Create a location redirection:\n".
 			 "    $appname r <fileOut> <target_loc>\n\n".
 			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCC)\n".
 			 "               The palette can be inside SCx file or in PL5 PL6 PL7 files.\n".
@@ -241,6 +260,78 @@
 	}
 
 	//=================================================================================
+	function checkScreemMode($fileIn) {
+		$scr = strtoupper(substr($fileIn, -1));
+		if (($scr<'5' || $scr>'8') && $scr!='C') {
+			die("\nERROR: bad screen mode ['$scr']...\n\n");
+		}
+		return $scr;
+	}
+
+	//=================================================================================
+	function compressRectangle($file, $x, $y, $w, $h, $in=NULL, $pal=NULL) {
+		global $magic;
+
+		$out = $magic;
+
+		// Check screen mode
+		$scr = checkScreemMode($file);
+		echo "### Mode SCREEN $scr\n";
+		if ($scr=='C') {
+			die("\nERROR: Partial rectangle image not supported in Screen 12...\n\n");
+		}
+		$out .= $scr;
+		echo "### Rectangle Start:($x, $y) Width:($w, $h)\n";
+
+		// Add palette to paletted screen modes
+		if ($scr < 8 && $scr!='C') {
+			addPalette($file, $scr, $out, $pal);
+		}
+
+		// Bytes each Row in screen modes
+		$pixelsByte = array(0,0,0,0,0,2,4,2,1,'C'=>1);
+		$bytesLine = array(0,0,0,0,0,128,128,256,256,'C'=>256);
+
+		// Read file
+		if ($in===NULL)
+			$in = @file_get_contents($file);
+		if ($in===FALSE) {
+			echo "File not found...\n";
+			exit;
+		}
+		$in = substr($in, 7);
+		$i = 0;
+		$id = 1;
+
+		$wb = intval(round($w / $pixelsByte[$scr]));
+		$fullSize = $h * $wb;
+		while ($i < $h) {
+			$j = $h - $i;
+			for (;;) {
+				$compOut = rle_encode_selection($in, $x, $y+$i, $w, $j, $pixelsByte[$scr], $bytesLine[$scr]);
+				if (strlen($compOut)<=CHUNK_SIZE) break;
+				$j--;
+			}
+			$sizeIn = $j*$bytesLine[$scr];
+			$sizeOut = strlen($compOut);
+			echo "    #CHUNK ".strpad($id,2)." sizeIn: ".($j*$wb)." bytes (out: $sizeOut bytes)\n";
+			$out .= pack("cvv", CHUNK_RLE, $sizeOut, $sizeIn).$compOut;
+
+			$i += $j;
+			$id++;
+		}
+
+		// Show result
+		echo "    In: ".$fullSize." bytes\n    Out: ".(strlen($out)+7)." bytes [".number_format(strlen($out)/$fullSize*100,1,'.','')."%]\n";
+		$file = basename($file);
+		$fileOut = substr($file, 0, strlen($file)-3)."IM".$scr;
+
+		// Write put file
+		echo "### Writing $fileOut\n";
+		file_put_contents($fileOut, $out);
+	}
+
+	//=================================================================================
 	function compressChunks($file, $lines, $comp, $in=NULL, $pal=NULL) {
 		global $magic;
 
@@ -248,11 +339,7 @@
 		$out = $magic;
 
 		// Check screen mode
-		$scr = strtoupper(substr($file, -1));
-		if (($scr<'5' || $scr>'8') && $scr!='C') {
-			echo "ERROR: bad screen mode ['$scr']...\n";
-			exit;
-		}
+		$scr = checkScreemMode($file);
 		echo "### Mode SCREEN $scr\n";
 		$out .= $scr;
 		echo "### Lines $lines\n";
@@ -338,18 +425,20 @@
 	}
 
 	//=================================================================================
-	function rle_encode($in, $addSize=true) {
+	function rle_encode($in, $addSize=true, $mark=NULL, $eof=true) {
 		$out = "";
 		if ($addSize)
 			$out = pack("v", strlen($in));
 
 		//Find mark byte
-		$bytes = array_fill(0, 255, 0);
-		for ($i=0; $i<strlen($in); $i++) {
-			@$bytes[ord($in[$i])]++;
+		if ($mark===NULL) {
+			$bytes = array_fill(0, 255, 0);
+			for ($i=0; $i<strlen($in); $i++) {
+				@$bytes[ord($in[$i])]++;
+			}
+			$mark = array_search(min($bytes), $bytes);
+			$out .= chr($mark);
 		}
-		$mark = array_search(min($bytes), $bytes);
-		$out .= chr($mark);
 		//Compress RLE
 		for ($i=0; $i<strlen($in); $i++) {
 			$v = $in[$i];
@@ -363,7 +452,40 @@
 				$out .= $v;
 			}
 		}
+		if ($eof) $out .= chr($mark).chr(0);
+		return $out;
+	}
+
+	//=================================================================================
+	function rle_encode_selection($in, $x, $y, $w, $h, $pixelsByte, $bytesLine) {
+		$out = "";
+
+		//Find mark byte
+		$bytes = array_fill(0, 255, 0);
+		for ($i=0; $i<strlen($in); $i++) {
+			@$bytes[ord($in[$i])]++;
+		}
+		$mark = array_search(min($bytes), $bytes);
+		$out = chr($mark);
+
+		$xb = intval($x / $pixelsByte);
+		$wb = intval(round($w / $pixelsByte));
+		$skip = $bytesLine - $wb;
+
+		for ($i = 0; $i < $h; $i++) {
+			$out .= rle_encode(substr($in, $xb + ($y+$i)*$bytesLine, $wb), false, $mark, false);
+			if ($skip && $i<$h-1) {
+				//Skip the rest of the line
+				$tmpSkip = $skip;
+				while ($tmpSkip) {
+					$tmpSize = $tmpSkip>255 ? 255 : $tmpSkip;
+					$out .= chr($mark).chr(1).chr($tmpSize);
+					$tmpSkip -= $tmpSize;
+				}
+			}
+		}
 		$out .= chr($mark).chr(0);
+
 		return $out;
 	}
 

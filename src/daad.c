@@ -129,8 +129,8 @@ bool initDAAD(int argc, char **argv)
  */
 void initFlags()
 {
-	//Clear flags
-	memset(flags, 0, 256);
+	//Clear flag of player location
+	flags[fPlayer] = 0;
 
 	gfxSetScreenModeFlags();
 

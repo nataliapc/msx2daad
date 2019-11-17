@@ -2426,7 +2426,6 @@ void _internal_display(uint8_t value) {
 		lastPicShow = false;
 	} else {
 		if (!lastPicShow) {
-			do_CLS();
 			gfxPictureShow();
 		}
 	}
@@ -2486,7 +2485,7 @@ void do_MOUSE() {	// option
 #ifndef DISABLE_BEEP
 void do_BEEP()		// length tone
 {
-	sfxSound(getValueOrIndirection(), *pPROC++);
+	sfxTone(getValueOrIndirection(), *pPROC++);
 }
 #endif
 

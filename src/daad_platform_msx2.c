@@ -714,10 +714,10 @@ bool gfxPicturePrepare(uint8_t location)
 	location /= 10;
 	pic[0] = location%10 + '0';
 	
-	#if SCREEN==7 || SCREEN==8 || SCREEN>=10
-		posVRAM = cw->winY * 8 * 256;
+	#if SCREEN >= 7
+		posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * 256;
 	#elif SCREEN==5 || SCREEN==6
-		posVRAM = cw->winY * 8 * 128;
+		posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * 128;
 	#endif
 
 	return fileexists(FILE_IMG);
@@ -784,6 +784,8 @@ bool gfxPictureShow()
 // SOUND (SFX)
 //=========================================================
 
+#define PSG_VOLUME  8		// 0...15
+
 #ifndef DISABLE_BEEP
 // MSX PSG Tones from https://www.konamiman.com/msx/msx2th/th-5a.txt and upgraded
 const uint16_t sfxFreqPSG[] = {
@@ -796,19 +798,45 @@ const uint16_t sfxFreqPSG[] = {
 	0x036, 0x033, 0x030, 0x02D, 0x02A, 0x028, 0x026, 0x024, 0x022, 0x020, 0x01E, 0x01C,	// Octave 7 (192-214) 
 	0x01B, 0x019, 0x018, 0x017, 0x015, 0x014, 0x013, 0x012, 0x011, 0x010, 0x00F, 0x00E	// Octave 8 (216-238)
 };
+#endif//DISABLE_BEEP
 
-#define PSG_VOLUME  12		// 0...15
+/*
+ * Function: sfxInit
+ * --------------------------------
+ * Initialize sound chip.
+ * 
+ * @return			none.
+ */
+void sfxInit() __naked
+{
+	#ifndef DISABLE_BEEP
+	__asm
+		ld   a,#7				; REG#7 Mixer disable ChannelA
+		out  (0xa0),a
+		ld   a,#0b00111111
+		out  (0xa1),a
+
+		ld   a,#8				; REG#8 ChannelA initialize Volume to 8
+		out  (0xa0),a
+		ld   a,#PSG_VOLUME
+		out  (0xa1),a
+
+		ret
+	__endasm;
+	#endif//DISABLE_BEEP
+}
 
 /*
  * Function: sfxSound
  * --------------------------------
  * Sound a tone for a time.
  * 
- * @param duration	1/100 sec
+ * @param duration	1/50 sec
  * @param tone		Values 48-238. See table sfxFreqPSG[]
  * @return			none.
  */
-void sfxSound(uint8_t duration, uint8_t tone) __naked
+#ifndef DISABLE_BEEP
+void sfxTone(uint8_t duration, uint8_t tone) __naked
 {
 	duration, tone;
 	__asm
@@ -840,22 +868,17 @@ void sfxSound(uint8_t duration, uint8_t tone) __naked
 
 		ld   a,#7				; REG#7 Mixer enable ChannelA
 		out  (0xa0),a
-		ld   d,#0b00111110
-		out  (c),d
-
-		inc  a					; REG#8 ChannelA set Volume to 8
-		out  (0xa0),a
-		ld   d,#PSG_VOLUME
-		out  (c),d
+		ld   a,#0b00111110
+		out  (0xa1),a
 
 	silence$:
 		ex   de,hl
 		call wait$
-
-		ld   a,#8				; REG#8 ChannelA set Volume to 0
+	
+		ld   a,#7				; REG#7 Mixer disable ChannelA
 		out  (0xa0),a
-		ld   d,#0
-		out  (c),d
+		ld   a,#0b00111111
+		out  (0xa1),a
 
 		ld   e,#1
 		call wait$

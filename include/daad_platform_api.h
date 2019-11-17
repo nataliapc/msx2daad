@@ -70,7 +70,8 @@ bool gfxPictureShow();
 
 
 // SFX functions
-void sfxSound(uint8_t value1, uint8_t value2);
+void sfxInit();
+void sfxTone(uint8_t value1, uint8_t value2);
 
 
 #endif  //__DAAD_PLATFORM_API_H__
