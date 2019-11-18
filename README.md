@@ -18,15 +18,15 @@
 
 This project is a **DAAD** interpreter created from scratch for **MSX2**/**MSX2+** systems and using the graphical capabilities of this machines.
 
-**DAAD** is a multi-machine and multi-graphics adventure writer, enabling you to target a broad range of 8-bit and 16-bit systems.
-
+**DAAD** is a multi-machine and multi-graphics adventure writer, enabling you to target a broad range of 8-bit and 16-bit systems.  
 You can see the classic interpreters [here](https://github.com/daad-adventure-writer/daad).
 
-**MSX2DAAD** is also compatible with [Maluva DAAD extension](https://github.com/Utodev/MALUVA) emulating his new functionalities to the classic interpreters like:
+**MSX2DAAD** is also compatible with [DRC](https://github.com/Utodev/DRC) compiler, and [Maluva DAAD extension](https://github.com/Utodev/MALUVA) emulating his new functionalities to the classic interpreters:
 
-- Load bitmap images from disk.
-- Load/Save your gameplay from/to disk.
-- Use of external texts in a disk file providing 64kb of additional compressed texts and leaving free *RAM* memory for your adventure.
+- XPICTURE: Load bitmap images from disk.
+- XLOAD/XSAVE: To load/save your gameplay from/to disk.
+- XMES: Use of external texts in a disk file, providing 64kb of additional compressed texts and leaving more free *RAM* memory to create your adventure.
+- XPLAY: Play music using a simplified [MML](https://en.wikipedia.org/wiki/Music_Macro_Language) string, the same format of PLAY instruction from MSX1 Basic.
 
 ![](https://www.eslamejor.com/img/msx2daad_sample.png) 
 
