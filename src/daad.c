@@ -695,7 +695,7 @@ void printChar(char c)
  */
 void checkPrintedLines()
 {
-	if (cw->mode & MODE_DISABLEMORE) return;
+	if (cw->mode & MODE_DISABLEMORE || cw->winH==1) return;
 	if (++printedLines >= cw->winH-1) {	// Must show "More..."?
 		if (cw->cursorY >= cw->winH) {
 			cw->cursorX = 0;
