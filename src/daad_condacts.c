@@ -188,7 +188,7 @@ if (CONDACTS[currCondact->condact].args>=2) printf(" %u", *(pPROC+1));
 printf("\n");
 #endif
 			condactList[currCondact->condact].function();
-			if (!isDone) isDone |= condactList[currCondact->condact].flag;
+			isDone |= condactList[currCondact->condact].flag;
 		}
 		do {
 			currProc->entry++;
@@ -207,7 +207,7 @@ printf("\n");
 #ifdef VERBOSE
 printf("  ======================> VERB+NOUN OK\n");
 #endif
-		lastIsDone = isDone;
+		//lastIsDone = isDone;	//Fixed issue#13 ????
 		isDone = false;
 		checkEntry = true;
 	}
