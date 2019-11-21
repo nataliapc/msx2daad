@@ -86,7 +86,7 @@ bool checkPlatformSystem()
 {
    	// Check for MSX2 with at least 128Kb VRAM
 	if ((ADDR_POINTER_BYTE(MODE) & 0x06) < 0x04) {
-		die("MSX2 with 128Kb VRAM is needed to run!\n");
+		die("MSX2 with 128Kb VRAM is needed!\n");
 	}
 	// If compiled with MSXDOS2 lib check for DOS version
 	#ifdef MSXDOS2
@@ -169,6 +169,7 @@ uint16_t getTime() __naked
 
 uint16_t checkKeyboardBuffer()
 {
+	ASM_HALT;
 	return kbhit();
 }
 
@@ -348,15 +349,15 @@ void printXMES(uint16_t address)
 // GRAPHICS (GFX)
 //=========================================================
 
-#if SCREEN == 8 
-	uint8_t COLOR_INK;		// 255
-	uint8_t COLOR_PAPER;	// 0
-#elif SCREEN >= 10
-	#define COLOR_INK		0xff
-	#define COLOR_PAPER		0x00
-#elif SCREEN == 6
+#if SCREEN == 6
 	#define COLOR_INK		3
 	#define COLOR_PAPER		0
+#elif SCREEN == 8
+	#define COLOR_INK		(cw->ink)
+	#define COLOR_PAPER		(cw->paper)
+#elif SCREEN > 8
+	#define COLOR_INK		0xff
+	#define COLOR_PAPER		0x00
 #elif SCREEN < 8
 	#define COLOR_INK		15
 	#define COLOR_PAPER		0
@@ -438,11 +439,6 @@ void gfxSetScreen()
 	for (int i=0; i<5; i++,fk+=16) {
 		memcpy(fk, FUNC_KEYS[i], 16);
 	}
-
-	#if SCREEN == 8
-		COLOR_INK	=   colorTranslation[15];
-		COLOR_PAPER	=	colorTranslation[0];
-	#endif
 }
 
 /*
@@ -559,6 +555,7 @@ void gfxClearCurrentLine()
  */
 void gfxScrollUp()
 {
+	ASM_HALT;
 	if (cw->winH > 1) {
 		bitBlt(0, (cw->winY+1)*FONTHEIGHT, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_YMMM);
 	}
@@ -719,7 +716,6 @@ bool gfxPicturePrepare(uint8_t location)
 	#elif SCREEN==5 || SCREEN==6
 		posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * 128;
 	#endif
-
 	return fileexists(FILE_IMG);
 }
 
@@ -789,13 +785,13 @@ bool gfxPictureShow()
 #ifndef DISABLE_BEEP
 // MSX PSG Tones from https://www.konamiman.com/msx/msx2th/th-5a.txt and upgraded
 const uint16_t sfxFreqPSG[] = {
-	0xD65, 0xC9D, 0xBEB, 0xB42, 0xA9A, 0xA04, 0x971, 0x8E8, 0x86B, 0x7E2, 0x77F, 0x719,	// Octave 1 (48-70) 
-	0x6B3, 0x64E, 0x5F5, 0x5A1, 0x54D, 0x502, 0x4B9, 0x474, 0x434, 0x3F9, 0x3C0, 0x38C,	// Octave 2 (72-98)
-	0x359, 0x327, 0x2F6, 0x2D1, 0x2A7, 0x281, 0x25C, 0x23A, 0x21A, 0x1FD, 0x1E0, 0x1C6, // Octave 3 (96-118) 
+	0xD65, 0xC9D, 0xBEB, 0xB42, 0xA9A, 0xA04, 0x971, 0x8E8, 0x86B, 0x7E2, 0x77F, 0x719,	// Octave 1 (48-70)
+	0x6B3, 0x64E, 0x5F5, 0x5A1, 0x54D, 0x502, 0x4B9, 0x474, 0x434, 0x3F9, 0x3C0, 0x38C,	// Octave 2 (72-96)
+	0x359, 0x327, 0x2F6, 0x2D1, 0x2A7, 0x281, 0x25C, 0x23A, 0x21A, 0x1FD, 0x1E0, 0x1C6, // Octave 3 (98-118)
 	0x1AD, 0x194, 0x17D, 0x168, 0x153, 0x141, 0x12E, 0x11D, 0x10D, 0x0FE, 0x0F0, 0x0E3, // Octave 4 (120-142)
-	0x0D6, 0x0CA, 0x0BF, 0x0B4, 0x0AA, 0x0A0, 0x097, 0x08F, 0x087, 0x07F, 0x078, 0x072,	// Octave 5 (144-166) 
+	0x0D6, 0x0CA, 0x0BF, 0x0B4, 0x0AA, 0x0A0, 0x097, 0x08F, 0x087, 0x07F, 0x078, 0x072,	// Octave 5 (144-166)
 	0x06B, 0x065, 0x05F, 0x05A, 0x055, 0x050, 0x04C, 0x047, 0x043, 0x040, 0x03C, 0x039,	// Octave 6 (168-190)
-	0x036, 0x033, 0x030, 0x02D, 0x02A, 0x028, 0x026, 0x024, 0x022, 0x020, 0x01E, 0x01C,	// Octave 7 (192-214) 
+	0x036, 0x033, 0x030, 0x02D, 0x02A, 0x028, 0x026, 0x024, 0x022, 0x020, 0x01E, 0x01C,	// Octave 7 (192-214)
 	0x01B, 0x019, 0x018, 0x017, 0x015, 0x014, 0x013, 0x012, 0x011, 0x010, 0x00F, 0x00E	// Octave 8 (216-238)
 };
 #endif//DISABLE_BEEP
@@ -831,7 +827,7 @@ void sfxInit() __naked
  * --------------------------------
  * Sound a tone for a time.
  * 
- * @param duration	1/50 sec
+ * @param duration	1/100 sec
  * @param tone		Values 48-238. See table sfxFreqPSG[]
  * @return			none.
  */
@@ -849,9 +845,6 @@ void sfxTone(uint8_t duration, uint8_t tone) __naked
 		ld   e,0(ix)
 		ld   l,1(ix)			; L=duration
 
-		or   e					; tone==0 => is a silence
-		jr   z,silence$
-
 		ld   ix,#_sfxFreqPSG-48	; DE=get frequency from tone table
 		add  ix,de
 		ld   e,0(ix)
@@ -866,35 +859,33 @@ void sfxTone(uint8_t duration, uint8_t tone) __naked
 		out  (0xa0),a
 		out  (c),d
 
-		ld   a,#7				; REG#7 Mixer enable ChannelA
-		out  (0xa0),a
-		ld   a,#0b00111110
-		out  (0xa1),a
+		ld   e,#0b00111110		; Mixer enable ChannelA
+		call mixer$
 
 	silence$:
-		ex   de,hl
-		call wait$
+		ld   b,l
+		srl  b
+		jr	 z,disablepsg$
 	
-		ld   a,#7				; REG#7 Mixer disable ChannelA
-		out  (0xa0),a
-		ld   a,#0b00111111
-		out  (0xa1),a
-
-		ld   e,#1
-		call wait$
-
-		pop  ix
-		ret
-
-	wait$:						; Wait for E = 1/50 seconds
-		ld  hl,#JIFFY
+		ld  hl,#JIFFY			; Wait for B = 1/50 seconds
 	loop0$:
 		ld  a,(hl)
 	loop1$:
 		cp  (hl)
 		jr  z,loop1$
-		dec e
-		jr  nz,loop0$
+		djnz loop0$
+
+	disablepsg$:
+		ld   e,#0b00111111		; Mixer disable ChannelA
+		call mixer$
+
+		pop  ix
+		ret
+
+	mixer$:
+		ld   a,#7				; REG#7 PSG Mixer
+		out  (0xa0),a
+		out  (c),e
 		ret
 
 	__endasm;

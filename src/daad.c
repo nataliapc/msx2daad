@@ -29,10 +29,11 @@ uint8_t     flags[256];					// DAAD flags (256 bytes)
 char       *ramsave;					// Memory to store ram save (RAMSAVE)
 
 #ifndef DISABLE_WINDOW
-Window      windows[8];					// 0-7 windows definitions
+	#define WINDOWS_NUM		8
 #else
-Window      windows[1];					// Only one if WINDOW condact is not used
+	#define WINDOWS_NUM		1
 #endif
+Window     *windows;					// 0-7 windows definitions
 Window     *cw;							// Pointer to current active window
 uint8_t 	printedLines;				// For "More..." feature
 
@@ -135,14 +136,17 @@ void initFlags()
 	gfxSetScreenModeFlags();
 
 	//Initialize DAAD windows
-	memset(windows, 0, sizeof(windows));
+	windows = malloc(sizeof(Window)*WINDOWS_NUM);
+	memset(windows, 0, sizeof(windows)*WINDOWS_NUM);
 	flags[fCurWin] = 0;
+	for (int i=0; i<WINDOWS_NUM; i++) {
+		cw = &windows[i];
+		cw->winW = MAX_COLUMNS;
+		cw->winH = MAX_LINES;
+		gfxSetPaperCol(0);
+		gfxSetInkCol(15);
+	}
 	cw = &windows[0];
-	cw->winX = 0;
-	cw->winY = 0;
-	cw->winW = MAX_COLUMNS;
-	cw->winH = MAX_LINES;
-	cw->cursorX = cw->cursorY = 0;
 	#ifndef DISABLE_SAVEAT
 		savedPosX = savedPosY = 0;
 	#endif

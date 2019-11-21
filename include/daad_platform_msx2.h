@@ -163,6 +163,7 @@
 #define JIFFY   	0xfc9e	// (WORD) Contains value of the software clock, each interrupt of the VDP 
 							//        it is increased by 1 (50/60Hz)
 
+#define ASM_HALT	__asm halt __endasm;
 
 // ========================================================
 // Image format IMx structs & constants

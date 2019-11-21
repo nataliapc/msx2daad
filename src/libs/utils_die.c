@@ -13,5 +13,10 @@ void die(const char *s)
 	__endasm;
 
 	cputs(s);
-	exit0();
+
+	__asm
+		di
+		halt
+	__endasm;
+	//exit0();
 }

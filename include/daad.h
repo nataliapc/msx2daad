@@ -136,6 +136,8 @@ typedef struct {
 	uint8_t cursorX;
 	uint8_t cursorY;
 	uint8_t mode;			// See MODE condact
+	uint8_t paper;
+	uint8_t ink;
 } Window;
 
 // Object Entry
@@ -231,7 +233,7 @@ extern char       *tmpMsg;			// MAX_TEXT_LEN
 extern uint8_t     offsetText;
 extern uint8_t     flags[256];		// DAAD flags (256 bytes)
 
-extern Window      windows[8];		// 0-7 windows definitions
+extern Window     *windows;			// 0-7 windows definitions
 extern Window     *cw;				// Pointer to current active window
 extern uint8_t 	printedLines;		// To know how many lines is printed at one time ("More..." feature)
 #ifndef DISABLE_SAVEAT
