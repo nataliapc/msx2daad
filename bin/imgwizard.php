@@ -98,19 +98,26 @@
 	}
 
 	// Create selected rectangle image
-	if ($cmd == 's' && $argv!=6) {
+	if ($cmd == 's' && $argv>=6) {
 		$fileIn = $argv[2];
 		echo "### Loading $fileIn\n";
+		if (!is_numeric($argv[3]) || !is_numeric($argv[4]) || !is_numeric($argv[5]) || !is_numeric($argv[6])) {
+			echo "ERROR: x, y, w, and h must be numeric and greater than zero...\n";
+			showSyntax();
+		}
+		//Coords
 		$x = intval($argv[3]);
 		$y = intval($argv[4]);
 		$w = intval($argv[5]);
 		$h = intval($argv[6]);
-		if (!is_numeric($x) || !is_numeric($y) || !is_numeric($w) || !is_numeric($h)) {
-			echo "ERROR: x, y, w, and h must be numeric and greater than zero...\n";
-			showSyntax();
+		//Transparent color
+		$transparent = -1;
+		if (isset($argv[7]) && is_numeric($argv[7])) {
+			$transparent = intval($argv[7]);
+			echo "### Transparent color: $transparent\n";
 		}
 		echo "### Compressor: RLE (forced)\n";
-		compressRectangle($fileIn, $x, $y, $w, $h, NULL, NULL);
+		compressRectangle($fileIn, $x, $y, $w, $h, $transparent, NULL, NULL);
 		exit;
 	}
 
@@ -123,15 +130,27 @@
 			echo "ERROR: lines must be numeric and greater than zero...\n";
 			showSyntax();
 		}
+		//Lines
 		$lines = intval($lines);
+		//Compression & Transparent color
 		$compress = "RLE";
-		if ($argc>4) $compress = strtoupper($argv[4]);
+		$transparent = -1;
+		if ($argc>4) {
+			if (is_numeric($argv[4])) {
+				$transparent = intval($argv[4]);
+			} else 
+				$compress = strtoupper($argv[4]);
+		}
 		foreach ($compressors as $comp) {
 			if (strtoupper($comp[0])==$compress) break;
 		}
-		echo "### Compressor: ".$compress."\n";
-
-		compressChunks($fileIn, $lines, $comp, NULL, NULL);
+		if ($transparent>=0) {
+			echo "### Transparent color: $transparent\n";
+			$compress.=" (forced)";
+		}
+		echo "### Compressor: $compress\n";
+		//Compress chunks
+		compressChunks($fileIn, $lines, $comp, $transparent, NULL, NULL);
 
 		exit;
 	}
@@ -146,20 +165,24 @@
 		echo "\nList image content:\n".
 			 "    $appname l <fileIn>\n\n".
 			 "Create an image IMx:\n".
-			 "    $appname c <fileIn> <lines> [compressor]\n\n".
+			 "    $appname c <fileIn> <lines> [compressor | transparent_color]\n\n".
 			 "Create an image from a rectangle:\n".
-			 "    $appname s <fileIn> <x> <y> <w> <h>\n\n".
+			 "    $appname s <fileIn> <x> <y> <w> <h> [transparent_color]\n\n".
 			 "Create a location redirection:\n".
 			 "    $appname r <fileOut> <target_loc>\n\n".
 			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCC)\n".
-			 "               The palette can be inside SCx file or in PL5 PL6 PL7 files.\n".
+			 "               Palette can be inside SCx file or PL5 PL6 PL7 files.\n".
 			 " <lines>       Image lines to get from input file.\n".
 			 " [compressor]  Compression type: RAW, RLE or PLETTER.\n".
 			 "                 RAW: no compression but fastest load.\n".
 			 "                 RLE: light compression but fast load (default).\n".
 			 "                 PLETTER: high compression but slow.\n".
-			 " [target_loc]  Target location number to redirect to.\n".
+			 " [transparent] Optional: the color index that will become transparent.\n".
+			 "               Compression is forced to RLE.\n".
+			 " <target_loc>  Target location number to redirect to.\n".
 			 "                 ex: a 12 redirects to image 012.IMx\n".
+			 "\n";
+			 "Example: $appname c image.sc8 96 rle\n";
 			 "\n";
 		exit(1);
 	}
@@ -269,7 +292,7 @@
 	}
 
 	//=================================================================================
-	function compressRectangle($file, $x, $y, $w, $h, $in=NULL, $pal=NULL) {
+	function compressRectangle($file, $x, $y, $w, $h, $transparent=-1, $in=NULL, $pal=NULL) {
 		global $magic;
 
 		$out = $magic;
@@ -308,7 +331,7 @@
 		while ($i < $h) {
 			$j = $h - $i;
 			for (;;) {
-				$compOut = rle_encode_selection($in, $x, $y+$i, $w, $j, $pixelsByte[$scr], $bytesLine[$scr]);
+				$compOut = rle_encode_selection($in, $x, $y+$i, $w, $j, $transparent, $pixelsByte[$scr], $bytesLine[$scr]);
 				if (strlen($compOut)<=CHUNK_SIZE) break;
 				$j--;
 			}
@@ -332,7 +355,7 @@
 	}
 
 	//=================================================================================
-	function compressChunks($file, $lines, $comp, $in=NULL, $pal=NULL) {
+	function compressChunks($file, $lines, $comp, $transparent=-1, $in=NULL, $pal=NULL) {
 		global $magic;
 
 		$tmp = "_0000000.tmp";
@@ -343,6 +366,16 @@
 		echo "### Mode SCREEN $scr\n";
 		$out .= $scr;
 		echo "### Lines $lines\n";
+
+		// Transparent color-byte
+		if ($transparent>=0) {
+			if ($scr==5 || $scr==6) $transparent = $transparent&0x0f | (($transparent&0x0f)<<4);
+			if ($scr==7) { $transparent = $transparent&0x03; $transparent = $transparent | ($transparent<<2) | ($transparent<<4) | ($transparent<<6); }
+			if ($scr=='C') {
+				echo "SCREEN 12 images can't support transparency at this time...\n";
+				exit;
+			}
+		}
 
 		// Add palette to paletted screen modes
 		if ($scr < 8 && $scr!='C') {
@@ -369,10 +402,10 @@
 			$sizeDelta = intval(CHUNK_SIZE/2);
 			$end = false;
 			do {
-				$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp);
+				$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp, $transparent);
 				if (($sizeIn+$pos >= $fullSize) && $sizeOut<=CHUNK_SIZE) {
 					$sizeIn = $fullSize-$pos;
-					$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp);
+					$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp, $transparent);
 					$end = true;
 				} else
 				if ($sizeOut < CHUNK_SIZE-1) {
@@ -409,14 +442,14 @@
 	}
 
 	//=================================================================================
-	function compress($tmp, $in, $pos, $sizeIn, $comp) {
+	function compress($tmp, $in, $pos, $sizeIn, $comp, $transparent=-1) {
 		$data = substr($in, $pos, $sizeIn);
 		@unlink($tmp.'.'.$comp[COMP_EXT]);
 		if ($comp[COMP_APP]=="raw") {
 			file_put_contents($tmp.".".$comp[COMP_EXT], $data);
 		} else
 		if ($comp[COMP_APP]=="rle") {
-			file_put_contents($tmp.".".$comp[COMP_EXT], rle_encode($data, false));
+			file_put_contents($tmp.".".$comp[COMP_EXT], rle_encode($data, false, NULL, true, $transparent));
 		} else {
 			file_put_contents($tmp, $data);
 			exec($comp[COMP_APP]." $tmp", $out);
@@ -425,7 +458,7 @@
 	}
 
 	//=================================================================================
-	function rle_encode($in, $addSize=true, $mark=NULL, $eof=true) {
+	function rle_encode($in, $addSize=true, $mark=NULL, $eof=true, $transparent=-1) {
 		$out = "";
 		if ($addSize)
 			$out = pack("v", strlen($in));
@@ -444,9 +477,13 @@
 			$v = $in[$i];
 			$j = 0;
 			while ($i+$j<strlen($in) && $in[$i+$j]==$v) $j++;
-			if ($j>3 || ord($v)==$mark) {
+			if ($j>3 || ord($v)==$mark || ord($v)==$transparent) {
 				if ($j>255) $j=255;
-				$out .= chr($mark).chr($j).$v;
+				if (ord($v)==$transparent) {
+					$out .= chr($mark).chr(1).chr($j);	//Transparent compression
+				} else {
+					$out .= chr($mark).chr($j).$v;		//Normal compression
+				}
 				$i += $j-1;
 			} else {
 				$out .= $v;
@@ -457,7 +494,7 @@
 	}
 
 	//=================================================================================
-	function rle_encode_selection($in, $x, $y, $w, $h, $pixelsByte, $bytesLine) {
+	function rle_encode_selection($in, $x, $y, $w, $h, $transparent=-1, $pixelsByte, $bytesLine) {
 		$out = "";
 
 		//Find mark byte
@@ -473,7 +510,7 @@
 		$skip = $bytesLine - $wb;
 
 		for ($i = 0; $i < $h; $i++) {
-			$out .= rle_encode(substr($in, $xb + ($y+$i)*$bytesLine, $wb), false, $mark, false);
+			$out .= rle_encode(substr($in, $xb + ($y+$i)*$bytesLine, $wb), false, $mark, false, $transparent);
 			if ($skip && $i<$h-1) {
 				//Skip the rest of the line
 				$tmpSkip = $skip;
