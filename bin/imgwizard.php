@@ -86,7 +86,7 @@
 		$fileOut = $argv[2];
 		$newLoc = $argv[3];
 		if (!is_numeric($newLoc)) {
-			echo "ERROR: Redirect location is not a integer...\n";
+			echo "ERROR: Redirect location is not a integer [0-255]...\n";
 			showSyntax();
 		}
 		echo "    Adding redirect location to $newLoc\n";
@@ -126,8 +126,8 @@
 		$fileIn = $argv[2];
 		echo "### Loading $fileIn\n";
 		$lines = $argv[3];
-		if (!is_numeric($lines)) {
-			echo "ERROR: lines must be numeric and greater than zero...\n";
+		if (!is_numeric($lines) || $lines<=0 || $lines>212) {
+			echo "ERROR: lines must be numeric and greater than zero [0-212]...\n";
 			showSyntax();
 		}
 		//Lines
@@ -403,7 +403,10 @@
 			$end = false;
 			do {
 				$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp, $transparent);
-				if (($sizeIn+$pos >= $fullSize) && $sizeOut<=CHUNK_SIZE) {
+				if ($sizeDelta==0) {
+					$sizeDelta = $fullSize-$pos;
+				}
+				if ($sizeIn+$pos >= $fullSize && $sizeOut<=CHUNK_SIZE) {
 					$sizeIn = $fullSize-$pos;
 					$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp, $transparent);
 					$end = true;
