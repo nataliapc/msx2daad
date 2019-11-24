@@ -7,6 +7,7 @@
 - [Download](https://github.com/nataliapc/msx2daad/releases)
 - [Compilation](#compilation)
 - [Create your own Adventure: Sources and Compilers](#create-your-own-adventure-sources-and-compilers)
+- [Our Wiki pages with articles and tutorials](https://github.com/nataliapc/msx2daad/wiki)
 - [Supported languages](#supported-languages)
 - [MSX graphical modes & limitations](#msx-graphical-modes--limitations)
 - [Aditional tools in /bin folder](#aditional-tools-in-bin-folder)
@@ -68,7 +69,10 @@ There are empty templates in several languages to start your adventure:
 
 The compiled **DDB** file must be renamed to **DAAD.DDB** and added to the disk where you have the interpreter (**MSX2DAAD.COM**) and the font image (**FONT.IM8** for Screen8, etc...).
 
-To learn more about to create your own adventure game you can follow this great [**DAAD Tutorial for beginners**](https://medium.com/@uto_dev/a-daad-tutorial-for-beginners-1-b2568ec4df05) writed by the author of the **DRC** compiler.
+To learn more about **how to create your own adventure** your can:
+
+-  Read our [**Wiki pages with several articles**](https://github.com/nataliapc/msx2daad/wiki) about **DAAD** and **MSX2DAAD**.
+- Also you can follow this great [**DAAD Tutorial for beginners**](https://medium.com/@uto_dev/a-daad-tutorial-for-beginners-1-b2568ec4df05) writed by the author of the **DRC** compiler.
 
 ![](https://www.eslamejor.com/img/msx2daad_tutorial.png) 
 
