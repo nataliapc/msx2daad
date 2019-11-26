@@ -693,32 +693,28 @@ void do_QUIT()
 void _internal_get(uint8_t objno)
 {
 	Object *obj = objects + objno;
+	bool   done = false;
 	referencedObject(objno);
 	if (obj->location==LOC_CARRIED || obj->location==LOC_WORN) {
 		printSystemMsg(25);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location!=flags[fPlayer]) {
 		printSystemMsg(26);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (getObjectWeight(NULLWORD, true)+getObjectWeight(objno, false) > flags[fStrength]) {
 		printSystemMsg(43);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (flags[fNOCarr] >= flags[fMaxCarr]) {
 		printSystemMsg(27);
-		do_NEWTEXT();
-		do_DONE();
 		//TODO cancel DOALL loop
 	} else {
 		printSystemMsg(36);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
+		return;
 	}
+	do_NEWTEXT();
+	do_DONE();
 }
 #endif
 #ifndef DISABLE_GET
@@ -751,21 +747,18 @@ void _internal_drop(uint8_t objno)
 		obj->location = flags[fPlayer];
 		printSystemMsg(39);
 		flags[fNOCarr]--;
+		return;
 	} else
 	if (obj->location==LOC_WORN) {
 		printSystemMsg(24);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location==flags[fPlayer]) {
 		printSystemMsg(49);
-		do_NEWTEXT();
-		do_DONE();
 	} else {
 		printSystemMsg(28);
-		do_NEWTEXT();
-		do_DONE();
 	}
+	do_NEWTEXT();
+	do_DONE();
 }
 #endif
 #ifndef DISABLE_DROP
@@ -797,31 +790,27 @@ void do_DROP()		// objno
 void _internal_wear(uint8_t objno)
 {
 	Object *obj = objects + objno;
+	bool   done = false;
 	referencedObject(objno);
 	if (obj->location==flags[fPlayer]) {
 		printSystemMsg(49);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location==LOC_WORN) {
 		printSystemMsg(29);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location!=LOC_CARRIED) {
 		printSystemMsg(28);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (!obj->attribs.mask.isWareable) {
 		printSystemMsg(40);
-		do_NEWTEXT();
-		do_DONE();
 	} else {
 		printSystemMsg(37);
 		obj->location = LOC_WORN;
 		flags[fNOCarr]--;
+		return;
 	}
+	do_NEWTEXT();
+	do_DONE();
 }
 #endif
 #ifndef DISABLE_WEAR
@@ -856,28 +845,23 @@ void _internal_remove(uint8_t objno)
 	referencedObject(objno);
 	if (obj->location==LOC_CARRIED || obj->location==flags[fPlayer]) {
 		printSystemMsg(50);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location!=flags[fPlayer]) {
 		printSystemMsg(23);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (!obj->attribs.mask.isWareable) {
 		printSystemMsg(41);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (flags[fNOCarr] >= flags[fMaxCarr]) {
 		printSystemMsg(42);
-		do_NEWTEXT();
-		do_DONE();
 	} else {
 		printSystemMsg(38);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
+		return;
 	}
+	do_NEWTEXT();
+	do_DONE();
 }
 #endif
 #ifndef DISABLE_REMOVE
@@ -1129,20 +1113,33 @@ void do_DROPALL()
 	vocabulary then SM26 ("There isn't one of those here.") is printed. Else 
 	SM8 ("I can't do that.") is printed (i.e. It is not a valid object but does 
 	exist in the game). Either way actions NEWTEXT & DONE are performed */
+#if !defined(DISABLE_AUTOG) || !defined(DISABLE_AUTOD) || !defined(DISABLE_AUTOW) || !defined(DISABLE_AUTOR) || !defined(DISABLE_AUTOP)
+void _internal_autoend(uint8_t msgOK, uint8_t msgKO)
+{
+	uint8_t objno = getObjectId(flags[fNoun1], flags[fAdject1], LOC_HERE);
+	if (objno!=NULLWORD || flags[fNoun1]==NULLWORD)
+		printSystemMsg(msgOK);
+	else
+		printSystemMsg(msgKO);
+}
+#endif
 #ifndef DISABLE_AUTOG
 void do_AUTOG()
 {
 	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
-	uint8_t objno = getObjectId(noun, adjc, flags[fPlayer]);
+	uint8_t objno = getObjectId(noun, adjc, flags[fPlayer]);	// HERE
 	if (objno==NULLWORD) {
-		objno = getObjectId(noun, adjc, LOC_CARRIED);
+		objno = getObjectId(noun, adjc, LOC_CARRIED);			// CARRIED
 		if (objno==NULLWORD)
-			objno = getObjectId(noun, adjc, LOC_WORN);
+			objno = getObjectId(noun, adjc, LOC_WORN);			// WORN
 	}
-	if (objno==NULLWORD)
-		printSystemMsg(26);
-	else
+	if (objno!=NULLWORD)
 		_internal_get(objno);
+	else {
+		_internal_autoend(26, 8);	// OK:"There isn't one of those here." KO:"I can't do that"
+		do_NEWTEXT();
+		do_DONE();
+	}
 }
 #endif
 
@@ -1160,11 +1157,11 @@ void do_AUTOG()
 uint8_t _internal_checkLocCARR_WORN_HERE()
 {
 	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
-	uint8_t objno = getObjectId(noun, adjc, LOC_CARRIED);
+	uint8_t objno = getObjectId(noun, adjc, LOC_CARRIED);		// CARRIED
 	if (objno==NULLWORD) {
-		objno = getObjectId(noun, adjc, LOC_WORN);
+		objno = getObjectId(noun, adjc, LOC_WORN);				// WORN
 		if (objno==NULLWORD)
-			objno = getObjectId(noun, adjc, flags[fPlayer]);
+			objno = getObjectId(noun, adjc, flags[fPlayer]);	// HERE
 	}
 	return objno;
 }
@@ -1172,10 +1169,13 @@ uint8_t _internal_checkLocCARR_WORN_HERE()
 void do_AUTOD()
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
-	if (objno==NULLWORD)
-		printSystemMsg(28);
-	else
+	if (objno!=NULLWORD)
 		_internal_drop(objno);
+	else {
+		_internal_autoend(28, 8);	// OK:"I don't have one of these" KO:"I can't do that"
+		do_NEWTEXT();
+		do_DONE();
+	}
 }
 #endif
 
@@ -1194,10 +1194,13 @@ void do_AUTOD()
 void do_AUTOW()
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
-	if (objno==NULLWORD)
-		printSystemMsg(28);
-	else
+	if (objno!=NULLWORD)
 		_internal_wear(objno);
+	else {
+		_internal_autoend(28, 8);	// OK:"I don't have one of these" KO:"I can't do that"
+		do_NEWTEXT();
+		do_DONE();
+	}
 }
 #endif
 
@@ -1222,10 +1225,13 @@ void do_AUTOR()
 		if (objno==NULLWORD)
 			objno = getObjectId(noun, adjc, flags[fPlayer]);
 	}
-	if (objno==NULLWORD)
-		printSystemMsg(23);
-	else
+	if (objno!=NULLWORD)
 		_internal_remove(objno);
+	else {
+		_internal_autoend(23, 8);	// OK:"I'm not wearing one of those." KO:"I can't do that"
+		do_NEWTEXT();
+		do_DONE();
+	}
 }
 #endif
 
@@ -1244,10 +1250,13 @@ void do_AUTOR()
 void do_AUTOP()		// locno
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
-	if (objno==NULLWORD)
-		printSystemMsg(28);
-	else
+	if (objno!=NULLWORD)
 		_internal_putin(objno, getValueOrIndirection());
+	else {
+		_internal_autoend(28, 8);	// OK:"I don't have one of these" KO:"I can't do that"
+		do_NEWTEXT();
+		do_DONE();
+	}
 }
 #endif
 
@@ -1266,21 +1275,31 @@ void do_AUTOP()		// locno
 #ifndef DISABLE_AUTOT
 void do_AUTOT()		// locno
 {
+	uint8_t locno = getValueOrIndirection();
 	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
-	uint8_t objno = getObjectId(noun, adjc, LOC_CONTAINER);
+	uint8_t objno = getObjectId(noun, adjc, LOC_CONTAINER);		// CONTAINER
 	if (objno==NULLWORD) {
-		objno = getObjectId(noun, adjc, LOC_CARRIED);
+		objno = getObjectId(noun, adjc, LOC_CARRIED);			// CARRIED
 		if (objno==NULLWORD) {
-			objno = getObjectId(noun, adjc, LOC_WORN);
+			objno = getObjectId(noun, adjc, LOC_WORN);			// WORN
 			if (objno==NULLWORD) {
-				objno = getObjectId(noun, adjc, flags[fPlayer]);
+				objno = getObjectId(noun, adjc, flags[fPlayer]);// HERE
 			}
 		}
 	}
-	if (objno==NULLWORD)
-		printSystemMsg(28);
-	else
-		_internal_takeout(objno, getValueOrIndirection());
+	if (objno!=NULLWORD)
+		_internal_takeout(objno, locno);
+	else {
+		objno = getObjectId(flags[fNoun1], flags[fAdject1], LOC_HERE);
+		if (objno!=NULLWORD || flags[fNoun1]==NULLWORD) {
+			printSystemMsg(52);									// "There isn't one of those in the"
+			printObjectMsg(locno);								// Print locno object description
+			printSystemMsg(51);									// "."
+		} else
+			printSystemMsg(8);									// "I can't do that"
+		do_NEWTEXT();
+		do_DONE();
+	}
 }
 #endif
 
