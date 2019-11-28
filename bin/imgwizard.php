@@ -159,7 +159,8 @@
 
 
 	//=================================================================================
-	function showSyntax() {
+	function showSyntax()
+	{
 		global $appname;
 		
 		echo "\nList image content:\n".
@@ -188,7 +189,8 @@
 	}
 
 	//=================================================================================
-	function convertPalette89($pal) {
+	function convertPalette89($pal)
+	{
 		$out = "";
 		for ($i=0; $i<16; $i++) {
 			$r = ord($pal[0x29+$i*3]);
@@ -201,7 +203,8 @@
 	}
 
 	//=================================================================================
-	function showImageContent($fileIn) {
+	function showImageContent($fileIn)
+	{
 		global $magic;
 
 		echo "### Reading file $fileIn\n";
@@ -260,7 +263,9 @@
 	}
 
 	//=================================================================================
-	function addPalette($file, $scr, $out, $pal) {
+	function addPalette($file, $scr, $pal, $paper=NULL, $ink=NULL)
+	{
+		$out = "";
 		if ($pal===NULL) {
 			$filePalette = substr($file, 0, strlen($file)-3)."PL".$scr;
 			if (!file_exists($filePalette)) $filePalette = substr($file, 0, strlen($file)-3)."PAL";
@@ -271,19 +276,39 @@
 			echo "### Adding image palette from file '$filePalette'\n";
 			if ($pal===NULL)
 				$pal = file_get_contents($filePalette);
-			if (strlen($pal)==32)
-				$out .= chr(CHUNK_PALETTE).pack("vv",32,32).$pal;
-			else if (strlen($pal)==89)
-				$out .= chr(CHUNK_PALETTE).pack("vv",32,32).convertPalette89($pal);
-			else
-				echo "@WARNING!!! Unknown Palette format...\n\n";
+
+			if (strlen($pal)==89)
+				$pal = convertPalette89($pal);
+			elseif (strlen($pal)!=32)
+				die("\nERROR: Unknown Palette format!\n\n");
+
+			if ($paper!==NULL) {
+				$aux0 = $pal[0];
+				$aux1 = $pal[1];
+				$pal[0] = $pal[$paper*2];
+				$pal[1] = $pal[$paper*2+1];
+				$pal[$paper*2] = $aux0;
+				$pal[$paper*2+1] = $aux1;
+			}
+			if ($ink!==NULL) {
+				$aux0 = $pal[15*2];
+				$aux1 = $pal[15*2+1];
+				$pal[15*2] = $pal[$ink*2];
+				$pal[15*2+1] = $pal[$ink*2+1];
+				$pal[$ink*2] = $aux0;
+				$pal[$ink*2+1] = $aux1;
+			}
+
+			$out = chr(CHUNK_PALETTE).pack("vv",32,32).$pal;
 		} else {
 			echo "### Palette not found [$filePalette]\n";
 		}
+		return $out;
 	}
 
 	//=================================================================================
-	function checkScreemMode($fileIn) {
+	function checkScreemMode($fileIn)
+	{
 		$scr = strtoupper(substr($fileIn, -1));
 		if (($scr<'5' || $scr>'8') && $scr!='C') {
 			die("\nERROR: bad screen mode ['$scr']...\n\n");
@@ -292,7 +317,90 @@
 	}
 
 	//=================================================================================
-	function compressRectangle($file, $x, $y, $w, $h, $transparent=-1, $in=NULL, $pal=NULL) {
+	function checkPalettedColors($in, $scr)
+	{
+		$bpp = 4;					//Bits per pixel
+		if ($scr==6) $bpp = 2;
+		if ($scr==8) $bpp = 8;
+		$ppb = 8/$bpp;				//Pixels x Byte
+		$mask = pow(2, $bpp)-1;
+
+		$colors = array_fill(0, $mask+1, 0);
+
+		for ($i=0; $i<strlen($in); $i++) {
+			$byte = ord($in[$i]);
+			for ($p=0; $p<$ppb; $p++) {
+				$colors[$byte & $mask]++;
+				$byte >>= $bpp;
+			}
+		}
+
+		$paper = $ink = NULL;
+		if ($scr!=8) {
+			if ($colors[0]>0) {
+				echo "WARNING: PAPER Color (index 0) is used in the image!\n";
+				$unused = firstUnusedColor($colors);
+				if ($unused===FALSE) {
+					echo "ERROR: PAPER Color is used and not unused colors to switch them!\n\n";
+					exit;
+				}
+				$in = swapColors($in, 0, $unused, $bpp);
+				$paper = $unused;
+				$colors[$paper] = $colors[0];
+				$colors[0] = 0;
+			}
+			if ($colors[$mask]>0) {
+				echo "WARNING: INK Color (index $mask) is used in the image!\n";
+				$unused = firstUnusedColor($colors);
+				if ($unused===FALSE) {
+					echo "ERROR: INK Color is used and not unused colors to switch them!\n\n";
+					exit;
+				}
+				$in = swapColors($in, $mask, $unused, $bpp);
+				$ink = $unused;
+				$colors[$ink] = $colors[$mask];
+				$colors[$mask] = 0;
+			}
+		}
+		return array($in, $paper, $ink);
+	}
+
+	//=================================================================================
+	function swapColors($in, $from, $to, $bpp)
+	{
+		$ppb = 8/$bpp;				//Pixels x Byte
+		$mask = pow(2, $bpp)-1;
+		$num = 0;
+
+		for ($i=0; $i<strlen($in); $i++) {
+			$byte = ord($in[$i]);
+			for ($p=0; $p<$ppb; $p++) {
+				if ((($byte >> $bpp*$p) & $mask) == $from) {
+					$num++;
+					$mbit = $mask << ($p*$bpp);
+					$byte &= $mbit ^ 255;
+					$byte |= $to << ($p*$bpp);
+					$in[$i] = chr($byte);
+				}
+			}
+		}
+		echo "WARNING: Swap color $from and color $to ($num pixels changed)\n";
+
+		return $in;
+	}
+
+	//=================================================================================
+	function firstUnusedColor($colors)
+	{
+		for ($i=1; $i<count($colors)-1; $i++) {
+			if ($colors[$i]==0) return $i;
+		}
+		return FALSE;
+	}
+
+	//=================================================================================
+	function compressRectangle($file, $x, $y, $w, $h, $transparent=-1, $in=NULL, $pal=NULL)
+	{
 		global $magic;
 
 		$out = $magic;
@@ -306,23 +414,25 @@
 		$out .= $scr;
 		echo "### Rectangle Start:($x, $y) Width:($w, $h)\n";
 
+		// Read file
+		if ($in===NULL)
+			$in = @file_get_contents($file);
+			$in = substr($in, 7);
+		if ($in===FALSE) {
+			echo "File not found...\n";
+			exit;
+		}
+
 		// Add palette to paletted screen modes
 		if ($scr < 8 && $scr!='C') {
-			addPalette($file, $scr, $out, $pal);
+			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
+			$out .= addPalette($file, $scr, $pal);
 		}
 
 		// Bytes each Row in screen modes
 		$pixelsByte = array(0,0,0,0,0,2,4,2,1,'C'=>1);
 		$bytesLine = array(0,0,0,0,0,128,128,256,256,'C'=>256);
 
-		// Read file
-		if ($in===NULL)
-			$in = @file_get_contents($file);
-		if ($in===FALSE) {
-			echo "File not found...\n";
-			exit;
-		}
-		$in = substr($in, 7);
 		$i = 0;
 		$id = 1;
 
@@ -355,12 +465,16 @@
 	}
 
 	//=================================================================================
-	function compressChunks($file, $lines, $comp, $transparent=-1, $in=NULL, $pal=NULL) {
+	function compressChunks($file, $lines, $comp, $transparent=-1, $in=NULL, $pal=NULL)
+	{
 		global $magic;
 
 		$tmp = "_0000000.tmp";
 		$out = $magic;
 
+		// Bytes each Row in screen modes
+		$width = array(0,0,0,0,0,128,128,256,256,'C'=>256);
+		
 		// Check screen mode
 		$scr = checkScreemMode($file);
 		echo "### Mode SCREEN $scr\n";
@@ -377,22 +491,21 @@
 			}
 		}
 
-		// Add palette to paletted screen modes
-		if ($scr < 8 && $scr!='C') {
-			addPalette($file, $scr, $out, $pal);
-		}
-
-		// Bytes each Row in screen modes
-		$width = array(0,0,0,0,0,128,128,256,256,'C'=>256);
-		
 		// Read file
 		if ($in===NULL)
 			$in = @file_get_contents($file);
+			$in = substr($in, 7, $width[$scr]*$lines);
 		if ($in===FALSE) {
 			echo "File not found...\n";
 			exit;
 		}
-		$in = substr($in, 7, $width[$scr]*$lines);
+
+		// Add palette to paletted screen modes
+		if ($scr < 8 && $scr!='C') {
+			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
+			$out .= addPalette($file, $scr, $pal);
+		}
+
 		$pos = 0;
 		$i = 1;
 
@@ -403,17 +516,17 @@
 			$end = false;
 			do {
 				$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp, $transparent);
-				if ($sizeDelta==0) {
-					$sizeDelta = $fullSize-$pos;
-				}
 				if ($sizeIn+$pos >= $fullSize && $sizeOut<=CHUNK_SIZE) {
 					$sizeIn = $fullSize-$pos;
 					$sizeOut = compress($tmp, $in, $pos, $sizeIn, $comp, $transparent);
 					$end = true;
 				} else
 				if ($sizeOut < CHUNK_SIZE-1) {
-					$sizeIn += $sizeDelta;
-					$sizeDelta = intval($sizeDelta*0.96);
+					if ($sizeDelta > 0) {
+						$sizeIn += $sizeDelta;
+					} else {
+						$end = true;
+					}
 				} else {
 					if ($sizeOut > CHUNK_SIZE) {
 						$sizeIn -= $sizeDelta;
@@ -445,7 +558,8 @@
 	}
 
 	//=================================================================================
-	function compress($tmp, $in, $pos, $sizeIn, $comp, $transparent=-1) {
+	function compress($tmp, $in, $pos, $sizeIn, $comp, $transparent=-1)
+	{
 		$data = substr($in, $pos, $sizeIn);
 		@unlink($tmp.'.'.$comp[COMP_EXT]);
 		if ($comp[COMP_APP]=="raw") {
@@ -461,7 +575,8 @@
 	}
 
 	//=================================================================================
-	function rle_encode($in, $addSize=true, $mark=NULL, $eof=true, $transparent=-1) {
+	function rle_encode($in, $addSize=true, $mark=NULL, $eof=true, $transparent=-1)
+	{
 		$out = "";
 		if ($addSize)
 			$out = pack("v", strlen($in));
@@ -497,7 +612,8 @@
 	}
 
 	//=================================================================================
-	function rle_encode_selection($in, $x, $y, $w, $h, $transparent=-1, $pixelsByte, $bytesLine) {
+	function rle_encode_selection($in, $x, $y, $w, $h, $transparent=-1, $pixelsByte, $bytesLine)
+	{
 		$out = "";
 
 		//Find mark byte
@@ -530,7 +646,8 @@
 	}
 
 	//=================================================================================
-	function strpad($text, $len, $character=' ') {
+	function strpad($text, $len, $character=' ')
+	{
 		return str_pad($text, $len, $character, STR_PAD_LEFT);
 	}
 
