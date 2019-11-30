@@ -2,7 +2,7 @@
 ; In:  B     Value to store
 ;      C     Register number
 ; Out: -
-; Chg: A HL DE
+; Chg: AF HL DE 
 ;
 .include "vdp.s"
 

@@ -5,8 +5,8 @@
 
 uint16_t fopen(char *fn, char mode) __naked
 {
-  fn;
-  mode;
+  fn, mode;
+
 #ifdef MSXDOS2
 
   __asm

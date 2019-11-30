@@ -195,6 +195,7 @@ uint16_t fcreate(char *fn, char mode, char attributes);
 uint16_t remove(char *file);
 uint16_t fread(char* buf, uint16_t size, char fp);
 uint16_t fwrite(char* buf, uint16_t size, char fp);
+uint16_t fputs(char* str, char fp);
 uint32_t fseek (char fp, uint32_t offset, char origin);
 uint16_t filesize(char *fn);
 char fileexists(char *fn);

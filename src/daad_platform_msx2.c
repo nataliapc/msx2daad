@@ -711,11 +711,7 @@ bool gfxPicturePrepare(uint8_t location)
 	location /= 10;
 	pic[0] = location%10 + '0';
 	
-	#if SCREEN >= 7
-		posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * 256;
-	#elif SCREEN==5 || SCREEN==6
-		posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * 128;
-	#endif
+	posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE;
 	return fileexists(FILE_IMG);
 }
 
@@ -745,6 +741,12 @@ bool gfxPictureShow()
 				fclose(fp);
 				gfxPicturePrepare(chunk->chunkSize);
 				return gfxPictureShow();
+			} else
+			if (chunk->type==IMG_CHUNK_CLS) {			// Clear Window (CLS)
+				do_CLS();
+			} else
+			if (chunk->type==IMG_CHUNK_RESET) {			// Reset VRAM write position to current Window
+				posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE;
 			} else
 			if (chunk->type==IMG_CHUNK_PALETTE) {		// Load image palette
 				#if SCREEN < 8

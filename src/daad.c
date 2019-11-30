@@ -50,6 +50,11 @@ char    lastPrompt;
 uint8_t offsetText;
 uint8_t doingPrompt;
 
+// Transcript variables
+#ifdef TRANSCRIPT
+	uint16_t trIdx;
+#endif
+
 //=========================================================
 
 /*
@@ -116,6 +121,10 @@ bool initDAAD(int argc, char **argv)
 
 	#ifdef DEBUG
 		printf("\nDDB max size..... %u bytes\n", getFreeMemory());
+	#endif
+
+	#ifdef TRANSCRIPT
+		trIdx = 0;
 	#endif
 
 	return true;
@@ -216,6 +225,10 @@ void mainLoop()
 void prompt()
 {
 	char c, *p = tmpMsg, *extChars;
+
+	#ifdef TRANSCRIPT
+		transcript_flush();
+	#endif
 
 	doingPrompt = true;
 	printedLines = 0;
@@ -652,8 +665,11 @@ void printOutMsg(char *str)
  */
 void printChar(char c)
 {
-	#if defined(DEBUG) || defined(TEST)
+	#if (defined(DEBUG) || defined(TEST)) && !defined(TRANSCRIPT)
 		putchar(c);
+	#endif
+	#ifdef TRANSCRIPT
+		transcript_char(c);
 	#endif
 
 	switch (c) {
@@ -899,8 +915,68 @@ void referencedObject(uint8_t objno)
 	flags[fCONum] = objno;
 	flags[fCOLoc] = objects[objno].location;
 	flags[fCOWei] = objects[objno].attribs.mask.weight;
-	flags[fCOCon] = flags[fCOCon] & 0b01111111 | objects[objno].attribs.mask.isContainer << 7;
-	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | objects[objno].attribs.mask.isWareable << 7;
+	flags[fCOCon] = flags[fCOCon] & 0b01111111 | (objects[objno].attribs.mask.isContainer << 7);
+	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | (objects[objno].attribs.mask.isWareable << 7);
 	flags[fCOAtt] = objects[objno].extAttr1;
 	flags[fCOAtt+1] = objects[objno].extAttr2;
 }
+
+/*
+ * Function: transcript
+ * --------------------------------
+ * Store the game texts and sentences in a file named "TRANSCR.TXT"
+ *  
+ * @param c			Char to store.
+ * @return			none.
+ */
+#ifdef TRANSCRIPT
+const uint8_t transcript_translate[] = {
+	"ª¡¿«»áéíóúñÑçÇüÜ"
+};
+
+const char transcript_filename[] = "TRANSCR.TXT";
+char transcript_buff[1024];
+
+void transcript_flush()
+{
+	uint16_t fp;
+	uint32_t size;
+
+	size = filesize(transcript_filename);
+	if (size>=0xff00)
+		fp = fcreate(transcript_filename, 0, 0);
+	else {
+		fp = fopen(transcript_filename, O_WRONLY);
+		fseek(fp, size, SEEK_SET);
+	}
+	if (fp<0xff00) {
+		fputs(transcript_buff, fp);
+		fclose(fp);
+	}
+	trIdx = 0;
+	transcript_buff[0] = '\0';
+}
+
+void transcript_char(char c)
+{
+	if (c == 127) {
+		transcript_buff[trIdx++] = ' ';
+	} else
+	if (c < 16) {
+		transcript_buff[trIdx++] = '\n';
+	} else
+	if (c < 32) {
+		char *utf = transcript_translate+((c-16)<<1);
+		transcript_buff[trIdx++] = *utf++;
+		transcript_buff[trIdx++] = *utf;
+	} else {
+		transcript_buff[trIdx++] = c;
+	}
+	transcript_buff[trIdx] = 0;
+
+	if (trIdx>1020) {
+		transcript_flush();
+	}
+}
+
+#endif

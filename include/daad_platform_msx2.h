@@ -94,12 +94,21 @@
 #endif 
 #define VERSION_STR			"MSX2DAAD v"STRINGIFY(VERSION)"#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
 
+// SCREEN_WIDTH
 #if SCREEN==6 || SCREEN==7
 	#define SCREEN_WIDTH    512
 #else
 	#define SCREEN_WIDTH    256
 #endif
 
+// BYTESxLINE
+#if SCREEN >= 7
+	#define BYTESxLINE		256		// Screen 7, 8, 12
+#else
+	#define BYTESxLINE		128		// Screen 5, 6
+#endif
+
+// SCREEN_CHAR
 #if SCREEN==12
 	#define SCREEN_CHAR     C
 #else
@@ -177,6 +186,8 @@
 #define IMG_CHUNK_RAW		2		// Load RAW format data
 #define IMG_CHUNK_RLE		3		// Load RLE format data
 #define IMG_CHUNK_PLETTER	4		// Load Pletter5 format data
+#define IMG_CHUNK_RESET		16		// Reset VRAM write pointer to current Window
+#define IMG_CHUNK_CLS		17		// Clear Window (CLS)
 
 typedef struct {
 	char     magic[3];				// Magic text: "IMG".

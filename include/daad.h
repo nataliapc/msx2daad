@@ -276,6 +276,9 @@ uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location);
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn);
 void referencedObject(uint8_t objno);
 
+void transcript_flush();
+void transcript_char(char c);
+
 void initializePROC();
 void pushPROC(uint8_t proc);
 bool popPROC();

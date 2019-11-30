@@ -175,7 +175,7 @@ void parent(int toChild[2], int toParent[2], int pid)
 				checkText = nextSentence(checkText);
 			}
 			if (*checkText=='<') {
-				//printf("%s",output);		//For debugging only
+//printf("%s",output);		//For debugging only
 				if (strstr(output, checkText+1)) {
 					printf("%lu: #OK %s\n", line, checkText);
 					checkText = nextSentence(checkText);

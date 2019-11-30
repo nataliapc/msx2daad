@@ -44,10 +44,8 @@ uint16_t fread(char* buf, uint16_t size, char fp) __naked
     ld    c,#SETDTA               ; Set Disk transfer address (DTA)
     DOSCALL
 
-    ld hl,#SYSFCB+14              ; Set FCB Record size to 1 byte
-    ld (hl),#1
-    inc hl
-    ld (hl),#0
+    ld hl,#1                      ; Set FCB Record size to 1 byte
+    ld (#SYSFCB+14),hl
     pop   hl
 
     ld    de,#SYSFCB

@@ -19,7 +19,7 @@
 		--header--
 		0x0000  1    Chunk type: (0:redirect)
 		0x0001  2    New image location to read
-		0x0002  2    Empty chunk header (filled with 0xff)
+		0x0003  2    Empty chunk header (filled with 0x00)
 
 	Chunk Palette format:
 		Offset Size  Description
@@ -30,14 +30,28 @@
 		---data---
 		0x0005  32   12 bits palette data in 2 bytes format (0xRB 0x0G)
 
+	Chunk Reset VRAM pointer format:
+		Offset Size  Description
+		--header--
+		0x0000  1    Chunk type: (16:ResetPointer)
+		0x0001  2    Chunk data length (0x0000)
+		0x0003  2    Empty chunk header (0x0000)
+
+	Chunk ClearWindow format:
+		Offset Size  Description
+		--header--
+		0x0000  1    Chunk type: (17:ClearWindow)
+		0x0001  2    Chunk data length (0x0000)
+		0x0003  2    Empty chunk header (0x0000)
+
 	Chunk bitmap format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type  (2:data_raw 3:data_rle 4:data_pletter)
-		0x0001  2    Chunk length (max: 2048 bytes)
+		0x0001  2    Chunk data length (max: 2043 bytes)
 		0x0003  2    Uncompressed data length in bytes
 		---data---
-		0x0005 ...   Chunk data (1-2048 bytes length)
+		0x0005 ...   Chunk data (1-2043 bytes length)
 */
 
 	define('CHUNK_HEAD', 5);
@@ -48,6 +62,8 @@
 	define('CHUNK_RAW',      2);
 	define('CHUNK_RLE',      3);
 	define('CHUNK_PLETTER',  4);
+	define('CHUNK_RESET',   16);
+	define('CHUNK_CLS',     17);
 
 	$compressors = array(
 		array("raw", "raw", CHUNK_RAW),
@@ -249,6 +265,14 @@
 					echo "    CHUNK PLETTER Data: $sout bytes ($sin bytes compressed) [".number_format($sin/$sout*100,1,'.','')."%]\n";
 					$pos += 5 + $sin;
 					break;
+				case CHUNK_RESET:
+					echo "    CHUNK CMD:ResetPointer\n";
+					$pos += 5 + $sin;
+					break;
+				case CHUNK_CLS:
+					echo "    CHUNK CMD:ClearWindow\n";
+					$pos += 5 + $sin;
+					break;
 			}
 			if ($type != CHUNK_REDIRECT) {
 				$totalRaw += $sout;
@@ -399,13 +423,25 @@
 	}
 
 	//=================================================================================
+	function getTransparentColorByte($transparent, $scr)
+	{
+		if ($transparent<0) return $transparent;
+		if ($scr==5 || $scr==7) $transparent = $transparent&0x0f | (($transparent&0x0f)<<4);
+		if ($scr==6) { $transparent = $transparent&0x03; $transparent = $transparent | ($transparent<<2) | ($transparent<<4) | ($transparent<<6); }
+		if ($scr=='C') {
+			echo "SCREEN 12 images can't support transparency at this time...\n";
+			exit;
+		}
+	}
+
+	//=================================================================================
 	function compressRectangle($file, $x, $y, $w, $h, $transparent=-1, $in=NULL, $pal=NULL)
 	{
 		global $magic;
-
-		$out = $magic;
+		$id = 1;
 
 		// Check screen mode
+		$out = $magic;
 		$scr = checkScreemMode($file);
 		echo "### Mode SCREEN $scr\n";
 		if ($scr=='C') {
@@ -414,6 +450,9 @@
 		$out .= $scr;
 		echo "### Rectangle Start:($x, $y) Width:($w, $h)\n";
 
+		// Transparent color-byte
+		$transparent = getTransparentColorByte($transparent, $scr);
+
 		// Read file
 		if ($in===NULL)
 			$in = @file_get_contents($file);
@@ -421,6 +460,12 @@
 		if ($in===FALSE) {
 			echo "File not found...\n";
 			exit;
+		}
+
+		// Add CHUNK_CLS if not transparent image
+		if ($transparent<0) {
+			$out .= pack("cvv", CHUNK_CLS, 0, 0);
+			echo "    #CHUNK ".strpad($id++,2)." CMD CLS (clear window)\n";
 		}
 
 		// Add palette to paletted screen modes
@@ -434,7 +479,6 @@
 		$bytesLine = array(0,0,0,0,0,128,128,256,256,'C'=>256);
 
 		$i = 0;
-		$id = 1;
 
 		$wb = intval(round($w / $pixelsByte[$scr]));
 		$fullSize = $h * $wb;
@@ -468,28 +512,21 @@
 	function compressChunks($file, $lines, $comp, $transparent=-1, $in=NULL, $pal=NULL)
 	{
 		global $magic;
-
+		$id = 1;
 		$tmp = "_0000000.tmp";
-		$out = $magic;
 
 		// Bytes each Row in screen modes
 		$width = array(0,0,0,0,0,128,128,256,256,'C'=>256);
 		
 		// Check screen mode
+		$out = $magic;
 		$scr = checkScreemMode($file);
 		echo "### Mode SCREEN $scr\n";
 		$out .= $scr;
 		echo "### Lines $lines\n";
 
 		// Transparent color-byte
-		if ($transparent>=0) {
-			if ($scr==5 || $scr==6) $transparent = $transparent&0x0f | (($transparent&0x0f)<<4);
-			if ($scr==7) { $transparent = $transparent&0x03; $transparent = $transparent | ($transparent<<2) | ($transparent<<4) | ($transparent<<6); }
-			if ($scr=='C') {
-				echo "SCREEN 12 images can't support transparency at this time...\n";
-				exit;
-			}
-		}
+		$transparent = getTransparentColorByte($transparent, $scr);
 
 		// Read file
 		if ($in===NULL)
@@ -500,6 +537,12 @@
 			exit;
 		}
 
+		// Add CHUNK_CLS if not transparent image
+		if ($transparent<0) {
+			$out .= pack("cvv", CHUNK_CLS, 0, 0);
+			echo "    #CHUNK ".strpad($id++,2)." CMD CLS (clear window)\n";
+		}
+
 		// Add palette to paletted screen modes
 		if ($scr < 8 && $scr!='C') {
 			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
@@ -507,7 +550,6 @@
 		}
 
 		$pos = 0;
-		$i = 1;
 
 		$fullSize = strlen($in);
 		while ($pos < strlen($in)) {
@@ -534,11 +576,11 @@
 					} else
 						$end = true;
 				}
-				echo "\r\x1b[2K    #CHUNK ".strpad($i,2)." (".strpad($pos,5)."): sizeIn: $sizeIn bytes (out: $sizeOut bytes)";
+				echo "\r\x1b[2K    #CHUNK ".strpad($id,2)." (".strpad($pos,5)."): sizeIn: $sizeIn bytes (out: $sizeOut bytes)";
 			} while (!$end);
 			$out .= pack("cvv", $comp[COMP_ID], $sizeOut, $sizeIn).file_get_contents($tmp.'.'.$comp[COMP_EXT]);
 			echo "\n";
-			$i++;
+			$id++;
 			$pos += $sizeIn;
 		}
 
