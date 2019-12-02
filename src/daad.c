@@ -362,8 +362,13 @@ printf("populateLogicalSentence()\n");
 			flags[fVerb] = id;
 			ret = true;
 		} else if (type==NOUN && flags[fNoun1]==NULLWORD) {								// NOUN1
-			flags[fNoun1] = id;
-			if (id<20) flags[fVerb] = id;
+			// word that works like noun and verb
+			if (id<20 && flags[fVerb]==NULLWORD) {
+				flags[fVerb] = id;
+			} else {
+				// workd only like noun
+				flags[fNoun1] = id;
+			}
 			ret = true;
 		} else if (type==NOUN && flags[fNoun2]==NULLWORD) {								// NOUN2
 			flags[fNoun2] = id;

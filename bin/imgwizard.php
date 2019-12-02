@@ -93,6 +93,7 @@
 	if ($cmd == 'l' && $argc==3) {
 		$fileIn = $argv[2];
 		showImageContent($fileIn);
+		echo "\n";
 		exit;
 	}
 
@@ -114,7 +115,7 @@
 	}
 
 	// Create selected rectangle image
-	if ($cmd == 's' && $argv>=6) {
+	if ($cmd == 's' && $argc>=6) {
 		$fileIn = $argv[2];
 		echo "### Loading $fileIn\n";
 		if (!is_numeric($argv[3]) || !is_numeric($argv[4]) || !is_numeric($argv[5]) || !is_numeric($argv[6])) {
@@ -138,7 +139,7 @@
 	}
 
 	// Create full width image
-	if ($cmd == 'c' && $argv>=4) {
+	if ($cmd == 'c' && $argc>=4) {
 		$fileIn = $argv[2];
 		echo "### Loading $fileIn\n";
 		$lines = $argv[3];
@@ -167,7 +168,20 @@
 		echo "### Compressor: $compress\n";
 		//Compress chunks
 		compressChunks($fileIn, $lines, $comp, $transparent, NULL, NULL);
+		exit;
+	}
 
+	if ($cmd == 'd' && $argc==4) {
+		$id = intval($argv[3]);
+		if (!is_numeric($argv[3]) || $id<0) {
+			echo "ERROR: ChunkID must be numeric and greater than zero...\n";
+			showSyntax();
+		}
+		$fileIn = $argv[2];
+		$out = showImageContent($fileIn, $id);
+
+		echo "### Saving file\n\n";
+		file_put_contents($fileIn, $out);
 		exit;
 	}
 
@@ -186,7 +200,10 @@
 			 "Create an image from a rectangle:\n".
 			 "    $appname s <fileIn> <x> <y> <w> <h> [transparent_color]\n\n".
 			 "Create a location redirection:\n".
-			 "    $appname r <fileOut> <target_loc>\n\n".
+			 "    $appname r <fileOut> <target_loc>\n".
+			 "Remove a CHUNK from an image:\n".
+			 "    $appname d <fileIn> <chunk_id>\n".
+			 "\n".
 			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCC)\n".
 			 "               Palette can be inside SCx file or PL5 PL6 PL7 files.\n".
 			 " <lines>       Image lines to get from input file.\n".
@@ -219,7 +236,7 @@
 	}
 
 	//=================================================================================
-	function showImageContent($fileIn)
+	function showImageContent($fileIn, $removeId=FALSE)
 	{
 		global $magic;
 
@@ -231,59 +248,76 @@
 			echo "ERROR: bad file type...\n";
 			exit;
 		}
+		$out = substr($in, 0, 4);
+
+		//Screen mode
 		$scr = strtoupper(substr($in, 3, 1));
 		if (($scr<'5' || $scr>'8') && $scr!='C') {
 			echo "ERROR: bad screen mode ['$scr']...\n";
 			exit;
 		}
-		echo "    Mode SCREEN $scr\n";
+		echo "### Mode SCREEN $scr\n";
 
 		// Chunks
 		$pos = 4;
 		$totalRaw = 0;
 		$totalComp = 0;
+		$id = 1;
 		while ($pos < strlen($in)) {
 			list($type,$sin,$sout) = array_values(unpack('cType/vSizeOut/vSizeIn', substr($in, $pos, 5)));
+			$size = 5;
 			switch ($type) {
 				case CHUNK_REDIRECT:
-					echo "    CHUNK Redirect -> ".strpad($sin, 3, '0').".IM$scr\n";
-					$pos += 5;
+					echo "    CHUNK $id: Redirect -> ".strpad($sin, 3, '0').".IM$scr\n";
 					break;
 				case CHUNK_PALETTE:
-					echo "    CHUNK Palette $sout bytes\n";
-					$pos += 5 + $sin;
+					echo "    CHUNK $id: Palette $sout bytes\n";
+					$size += $sin;
 					break;
 				case CHUNK_RAW:
-					echo "    CHUNK RAW Data: $sout bytes\n";
-					$pos += 5 + $sin;
+					echo "    CHUNK $id: RAW Data: $sout bytes\n";
+					$size += $sin;
 					break;
 				case CHUNK_RLE:
-					echo "    CHUNK RLE Data: $sout bytes ($sin bytes compressed) [".number_format($sin/$sout*100,1,'.','')."%]\n";
-					$pos += 5 + $sin;
+					echo "    CHUNK $id: RLE Data: $sout bytes ($sin bytes compressed) [".number_format($sin/$sout*100,1,'.','')."%]\n";
+					$size += $sin;
 					break;
 				case CHUNK_PLETTER:
-					echo "    CHUNK PLETTER Data: $sout bytes ($sin bytes compressed) [".number_format($sin/$sout*100,1,'.','')."%]\n";
-					$pos += 5 + $sin;
+					echo "    CHUNK $id: PLETTER Data: $sout bytes ($sin bytes compressed) [".number_format($sin/$sout*100,1,'.','')."%]\n";
+					$size += $sin;
 					break;
 				case CHUNK_RESET:
-					echo "    CHUNK CMD:ResetPointer\n";
-					$pos += 5 + $sin;
+					echo "    CHUNK $id: CMD:ResetPointer\n";
+					$size += $sin;
 					break;
 				case CHUNK_CLS:
-					echo "    CHUNK CMD:ClearWindow\n";
-					$pos += 5 + $sin;
+					echo "    CHUNK $id: CMD:ClearWindow\n";
+					$size += $sin;
 					break;
+				default:
+					echo "    CHUNK $id: UNKNOWN CHUNK TYPE!!!! [**Aborted**]\n\n";
+					exit;
 			}
 			if ($type != CHUNK_REDIRECT) {
 				$totalRaw += $sout;
 				$totalComp += $sin;
 			}
+			if ($id===$removeId) {
+				echo "--REMOVED CHUNK $id--\n";
+			} else {
+				$out .= substr($in, $pos, $size);
+			}
+			$pos += $size;
+			$id++;
 		}
-		if ($type != CHUNK_REDIRECT) {
-			echo "    Original size:   $totalRaw bytes\n";
-			echo "    Compressed size: $totalComp bytes [".number_format($totalComp/$totalRaw*100,1,'.','')."%]\n";
+		if ($removeId>=$id)
+			echo "!!!WARNING: CHUNK $id NOT FOUND!!!\n";
+		if ($type != CHUNK_REDIRECT && $removeId===FALSE) {
+			echo "### Original size:   $totalRaw bytes\n";
+			echo "### Compressed size: $totalComp bytes [".number_format($totalComp/$totalRaw*100,1,'.','')."%]\n";
 		}
-		echo "### End of file\n\n";
+		echo "### End of file\n";
+		return $out;
 	}
 
 	//=================================================================================

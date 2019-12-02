@@ -137,23 +137,23 @@
 #define ERR_NORAM   0xde	//Not enough memory: MSX-DOS has run out of memory in its 16k kernel data segment. Try reducing the number of sector buffers or removing some environment strings. Also occurs if there are no free segments for creating the RAMdisk.
 #define ERR_INTER   0xdf	//Internal error: Should never occur.
 
-typedef struct {
+typedef struct {			// Off ID  Siz CP/M Function           MSXDOS Function
 	uint8_t  drvNum;		//  0 [DR] 1   Drive number containing the file (0:default drive, 1:A, 2:B, ..., 8:H)
-	uint8_t  filename[11];	//  1 [Fn] 11  8 bytes for filename and 3 bytes for its extension.
-	uint8_t  currBlkLo;		// 12 [EX] 1   Current block LO / Extend number LO
-	uint8_t  currBlkHi;		// 13 [S1] 1   Current block HI / File attributes (DOS2)
-	uint8_t  recordSizeLo;	// 14 [S2] 1   Record size LO / Extend number HI
-	uint8_t  recordSizeHi;	// 15 [RC] 1   Record size HI / Record count
-	uint32_t fileSize;		// 16 [AL] 4   File size in bytes
-	uint16_t date;			// 20 [  ] 2   Date (DOS1) / Volume ID (DOS2)
-	uint16_t time;			// 22 [  ] 2   Time (DOS1) / Volume ID (DOS2)
-	uint8_t  deviceId;		// 24 [  ] 1   Device ID. (DOS1) -> FBh:PRN FCh:LST FCh:NUL FEh:AUX FFh:CON
-	uint8_t  dirLoc;		// 25 [  ] 1   Directory location (DOS1)
-	uint16_t topCluster;	// 26 [  ] 2   Top cluster number of the file (DOS1)
-	uint16_t lastCluster;	// 28 [  ] 2   Last cluster number accessed (DOS1)
-	uint16_t relCluster;	// 30 [  ] 2   Relative location from top cluster of the file number of clusters from top of the file to the last cluster accessed (DOS1)
+	uint8_t  filename[11];	//  1 [Fn] 11  8 bytes for filename and 3 bytes for extension.
+	uint8_t  currBlkLo;		// 12 [EX] 1   Extent                  Current block LO / Extent number LO
+	uint8_t  currBlkHi;		// 13 [S1] 1   Reserved                Current block HI / File attributes (DOS2)
+	uint8_t  recordSizeLo;	// 14 [S2] 1   Reserved                Record size LO / Extent number HI
+	uint8_t  recordSizeHi;	// 15 [RC] 1   Record count in extent  Record size HI
+	uint32_t fileSize;		// 16 [AL] 4   Allocation              File size in bytes
+	uint16_t date;			// 20 [  ] 2   Allocation              Date (DOS1) / Volume ID (DOS2)
+	uint16_t time;			// 22 [  ] 2   Allocation              Time (DOS1) / Volume ID (DOS2)
+	uint8_t  deviceId;		// 24 [  ] 1   Allocation              Device ID. (DOS1) -> FBh:PRN FCh:LST FCh:NUL FEh:AUX FFh:CON
+	uint8_t  dirLoc;		// 25 [  ] 1   Allocation              Directory location (DOS1)
+	uint16_t topCluster;	// 26 [  ] 2   Allocation              Top cluster number of the file (DOS1)
+	uint16_t lastCluster;	// 28 [  ] 2   Allocation              Last cluster number accessed (DOS1)
+	uint16_t relCluster;	// 30 [  ] 2   Allocation              Relative location from top cluster of the file number of clusters from top of the file to the last cluster accessed (DOS1)
 	uint8_t  currRecord;	// 32 [CR] 1   Current record within extent (0...127)
-	uint32_t rndRecord;		// 33 [Rn] 4   Random record number. If record size <64 then all 4 bytes will be used, otherwise 3 bytes.
+	uint32_t rndRecord;		// 33 [Rn] 4   Not Used                Random record number. If record size <64 then all 4 bytes will be used, otherwise 3 bytes.
 } FCB;	// File control block definition
 
 typedef struct {

@@ -176,7 +176,6 @@ enum VOC_TYPE {
 };
 
 
-
 // System Flags (0-63)
 #define fDark      0	// when non zero indicates game is dark (see also object 0)
 #define fNOCarr    1	// Holds quantity of objects player is carrying (but not wearing)

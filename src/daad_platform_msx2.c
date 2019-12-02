@@ -429,7 +429,12 @@ void gfxSetScreen()
 	#endif
 	enable50Hz();
 	disableSPR();
-	ADDR_POINTER_BYTE(CLIKSW) = 0;	// Disable keys typing sound
+
+	//Set screen adjust
+	setRegVDP8(18, ADDR_POINTER_BYTE(0xFFF1));
+
+	//Disable keys typing sound
+	ADDR_POINTER_BYTE(CLIKSW) = 0;
 	
 	//Set Function keys with basic orders
 	uint8_t *fk = (void*)FNKSTR;
@@ -641,7 +646,7 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_HMMM);						// Paint char in white
 			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);			// Paint char INK foreground
 		} else {
-			//Use VRAM 2nd page like TEMP space working to avoid glitches
+			//Use VRAM 2nd page like TEMP working space to avoid glitches
 			if (COLOR_INK==0) {
 				bitBlt( 0,  0, dx, 256+64, FONTWIDTH, FONTHEIGHT, 255, 0, CMD_HMMV);				// Paint white background destination
 				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
