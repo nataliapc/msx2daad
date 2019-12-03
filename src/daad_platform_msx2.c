@@ -250,7 +250,11 @@ void loadFilesBin(int argc, char **argv)
 
 	// Load image FONT (old DMG) to VRAM 2nd page
 	memcpy(FILE_IMG, FILE_FONT, 13);
-	posVRAM = 0x10000;
+	#if SCREEN==5 || SCREEN==6
+		posVRAM = 0x8000;
+	#else
+		posVRAM = 0x10000;
+	#endif
 	gfxPictureShow();
 	// Restore & free
 	memcpy(FILE_IMG, aux, 13);
@@ -349,24 +353,26 @@ void printXMES(uint16_t address)
 // GRAPHICS (GFX)
 //=========================================================
 
-#if SCREEN == 6
-	#define COLOR_INK		3
-	#define COLOR_PAPER		0
-#elif SCREEN == 8
-	#define COLOR_INK		(cw->ink)
-	#define COLOR_PAPER		(cw->paper)
-#elif SCREEN > 8
+#if SCREEN==12
 	#define COLOR_INK		0xff
 	#define COLOR_PAPER		0x00
-#elif SCREEN < 8
-	#define COLOR_INK		15
-	#define COLOR_PAPER		0
+#else
+	#define COLOR_INK		(cw->ink)
+	#define COLOR_PAPER		(cw->paper)
 #endif
 
 #if SCREEN == 8		//SCREEN 8 fixed colors
 	const uint8_t colorTranslation[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
 	//  000   006   600   606   060   066   260   666   222   447   733   737   373   377   773   777      (GGGRRRBBB) 9bits color guide
 		0x00, 0x02, 0xc0, 0xc3, 0x18, 0x1b, 0x58, 0xdb, 0x49, 0x93, 0xed, 0xef, 0x7d, 0x7f, 0xfd, 0xff	// (GGGRRRBB) 8bits real color used
+	};
+#elif SCREEN == 6	//SCREEN 6 paletted colors
+	const uint16_t colorTranslation[] = {	// Amber Palette -> MSX grb
+		0x000, // 0: 000 black
+		0x230, // 1: 320 dark amber
+		0x450, // 2: 540 medium amber
+		0x670, // 3_ 760 light amber
+		0,0,0,0, 0,0,0,0, 0,0,0,0
 	};
 #else				//Paletted colors
 	const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb
@@ -432,6 +438,11 @@ void gfxSetScreen()
 
 	//Set screen adjust
 	setRegVDP8(18, ADDR_POINTER_BYTE(0xFFF1));
+
+	//Set Palette
+	#if SCREEN < 8
+		setPalette(colorTranslation);
+	#endif
 
 	//Disable keys typing sound
 	ADDR_POINTER_BYTE(CLIKSW) = 0;
@@ -579,9 +590,14 @@ void gfxSetPaperCol(uint8_t col)
 {
 	col;
 	#if SCREEN == 8
-		COLOR_PAPER = colorTranslation[col % 16];
+		col %= 16;
+		COLOR_PAPER = colorTranslation[col];
+	#elif SCREEN == 6
+		col %= 4;
+		COLOR_PAPER = col | (col << 2) | (col << 4) | (col << 6);
 	#elif SCREEN < 8
-		setColorPal(COLOR_PAPER, colorTranslation[col] % 16);
+		col %= 16;
+		COLOR_PAPER = col | (col << 4);
 	#else
 		// No PAPER color change
 	#endif
@@ -599,9 +615,14 @@ void gfxSetInkCol(uint8_t col)
 {
 	col;
 	#if SCREEN == 8
-		COLOR_INK = colorTranslation[col % 16];
+		col %= 16;
+		COLOR_INK = colorTranslation[col];
+	#elif SCREEN == 6
+		col %= 4;
+		COLOR_INK = col | (col << 2) | (col << 4) | (col << 6);
 	#elif SCREEN < 8
-		setColorPal(COLOR_INK, colorTranslation[col]);
+		col %= 16;
+		COLOR_INK = col | (col << 4);
 	#else
 		// No INK color change
 	#endif
@@ -636,25 +657,25 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 	c -= 16;
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
 	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT)+256;
-	#if SCREEN==8
+	#if SCREEN <= 8
 		#ifdef DISABLE_GFXCHAR_COLOR
 			if (c>=128-16) {
 				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);
 			} else
 		#endif
 		if (COLOR_PAPER==0) {
-			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_HMMM);						// Paint char in white
+			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);				// Paint char in white
 			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);			// Paint char INK foreground
 		} else {
 			//Use VRAM 2nd page like TEMP working space to avoid glitches
 			if (COLOR_INK==0) {
-				bitBlt( 0,  0, dx, 256+64, FONTWIDTH, FONTHEIGHT, 255, 0, CMD_HMMV);				// Paint white background destination
+				bitBlt( 0,  0, dx, 256+64, FONTWIDTH, FONTHEIGHT, 255, 0, CMD_LMMV|LOG_IMP);		// Paint white background destination
 				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
 				bitBlt( 0,  0, dx, 256+64, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);// Paint PAPER background destination
-				bitBlt(dx, 256+64, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_HMMM);				// Copy TEMP char to destination
+				bitBlt(dx, 256+64, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);		// Copy TEMP char to destination
 			} else {
-				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_HMMV);			// Paint PAPER background destination
-				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_HMMM);				// Paint TEMP char in white
+				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_IMP);	// Paint PAPER background destination
+				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);		// Paint TEMP char in white
 				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);	// Paint TEMP INK color foreground
 				bitBlt(dx, 256+64, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TIMP);		// Copy TEMP char to destination
 			}
@@ -695,6 +716,22 @@ void gfxPutInputEcho(char c, bool keepPos)
 		gfxPutChWindow(c);
 	else
 		printChar(c);
+}
+
+/*
+ * Function: gfxSetPalette
+ * --------------------------------
+ * Set palette RGB to color index.
+ * 
+ * @param index		Color index to change.
+ * @param red		Red component.
+ * @param green		Green component.
+ * @param blue		Blue component.
+ * @return			none.
+ */
+void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
+{
+	setColorPal(index%16, (((uint16_t)red & 0b11100000)<<3) | ((green & 0b11100000)>>1) | ((blue & 0b11100000)>>5));
 }
 
 /*
@@ -827,6 +864,33 @@ void sfxInit() __naked
 		ret
 	__endasm;
 	#endif//DISABLE_BEEP
+}
+
+/*
+ * Function: sfxWriteRegister
+ * --------------------------------
+ * Value is written to register 'reg' of the sound chip on 8 bit machines.
+ * 
+ * @param reg		Register to set value.
+ * @param value		Value to write.
+ * @return			none.
+ */
+void sfxWriteRegister(uint8_t reg, uint8_t value) __naked
+{
+	#ifndef DISABLE_SFX
+	__asm
+		pop  af
+		pop  bc
+		push bc
+		push af
+
+		ld  a,c
+		out (0xa0),a
+		ld  a,b
+		out (0xa1),a
+		ret
+	__endasm;
+	#endif
 }
 
 /*

@@ -34,6 +34,7 @@
 #define ADDR_POINTER_BYTE(X)	(*((uint8_t*)X))
 #define ADDR_POINTER_WORD(X)	(*((uint16_t*)X))
 
+
 // System functions
 bool     checkPlatformSystem();
 uint16_t getFreeMemory();
@@ -44,13 +45,16 @@ uint16_t checkKeyboardBuffer();
 void     clearKeyboardBuffer();
 void     waitingForInput();
 
+
 // Filesystem
 void     loadFilesBin(int argc, char **argv);
 uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size);
 uint16_t fileSize(char *filename);
 
+
 // External texts
 void printXMES(uint16_t address);
+
 
 // GFX functions
 void gfxSetScreen();
@@ -65,12 +69,14 @@ void gfxSetBorderCol(uint8_t col);
 void gfxPutChWindow(uint8_t c);
 void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy);
 void gfxPutInputEcho(char c, bool keepPos);
+void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
 bool gfxPicturePrepare(uint8_t location);
 bool gfxPictureShow();
 
 
 // SFX functions
 void sfxInit();
+void sfxWriteRegister(uint8_t reg, uint8_t value);
 void sfxTone(uint8_t value1, uint8_t value2);
 
 

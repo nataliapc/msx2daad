@@ -207,7 +207,7 @@ printf("\n");
 #ifdef VERBOSE
 printf("  ======================> VERB+NOUN OK\n");
 #endif
-		//lastIsDone = isDone;	//Fixed issue#13 ????
+		lastIsDone = isDone;	//Fixed issue#13 ????
 		isDone = false;
 		checkEntry = true;
 	}
@@ -2349,8 +2349,9 @@ void do_CALL()		// address(dword)
 #ifndef DISABLE_SFX
 void do_SFX()		// value1 value2
 {
-	//TODO: SFX not implemented yet
-	do_NOT_USED();
+	uint16_t value = (uint16_t)getValueOrIndirection();
+	uint8_t  reg = *pPROC++;
+	sfxWriteRegister(reg, value);
 }
 #endif
 
@@ -2398,18 +2399,18 @@ void do_GFX()		// pa routine
 	switch (routine) {
 		//=================== SET PALETTE
 		case 9:
-		//TODO: not implemented yet
-		break;
+			gfxSetPalette(flags[value], flags[value+1], flags[value+2], flags[value+3]);
+			break;
 		//=================== GET PALETTE
 		case 10:
-		//TODO: not implemented yet
-		break;
+			//TODO: not implemented
+			break;
 	}
 }
 #endif
 
 // =============================================================================
-// Actions for show pictures [2 condacts]
+// Actions to show pictures [2 condacts]
 // =============================================================================
 
 /*	Will load into the picture buffer the given picture. If there no corresponding

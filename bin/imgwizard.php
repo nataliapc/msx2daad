@@ -397,7 +397,7 @@
 		if ($scr!=8) {
 			if ($colors[0]>0) {
 				echo "WARNING: PAPER Color (index 0) is used in the image!\n";
-				$unused = firstUnusedColor($colors);
+/*				$unused = firstUnusedColor($colors);
 				if ($unused===FALSE) {
 					echo "ERROR: PAPER Color is used and not unused colors to switch them!\n\n";
 					exit;
@@ -405,11 +405,11 @@
 				$in = swapColors($in, 0, $unused, $bpp);
 				$paper = $unused;
 				$colors[$paper] = $colors[0];
-				$colors[0] = 0;
+				$colors[0] = 0;*/
 			}
 			if ($colors[$mask]>0) {
 				echo "WARNING: INK Color (index $mask) is used in the image!\n";
-				$unused = firstUnusedColor($colors);
+/*				$unused = firstUnusedColor($colors);
 				if ($unused===FALSE) {
 					echo "ERROR: INK Color is used and not unused colors to switch them!\n\n";
 					exit;
@@ -417,7 +417,7 @@
 				$in = swapColors($in, $mask, $unused, $bpp);
 				$ink = $unused;
 				$colors[$ink] = $colors[$mask];
-				$colors[$mask] = 0;
+				$colors[$mask] = 0;*/
 			}
 		}
 		return array($in, $paper, $ink);
@@ -496,16 +496,16 @@
 			exit;
 		}
 
-		// Add CHUNK_CLS if not transparent image
-		if ($transparent<0) {
-			$out .= pack("cvv", CHUNK_CLS, 0, 0);
-			echo "    #CHUNK ".strpad($id++,2)." CMD CLS (clear window)\n";
-		}
-
 		// Add palette to paletted screen modes
 		if ($scr < 8 && $scr!='C') {
 			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
 			$out .= addPalette($file, $scr, $pal);
+		}
+
+		// Add CHUNK_CLS if not transparent image
+		if ($transparent<0) {
+			$out .= pack("cvv", CHUNK_CLS, 0, 0);
+			echo "    #CHUNK ".strpad($id++,2)." CMD CLS (clear window)\n";
 		}
 
 		// Bytes each Row in screen modes
@@ -571,16 +571,16 @@
 			exit;
 		}
 
-		// Add CHUNK_CLS if not transparent image
-		if ($transparent<0) {
-			$out .= pack("cvv", CHUNK_CLS, 0, 0);
-			echo "    #CHUNK ".strpad($id++,2)." CMD CLS (clear window)\n";
-		}
-
 		// Add palette to paletted screen modes
 		if ($scr < 8 && $scr!='C') {
 			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
 			$out .= addPalette($file, $scr, $pal);
+		}
+
+		// Add CHUNK_CLS if not transparent image
+		if ($transparent<0) {
+			$out .= pack("cvv", CHUNK_CLS, 0, 0);
+			echo "    #CHUNK ".strpad($id++,2)." CMD CLS (clear window)\n";
 		}
 
 		$pos = 0;
