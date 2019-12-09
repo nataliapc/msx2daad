@@ -49,9 +49,9 @@ const CONDACT_LIST condactList[] = {
 	{ do_PUTIN,     1 }, { do_TAKEOUT,   1 }, { do_NEWTEXT,   1 }, { do_ABILITY,   1 }, { do_WEIGHT,    1 },	// 90-94
 	{ do_RANDOM,    1 }, { do_INPUT,     1 }, { do_SAVEAT,    1 }, { do_BACKAT,    1 }, { do_PRINTAT,   1 },	// 95-99
 	{ do_WHATO,     1 }, { do_CALL,      1 }, { do_PUTO,      1 }, { do_NOTDONE,   0 }, { do_AUTOP,     1 },	// 100-104
-	{ do_AUTOT,     1 }, { do_MOVE,      1 }, { do_WINSIZE,   1 }, { do_REDO,      1 }, { do_CENTRE,    1 },	// 105-109
+	{ do_AUTOT,     1 }, { do_MOVE,      1 }, { do_WINSIZE,   1 }, { do_REDO,      0 }, { do_CENTRE,    1 },	// 105-109
 	{ do_EXIT,      1 }, { do_INKEY,     0 }, { do_BIGGER,    0 }, { do_SMALLER,   0 }, { do_ISDONE,    0 },	// 110-114
-	{ do_ISNDONE,   0 }, { do_SKIP,      1 }, { do_RESTART,   1 }, { do_TAB,       1 }, { do_COPYOF,    1 },	// 115-119
+	{ do_ISNDONE,   0 }, { do_SKIP,      0 }, { do_RESTART,   1 }, { do_TAB,       1 }, { do_COPYOF,    1 },	// 115-119
 	{ do_NOT_USED,  1 }, { do_COPYOO,    1 }, { do_NOT_USED,  1 }, { do_COPYFO,    1 }, { do_NOT_USED,  1 },	// 120-124
 	{ do_COPYFF,    1 }, { do_COPYBF,    1 }, { do_RESET,     1 },												// 125-127
 };

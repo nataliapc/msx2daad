@@ -62,7 +62,7 @@
 	#define VERSION				1.2
 #endif
 #ifndef SCREEN
-	#define SCREEN 				8	// Screen 5/6/7/8/12
+	#define SCREEN 				8	// Screen 5/6/7/8/10/12
 #endif
 #ifndef SCREEN_HEIGHT
 	#define SCREEN_HEIGHT		212	// Screen height in pixels: 192 or 212. MSX2 VDP can toggle it.
@@ -88,10 +88,10 @@
 
 #ifdef LANG_EN
 	#define LANG  	EN
-#endif 
+#endif
 #ifdef LANG_ES
 	#define LANG  	ES
-#endif 
+#endif
 #define VERSION_STR			"MSX2DAAD v"STRINGIFY(VERSION)"#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
 
 // SCREEN_WIDTH
@@ -103,7 +103,7 @@
 
 // BYTESxLINE
 #if SCREEN >= 7
-	#define BYTESxLINE		256		// Screen 7, 8, 12
+	#define BYTESxLINE		256		// Screen 7, 8, 10, 12
 #else
 	#define BYTESxLINE		128		// Screen 5, 6
 #endif
@@ -113,18 +113,24 @@
 #define FONTTEMPY			(FONTINITY + 32)
 
 // SCREEN_CHAR
-#if SCREEN==12
-	#define SCREEN_CHAR     C
+#if SCREEN==10
+	#define SCREEN_CHAR     STRINGIFY(A)
+#elif SCREEN==12
+	#define SCREEN_CHAR     STRINGIFY(C)
 #else
-	#define SCREEN_CHAR     SCREEN
+	#define SCREEN_CHAR     STRINGIFY(SCREEN)
 #endif
 
 #ifndef FONTWIDTH
-	#error "FONTWIDTH constant must be 6 or 8!"
+	#error "FONTWIDTH constant must be 4, 6 or 8!"
 #endif
 
 #ifndef SCREEN_WIDTH
 	#error "SCREEN_WIDTH must be defined!"
+#endif
+
+#ifndef LANG
+	#error "LANG_EN or LANG_ES must be defined!"
 #endif
 
 #if !defined(SCREEN_WIDTH) || !defined(SCREEN_HEIGHT)

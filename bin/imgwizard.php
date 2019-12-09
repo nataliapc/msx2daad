@@ -244,7 +244,7 @@
 			 "    $appname d <fileIn> <chunk_id>\n\n".
 			 "Join several IMx files in just one:\n".
 			 "    $appname j <fileOut> <fileIn1> [fileIn2] [fileIn3] ...\n\n".
-			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCC)\n".
+			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCA/SCC)\n".
 			 "               Palette can be inside SCx file or PL5 PL6 PL7 files.\n".
 			 " <lines>       Image lines to get from input file.\n".
 			 " [compressor]  Compression type: RAW, RLE or PLETTER.\n".
@@ -292,7 +292,7 @@
 
 		//Screen mode
 		$scr = strtoupper(substr($in, 3, 1));
-		if (($scr<'5' || $scr>'8') && $scr!='C') {
+		if (($scr<'5' || $scr>'8') && $scr!='A' && $scr!='C') {
 			echo "ERROR: bad screen mode ['$scr']...\n";
 			exit;
 		}
@@ -408,7 +408,7 @@
 	function checkScreemMode($fileIn)
 	{
 		$scr = strtoupper(substr($fileIn, -1));
-		if (($scr<'5' || $scr>'8') && $scr!='C') {
+		if (($scr<'5' || $scr>'8') && $scr!='A' && $scr!='C') {
 			die("\nERROR: bad screen mode ['$scr']...\n\n");
 		}
 		return $scr;
@@ -502,8 +502,8 @@
 		if ($transparent<0) return $transparent;
 		if ($scr==5 || $scr==7) $transparent = $transparent&0x0f | (($transparent&0x0f)<<4);
 		if ($scr==6) { $transparent = $transparent&0x03; $transparent = $transparent | ($transparent<<2) | ($transparent<<4) | ($transparent<<6); }
-		if ($scr=='C') {
-			echo "SCREEN 12 images can't support transparency at this time...\n";
+		if ($scr=='A' || $scr=='C') {
+			echo "SCREEN 10/12 images can't support transparency at this time...\n";
 			exit;
 		}
 		return $transparent;
@@ -519,8 +519,8 @@
 		$out = $magic;
 		$scr = checkScreemMode($file);
 		echo "### Mode SCREEN $scr\n";
-		if ($scr=='C') {
-			die("\nERROR: Partial rectangle image not supported in Screen 12...\n\n");
+		if (hexdec($scr)>=10 && $x%4!=0 && $w%4!=0) {
+			die("\nERROR: SCREEN 10/12 needs 'x' and 'w' input to be multiple of 4...\n\n");
 		}
 		$out .= $scr;
 		echo "### Rectangle Start:($x, $y) Width:($w, $h)\n";
@@ -537,7 +537,7 @@
 		}
 
 		// Add palette to paletted screen modes
-		if ($scr < 8 && $scr!='C') {
+		if (hexdec($scr) < 8) {
 			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
 			$out .= addPalette($file, $scr, $pal);
 		}
@@ -549,8 +549,8 @@
 		}
 
 		// Bytes each Row in screen modes
-		$pixelsByte = array(0,0,0,0,0,2,4,2,1,'C'=>1);
-		$bytesLine = array(0,0,0,0,0,128,128,256,256,'C'=>256);
+		$pixelsByte = array(0,0,0,0,0,2,4,2,1,'A'=>1,'C'=>1);
+		$bytesLine = array(0,0,0,0,0,128,128,256,256,'A'=>256,'C'=>256);
 
 		$i = 0;
 
@@ -590,7 +590,7 @@
 		$tmp = "_0000000.tmp";
 
 		// Bytes each Row in screen modes
-		$width = array(0,0,0,0,0,128,128,256,256,'C'=>256);
+		$width = array(0,0,0,0,0,128,128,256,256,'A'=>256,'C'=>256);
 		
 		// Check screen mode
 		$out = $magic;
@@ -612,7 +612,7 @@
 		}
 
 		// Add palette to paletted screen modes
-		if ($scr < 8 && $scr!='C') {
+		if (hexdec($scr) < 8) {
 			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
 			$out .= addPalette($file, $scr, $pal);
 		}

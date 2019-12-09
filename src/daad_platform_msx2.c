@@ -32,11 +32,11 @@ const char FILES_BIN[] = "FILES.BIN\0  ";
 
 //Default FILES.BIN content (overwrited if a FILES.BIN exists)
 const char FILES[] = 
-	"FONT    IM"STRINGIFY(SCREEN_CHAR)"\n"		// Filename for Font file
+	"FONT    IM"SCREEN_CHAR"\n"		// Filename for Font file
 	"DAAD    DDB\n"								// Filename for DDB file
 	"TEXTS   XDB\n"								// Filename with externalized texts (XMES/XMESSAGE)
-	"LOADING IM"STRINGIFY(SCREEN_CHAR)"\n"		// Filename for loading screen
-	"000     IM"STRINGIFY(SCREEN_CHAR)"\n";		// Buffer to fill with the image to load (XPICTURE)
+	"LOADING IM"SCREEN_CHAR"\n"		// Filename for loading screen
+	"000     IM"SCREEN_CHAR"\n";		// Buffer to fill with the image to load (XPICTURE)
 
 #define FILE_FONT	&FILES[0]
 #define FILE_DDB	&FILES[12]
@@ -366,16 +366,19 @@ void printXMES(uint16_t address)
 
 #if SCREEN==6
 	#define AUX_HMMM		CMD_LMMM|LOG_IMP
+	#define AUX_HMMV		CMD_LMMV|LOG_IMP
 #else
 	#define AUX_HMMM		CMD_HMMM
+	#define AUX_HMMV		CMD_HMMV
 #endif
 
 #if SCREEN == 8		//SCREEN 8 fixed colors
-	const uint8_t colorTranslation[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
+	const uint8_t colorTranslationSC8[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
 	//  000   006   600   606   060   066   260   666   222   447   733   737   373   377   773   777      (GGGRRRBBB) 9bits color guide
 		0x00, 0x02, 0xc0, 0xc3, 0x18, 0x1b, 0x58, 0xdb, 0x49, 0x93, 0xed, 0xef, 0x7d, 0x7f, 0xfd, 0xff	// (GGGRRRBB) 8bits real color used
 	};
-#elif SCREEN == 6	//SCREEN 6 paletted colors
+#endif
+#if SCREEN == 6	//SCREEN 6 paletted colors
 	const uint16_t colorTranslation[] = {	// Amber Palette -> MSX grb
 		0x000, // 0: 000 black
 		0x230, // 1: 320 dark amber
@@ -383,7 +386,7 @@ void printXMES(uint16_t address)
 		0x670, // 3_ 760 light amber
 		0,0,0,0, 0,0,0,0, 0,0,0,0
 	};
-#else				//Paletted colors
+#else										//Paletted colors
 	const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb
 		0x000, // 0: 000 black
 		0x006, // 1: 006 blue
@@ -392,17 +395,35 @@ void printXMES(uint16_t address)
 		0x060, // 4: 600 red
 		0x066, // 5: 606 dark purple
 		0x260, // 6: 620 orange
-		0x666, // 7: 555 light gray
+		0x666, // 7: 666 light gray
 		0x222, // 8: 222 dark gray
-		0x447, // 9: 337 light blue
-		0x733, //10: 272 light green
-		0x737, //11: 277 light cyan
-		0x373, //12: 722 light red
+		0x447, // 9: 447 light blue
+		0x733, //10: 373 light green
+		0x737, //11: 377 light cyan
+		0x373, //12: 733 light red
 		0x377, //13: 727 light purple
-		0x773, //14: 772 yellow
+		0x773, //14: 773 yellow
 		0x777  //15: 777 white
 	};
 #endif
+
+uint8_t getColor(uint8_t col)
+{
+	col;
+	#if SCREEN == 6
+		col %= 4;
+		return col | (col << 2) | (col << 4) | (col << 6);
+	#elif SCREEN < 8
+		col %= 16;
+		return col | (col << 4);
+	#elif SCREEN == 8
+		return colorTranslationSC8[col % 16];
+	#elif SCREEN == 10
+		return col << 4 | 8;
+	#else
+		return 0;
+	#endif
+}
 
 /*
  * Function: gfxSetScreen
@@ -423,13 +444,17 @@ void gfxSetScreen()
 			ld   ix,#0x5f
 			call CALSLT
 		__endasm;
-	#else 
+	#else
 		__asm
 			ld   a,#8
 			ld   iy,(#EXPTBL)
 			ld   ix,#0x5f
 			call CALSLT
+		#if SCREEN==10
+			ld   bc,#0x1899		; enable YJK colors + Palette mixed mode
+		#elif SCREEN==12
 			ld   bc,#0x0899		; enable YJK colors
+		#endif
 			out  (c),b
 			out  (c),c
 		__endasm;
@@ -449,7 +474,7 @@ void gfxSetScreen()
 	setRegVDP8(18, ADDR_POINTER_BYTE(0xFFF1));
 
 	//Set Palette
-	#if SCREEN < 8
+	#if SCREEN!=8 && SCREEN!=12
 		setPalette(colorTranslation);
 	#endif
 
@@ -511,30 +536,20 @@ void gfxSetScreen()
  * 			On MSX2:
  * 				Bit 4: Is a MSX/MSX2 mode
  * 				Bits 0-3: Screen mode
- * 					128|16|5  - SCREEN 5
- * 					128|16|6  - SCREEN 6
- * 					128|16|7  - SCREEN 7
- * 					    16|8  - SCREEN 8
- * 					    16|12 - SCREEN 12
+ * 					16|5  - SCREEN 5
+ * 					16|6  - SCREEN 6
+ * 					16|7  - SCREEN 7
+ * 					16|8  - SCREEN 8
+ * 					16|10 - SCREEN 10
+ * 					16|12 - SCREEN 12
  * 
  * @return		Return the value to be assigned to the flag
  */
 void gfxSetScreenModeFlags()
 {
-	// Set Graphics flag
+	// Set Graphics & ScreenMode flag
 	flags[fGFlags] = 0b10000000;
-	// Set ScreenMode flag
-	#if SCREEN == 5
-		flags[fGFlags] = 128|16|5;
-	#elif SCREEN == 6
-		flags[fGFlags] =  128|16|6;
-	#elif SCREEN == 7
-		flags[fGFlags] =  128|16|7;
-	#elif SCREEN == 8
-		flags[fGFlags] =  16|8;
-	#elif SCREEN == 12
-		flags[fGFlags] =  16|12;
-	#endif
+	flags[fScMode] = 16|SCREEN;
 }
 
 /*
@@ -605,17 +620,8 @@ void gfxScrollUp()
 void gfxSetPaperCol(uint8_t col)
 {
 	col;
-	#if SCREEN == 8
-		col %= 16;
-		COLOR_PAPER = colorTranslation[col];
-	#elif SCREEN == 6
-		col %= 4;
-		COLOR_PAPER = col | (col << 2) | (col << 4) | (col << 6);
-	#elif SCREEN < 8
-		col %= 16;
-		COLOR_PAPER = col | (col << 4);
-	#else
-		// No PAPER color change
+	#if SCREEN < 12
+		COLOR_PAPER = getColor(col);
 	#endif
 }
 
@@ -630,17 +636,8 @@ void gfxSetPaperCol(uint8_t col)
 void gfxSetInkCol(uint8_t col)
 {
 	col;
-	#if SCREEN == 8
-		col %= 16;
-		COLOR_INK = colorTranslation[col];
-	#elif SCREEN == 6
-		col %= 4;
-		COLOR_INK = col | (col << 2) | (col << 4) | (col << 6);
-	#elif SCREEN < 8
-		col %= 16;
-		COLOR_INK = col | (col << 4);
-	#else
-		// No INK color change
+	#if SCREEN < 12
+		COLOR_INK = getColor(col);
 	#endif
 }
 
@@ -688,7 +685,7 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
 	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY + graphCharsetOffset;
 
-	#if SCREEN <= 8
+	#if SCREEN <= 10
 		#ifdef DISABLE_GFXCHAR_COLOR
 			if (c>=128-16) {
 				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);
@@ -700,12 +697,12 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 		} else {
 			//Use VRAM like TEMP working space to avoid glitches
 			if (COLOR_INK==0) {
-				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 255, 0, CMD_LMMV|LOG_IMP);			// Paint white background destination
+				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 255, 0, AUX_HMMV);					// Paint white background destination
 				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
 				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);	// Paint PAPER background destination
 				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Copy TEMP char to destination
 			} else {
-				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_IMP);		// Paint PAPER background destination
+				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, AUX_HMMV);				// Paint PAPER background destination
 				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Paint TEMP char in white
 				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);	// Paint TEMP INK color foreground
 				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TIMP);		// Copy TEMP char to destination
@@ -805,7 +802,7 @@ bool gfxPictureShow()
 	if (fp<0xff00) {
 		uint16_t size;
 
-		fread((char*)chunk, 4, fp);						// Skip IMAGE_MAGIC "IMGx"
+		fseek(fp, 4, SEEK_SET);							// Skip IMAGE_MAGIC "IMGx"
 		do {
 			size = fread((char*)chunk, 5, fp);			// Read next chunk type
 			if (size & 0xff00) continue;
@@ -916,7 +913,7 @@ void gfxRoutines(uint8_t routine, uint8_t value)
 			page_offset = 256l;
 		//=================== Clear Phys
 		case 5:
-			bitBlt(0, 0, 0, page_offset, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMV);
+			bitBlt(0, 0, 0, page_offset, SCREEN_WIDTH, SCREEN_HEIGHT, getColor(0), 0, CMD_HMMV);
 			break;
 	}
 }
