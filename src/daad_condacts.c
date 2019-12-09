@@ -43,7 +43,7 @@ const CONDACT_LIST condactList[] = {
 	{ do_LISTOBJ,   1 }, { do_EXTERN,    1 }, { do_RAMSAVE,   1 }, { do_RAMLOAD,   1 }, { do_BEEP,      1 },	// 60-64
 	{ do_PAPER,     1 }, { do_INK,       1 }, { do_BORDER,    1 }, { do_PREP,      0 }, { do_NOUN2,     0 },	// 65-69
 	{ do_ADJECT2,   0 }, { do_ADD,       1 }, { do_SUB,       1 }, { do_PARSE,     1 }, { do_LISTAT,    1 },	// 70-74
-	{ do_PROCESS,   1 }, { do_SAME,      0 }, { do_MES,       1 }, { do_WINDOW,    1 }, { do_NOTEQ,     0 },	// 75-79
+	{ do_PROCESS,   0 }, { do_SAME,      0 }, { do_MES,       1 }, { do_WINDOW,    1 }, { do_NOTEQ,     0 },	// 75-79
 	{ do_NOTSAME,   0 }, { do_MODE,      1 }, { do_WINAT,     1 }, { do_TIME,      1 }, { do_PICTURE,   1 },	// 80-84
 	{ do_DOALL,     1 }, { do_MOUSE,     1 }, { do_GFX,       1 }, { do_ISNOTAT,   0 }, { do_WEIGH,     1 },	// 85-89
 	{ do_PUTIN,     1 }, { do_TAKEOUT,   1 }, { do_NEWTEXT,   1 }, { do_ABILITY,   1 }, { do_WEIGHT,    1 },	// 90-94
@@ -115,20 +115,28 @@ void pushPROC(uint8_t proc)
 	currProc->num = proc;
 	currProc->entryIni = getPROCess(proc);
 	currProc->entry = currProc->entryIni - 1;
+
+	lastIsDone = false;
+	isDone = false;
 	checkEntry = false;
 }
 
 //===============================================
+void _popPROC()
+{
+	if (currProc > procStack) memset(currProc, 0, sizeof(PROCstack));
+	currProc--;
+}
+
 bool popPROC()
 {
 #ifdef VERBOSE
 //printf("popPROC()\n");
 #endif
-	if (currProc > procStack) memset(currProc, 0, sizeof(PROCstack));
-	currProc--;
-	checkEntry = true;
+	_popPROC();
 	lastIsDone = isDone;
 	isDone = false;
+	checkEntry = true;
 	return (currProc >= procStack);	//Any PROCs in the stack?
 }
 
@@ -185,6 +193,7 @@ if (CONDACTS[currCondact->condact].args>=1) {
 	printf("%u", *(pPROC));
 }
 if (CONDACTS[currCondact->condact].args>=2) printf(" %u", *(pPROC+1));
+/*********************************/printf(" [isDone:%d last:%d]",isDone,lastIsDone);
 printf("\n");
 #endif
 			condactList[currCondact->condact].function();
@@ -193,7 +202,7 @@ printf("\n");
 		do {
 			currProc->entry++;
 			if (currProc->entry->verb==0) {
-				popPROC();
+				_popPROC();
 				break;
 			} else {
 				currProc->condactIni = getPROCEntryCondacts();
@@ -2365,21 +2374,23 @@ void do_SFX()		// value1 value2
 	GFX pa routine
 
 	where routine can be:
-       0	Back->Phys
-       1    Phys->Back
-       2    SWAP (Phys<>Back) (In CGA this is a bit rough...)
-       3    Graphics Write to Phys
-       4    Graphics Write to Back
-       5    Clear Phys
-       6    Clear Back
+       0*   Back->Phys
+       1*   Phys->Back
+       2*   SWAP (Phys<>Back) (In CGA this is a bit rough...)
+       3*   Graphics Write to Phys
+       4*   Graphics Write to Back
+       5*   Clear Phys
+       6*   Clear Back
        7    Text Write to Phys      -ST only
        8    Text Write to Back      -ST only
-       9    Set Palette value (Value is offset of 4 flag data block containing 
+       9*   Set Palette value (Value is offset of 4 flag data block containing 
 	   	    Num,Red,Green,Blue. RGB values are 0-255
       10    Read Palette value (Value is offset of 4 flag data block)
 
+	* = supported by MSX2 interpreter.
 	N.B. SWAP in CGA is so slow as it uses the processor, there is no real
 	page switching so you may want to code for that special case (ScMode=4)
+
 
 	9 and 10 use the first GFX parameter 'pa' to point at a four flag data block:
 		0 - palette no
@@ -2405,6 +2416,15 @@ void do_GFX()		// pa routine
 		case 10:
 			//TODO: not implemented
 			break;
+		//=================== BACK->PHYS
+		//=================== PHYS->BACK
+		//=================== SWAP PHYS<->BACK
+		//=================== CLEAR PHYS
+		//=================== CLEAR BACK
+		default:
+			gfxRoutines(routine, value);
+			break;
+
 	}
 }
 #endif

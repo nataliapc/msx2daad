@@ -66,12 +66,14 @@ void gfxScrollUp();
 void gfxSetPaperCol(uint8_t col);
 void gfxSetInkCol(uint8_t col);
 void gfxSetBorderCol(uint8_t col);
+void gfxSetGraphCharset(bool value);
 void gfxPutChWindow(uint8_t c);
 void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy);
 void gfxPutInputEcho(char c, bool keepPos);
 void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
 bool gfxPicturePrepare(uint8_t location);
 bool gfxPictureShow();
+void gfxRoutines(uint8_t routine, uint8_t value);
 
 
 // SFX functions

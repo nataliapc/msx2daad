@@ -44,6 +44,20 @@
 		0x0001  2    Chunk data length (0x0000)
 		0x0003  2    Empty chunk header (0x0000)
 
+	Chunk SkipBytes format:
+		Offset Size  Description
+		--header--
+		0x0000  1    Chunk type: (18:SkipBytes)
+		0x0001  2    Chunk data length (0x0000)
+		0x0003  2    VRAM Bytes to skip
+
+	Chunk Pause format:
+		Offset Size  Description
+		--header--
+		0x0000  1    Chunk type: (19:Pause)
+		0x0001  2    Chunk data length (0x0000)
+		0x0003  2    Time to wait in 1/50 sec units
+
 	Chunk bitmap format:
 		Offset Size  Description
 		--header--
@@ -64,6 +78,8 @@
 	define('CHUNK_PLETTER',  4);
 	define('CHUNK_RESET',   16);
 	define('CHUNK_CLS',     17);
+	define('CHUNK_SKIP',    18);
+	define('CHUNK_PAUSE',   19);
 
 	$compressors = array(
 		array("raw", "raw", CHUNK_RAW),
@@ -134,7 +150,7 @@
 			echo "### Transparent color: $transparent\n";
 		}
 		echo "### Compressor: RLE (forced)\n";
-		compressRectangle($fileIn, $x, $y, $w, $h, $transparent, NULL, NULL);
+		compressRectangle($fileIn, $x, $y, $w, $h, $transparent);
 		exit;
 	}
 
@@ -185,6 +201,29 @@
 		exit;
 	}
 
+	if ($cmd == 'j' && $argc>=4) {
+		echo "### Joining images\n";
+		$out = "";
+		$i = 3;
+		$magic = "IMG";
+		do {
+			echo "    Copying image $argv[$i]\n";
+			$in = file_get_contents($argv[$i]);
+			if ($magic!=substr($in, 0, strlen($magic))) {
+				echo "ERROR: All files must be images and with same screen mode!\n\n";
+				exit;
+			}
+			if ($i==3)
+				$magic = substr($in, 0, 4);
+			else
+				$in = substr($in, 4);
+			$out .= $in;
+		} while (++$i<$argc);
+		echo "### Saving file $argv[2]\n";
+		file_put_contents($argv[2], $out);
+		exit;
+	}
+
 	showSyntax();
 
 
@@ -200,10 +239,11 @@
 			 "Create an image from a rectangle:\n".
 			 "    $appname s <fileIn> <x> <y> <w> <h> [transparent_color]\n\n".
 			 "Create a location redirection:\n".
-			 "    $appname r <fileOut> <target_loc>\n".
+			 "    $appname r <fileOut> <target_loc>\n\n".
 			 "Remove a CHUNK from an image:\n".
-			 "    $appname d <fileIn> <chunk_id>\n".
-			 "\n".
+			 "    $appname d <fileIn> <chunk_id>\n\n".
+			 "Join several IMx files in just one:\n".
+			 "    $appname j <fileOut> <fileIn1> [fileIn2] [fileIn3] ...\n\n".
 			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCC)\n".
 			 "               Palette can be inside SCx file or PL5 PL6 PL7 files.\n".
 			 " <lines>       Image lines to get from input file.\n".
@@ -466,6 +506,7 @@
 			echo "SCREEN 12 images can't support transparency at this time...\n";
 			exit;
 		}
+		return $transparent;
 	}
 
 	//=================================================================================
@@ -486,7 +527,6 @@
 
 		// Transparent color-byte
 		$transparent = getTransparentColorByte($transparent, $scr);
-
 		// Read file
 		if ($in===NULL)
 			$in = @file_get_contents($file);

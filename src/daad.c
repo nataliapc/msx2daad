@@ -47,7 +47,6 @@ uint8_t lsBuffer[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id]
 char   *tmpMsg;							// TEXT_BUFFER_LEN
 char   *tmpTok;							// Token temp buffer
 char    lastPrompt;
-uint8_t offsetText;
 uint8_t doingPrompt;
 
 // Transcript variables
@@ -167,7 +166,6 @@ void initFlags()
 	//Clear logical sentences
 	clearLogicalSentences();
 
-	offsetText = 0;
 	doingPrompt = false;
 }
 
@@ -683,16 +681,15 @@ void printChar(char c)
 		case 12:		// \k    Wait for a key
 			do_INKEY(); return;
 		case 14:		// \g    Enable graphical charset (128-255)
-			offsetText = 96; return;
+			gfxSetGraphCharset(true); return;
 		case 15:		// \t    Enable text charset (0-127)
-			offsetText = 0; return;
+			gfxSetGraphCharset(false); return;
 	}
 	if (c=='\r') {						// Carriage return
 		cw->cursorX = 0;
 		cw->cursorY++;
 		checkPrintedLines();
 	} else {
-		c += (cw->mode & MODE_FORCEGCHAR) ? 96 : offsetText;
 		gfxPutChWindow(c);
 		cw->cursorX++;
 		if (cw->cursorX >= cw->winW) {

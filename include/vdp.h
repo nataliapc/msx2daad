@@ -74,10 +74,7 @@ void enable212lines();
 void enableInterlacedLines();
 void disableInterlacedLines();
 
-void setVPage0();
-void setVPage1();
-void setVPage2();
-void setVPage3();
+void setVPage(uint8_t page);
 
 void setPalette(char *paletteAddress);
 void setColorPal(uint8_t colIndex, uint16_t grb);	// grb bitfield: 00000GGG.0RRR0BBB

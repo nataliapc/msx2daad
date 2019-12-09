@@ -63,6 +63,14 @@ const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\
 // Start position in VRAM where draw a image file
 uint32_t posVRAM;
 
+// Offset to set/unset the graphical charset
+bool offsetText;
+// Offset to set/unset the VRAM page where load images
+uint32_t gfxPictureOffet;
+// Current VRAM page visible
+bool currentPage;
+
+// RAM Mapper variables [experimental]
 #ifdef RAM_MAPPER
 	bool    DOS2MAPPER;
 	uint8_t MAX_MAPPER_PAGES;
@@ -240,25 +248,20 @@ void loadFilesBin(int argc, char **argv)
 	aux = FILES;
 	*(aux+11) = *(aux+23) = *(aux+35) = *(aux+47) = *(aux+59) = '\0';
 
-
-	aux = malloc(13);
-	memcpy(aux, FILE_IMG, 13);
+	aux = malloc(11);
+	memcpy(aux, FILE_IMG, 11);
 	//Show LOADING picture
-	memcpy(FILE_IMG, FILE_LOAD, 13);
+	memcpy(FILE_IMG, FILE_LOAD, 11);
 	posVRAM = 0;
 	gfxPictureShow();
 
-	// Load image FONT (old DMG) to VRAM 2nd page
-	memcpy(FILE_IMG, FILE_FONT, 13);
-	#if SCREEN==5 || SCREEN==6
-		posVRAM = 0x8000;
-	#else
-		posVRAM = 0x10000;
-	#endif
+	// Load image FONT (old DMG) to VRAM hidden zone
+	memcpy(FILE_IMG, FILE_FONT, 11);
+	posVRAM = ((uint32_t)FONTINITY) * BYTESxLINE;
 	gfxPictureShow();
 	// Restore & free
-	memcpy(FILE_IMG, aux, 13);
-	free(13);
+	memcpy(FILE_IMG, aux, 11);
+	free(11);
 
 	// Load DDB file
 	size = filesize(FILE_DDB);
@@ -361,6 +364,12 @@ void printXMES(uint16_t address)
 	#define COLOR_PAPER		(cw->paper)
 #endif
 
+#if SCREEN==6
+	#define AUX_HMMM		CMD_LMMM|LOG_IMP
+#else
+	#define AUX_HMMM		CMD_HMMM
+#endif
+
 #if SCREEN == 8		//SCREEN 8 fixed colors
 	const uint8_t colorTranslation[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
 	//  000   006   600   606   060   066   260   666   222   447   733   737   373   377   773   777      (GGGRRRBBB) 9bits color guide
@@ -433,8 +442,8 @@ void gfxSetScreen()
 	#elif SCREEN_HEIGHT==212
 		enable212lines();
 	#endif
-	enable50Hz();
 	disableSPR();
+	//enable50Hz();
 
 	//Set screen adjust
 	setRegVDP8(18, ADDR_POINTER_BYTE(0xFFF1));
@@ -443,6 +452,9 @@ void gfxSetScreen()
 	#if SCREEN < 8
 		setPalette(colorTranslation);
 	#endif
+
+	//Clear VRAM page 2
+	gfxRoutines(6, 0);	// Clear Back screen
 
 	//Disable keys typing sound
 	ADDR_POINTER_BYTE(CLIKSW) = 0;
@@ -455,6 +467,11 @@ void gfxSetScreen()
 	for (int i=0; i<5; i++,fk+=16) {
 		memcpy(fk, FUNC_KEYS[i], 16);
 	}
+
+	//Initialize variables
+	offsetText = false;
+	currentPage = false;
+	gfxPictureOffet = 0;
 }
 
 /*
@@ -519,7 +536,6 @@ void gfxSetScreenModeFlags()
 		flags[fGFlags] =  16|12;
 	#endif
 }
-
 
 /*
  * Function: gfxClearScreenBlock
@@ -643,6 +659,19 @@ void gfxSetBorderCol(uint8_t col)
 }
 
 /*
+ * Function: gfxSetGraphCharset
+ * --------------------------------
+ * Enable/Disable the graphical charset.
+ * 
+ * @param value		Boolean to set/unset the charset.
+ * @return			none.
+ */
+void gfxSetGraphCharset(bool value)
+{
+	offsetText = value;
+}
+
+/*
  * Function: gfxPutChPixels
  * --------------------------------
  * Write a char to a pixel coords in the graphical screen.
@@ -655,33 +684,35 @@ void gfxSetBorderCol(uint8_t col)
 void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 {
 	c -= 16;
+	uint16_t graphCharsetOffset = (cw->mode & MODE_FORCEGCHAR) || offsetText ? 256 : 0;
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
-	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT)+256;
+	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY + graphCharsetOffset;
+
 	#if SCREEN <= 8
 		#ifdef DISABLE_GFXCHAR_COLOR
 			if (c>=128-16) {
-				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);
+				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);
 			} else
 		#endif
 		if (COLOR_PAPER==0) {
-			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);				// Paint char in white
-			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);			// Paint char INK foreground
+			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);							// Paint char in white
+			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);				// Paint char INK foreground
 		} else {
-			//Use VRAM 2nd page like TEMP working space to avoid glitches
+			//Use VRAM like TEMP working space to avoid glitches
 			if (COLOR_INK==0) {
-				bitBlt( 0,  0, dx, 256+64, FONTWIDTH, FONTHEIGHT, 255, 0, CMD_LMMV|LOG_IMP);		// Paint white background destination
-				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
-				bitBlt( 0,  0, dx, 256+64, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);// Paint PAPER background destination
-				bitBlt(dx, 256+64, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);		// Copy TEMP char to destination
+				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 255, 0, CMD_LMMV|LOG_IMP);			// Paint white background destination
+				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
+				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);	// Paint PAPER background destination
+				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Copy TEMP char to destination
 			} else {
-				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_IMP);	// Paint PAPER background destination
-				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);		// Paint TEMP char in white
-				bitBlt(sx, sy, dx, 256+64, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);	// Paint TEMP INK color foreground
-				bitBlt(dx, 256+64, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TIMP);		// Copy TEMP char to destination
+				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_IMP);		// Paint PAPER background destination
+				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Paint TEMP char in white
+				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);	// Paint TEMP INK color foreground
+				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TIMP);		// Copy TEMP char to destination
 			}
 		}
 	#else
-		bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_IMP);				// Copy char in white
+		bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);								// Copy char in white
 	#endif
 }
 
@@ -753,7 +784,7 @@ bool gfxPicturePrepare(uint8_t location)
 	location /= 10;
 	pic[0] = location%10 + '0';
 	
-	posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE;
+	posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
 	return fileexists(FILE_IMG);
 }
 
@@ -779,18 +810,38 @@ bool gfxPictureShow()
 			size = fread((char*)chunk, 5, fp);			// Read next chunk type
 			if (size & 0xff00) continue;
 
-			if (chunk->type==IMG_CHUNK_REDIRECT) {		// Redirect to another picture
+			//=============================================
+			// Redirect to another picture
+			if (chunk->type==IMG_CHUNK_REDIRECT) {
 				fclose(fp);
 				gfxPicturePrepare(chunk->chunkSize);
 				return gfxPictureShow();
 			} else
-			if (chunk->type==IMG_CHUNK_CLS) {			// Clear Window (CLS)
-				do_CLS();
+			//=============================================
+			// Clear Window (CLS)
+			if (chunk->type==IMG_CHUNK_CLS) {
+				uint8_t pageOffset = gfxPictureOffet ? 32 : 0;
+				gfxClearScreenBlock(cw->winX, cw->winY+pageOffset, cw->winW, cw->winH);
 			} else
-			if (chunk->type==IMG_CHUNK_RESET) {			// Reset VRAM write position to current Window
-				posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE;
+			//=============================================
+			// Reset VRAM write position to current Window
+			if (chunk->type==IMG_CHUNK_RESET) {
+				posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
 			} else
-			if (chunk->type==IMG_CHUNK_PALETTE) {		// Load image palette
+			//=============================================
+			// Skip VRAM bytes
+			if (chunk->type==IMG_CHUNK_SKIP) {
+				posVRAM += chunk->auxData;
+			} else
+			//=============================================
+			// Reset VRAM write position to current Window
+			if (chunk->type==IMG_CHUNK_PAUSE) {
+				setTime(0);
+				while (getTime() < chunk->auxData) waitingForInput();
+			} else
+			//=============================================
+			// Load image palette
+			if (chunk->type==IMG_CHUNK_PALETTE) {
 				#if SCREEN < 8
 					size = fread(chunk->data, 32, fp);
 					if (!(size & 0xff00))
@@ -799,6 +850,8 @@ bool gfxPictureShow()
 					fseek(fp, 32, SEEK_CUR);
 				#endif
 			} else {
+				//=============================================
+				// Picture data chunks
 				fread(chunk->data, chunk->chunkSize, fp);
 				if (chunk->type==IMG_CHUNK_RAW) {		// Show RAW data
 					copyToVRAM((uint16_t)chunk->data, posVRAM, chunk->chunkSize);
@@ -809,7 +862,7 @@ bool gfxPictureShow()
 				if (chunk->type==IMG_CHUNK_PLETTER) {	// Show Pletter5 data
 					pletter2vram(chunk->data, posVRAM);
 				}
-				posVRAM += chunk->outSize;
+				posVRAM += chunk->auxData;	//OutSize
 			}
 		} while (!(size & 0xff00));
 
@@ -819,6 +872,54 @@ bool gfxPictureShow()
 	return false;
 }
 
+/*
+ * Function: gfxRoutines
+ * --------------------------------
+ * Execute GFX condact routines.
+ * 
+ * @param routine	The routine to execute.
+ * @param value		Optional value if the routine needs it.
+ * @return			none.
+ */
+void gfxRoutines(uint8_t routine, uint8_t value)
+{
+	value;
+	uint16_t page_offset = 0;
+
+	switch (routine) {
+#ifndef DISABLE_GFX
+		//=================== BACK->PHYS
+		case 0:
+			bitBlt(0, 256, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMM); // Copy screen
+			break;
+		//=================== PHYS->BACK
+		case 1:
+			bitBlt(0, 0, 0, 256, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMM); // Copy screen
+			break;
+		//=================== SWAP PHYS<->BACK
+		case 2:
+			currentPage = !currentPage;
+			waitVDPready();
+			if (currentPage) setVPage(1); else setVPage(0);
+			break;
+		//=================== Graphics Write to Phys
+		case 3:
+			gfxPictureOffet = 0;
+			break;
+		//=================== Graphics Write to Back
+		case 4:
+			gfxPictureOffet = 256l * BYTESxLINE;
+			break;
+#endif//DISABLE_GFX
+		//=================== Clear Back
+		case 6:
+			page_offset = 256l;
+		//=================== Clear Phys
+		case 5:
+			bitBlt(0, 0, 0, page_offset, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMV);
+			break;
+	}
+}
 
 //=========================================================
 // SOUND (SFX)
@@ -877,6 +978,7 @@ void sfxInit() __naked
  */
 void sfxWriteRegister(uint8_t reg, uint8_t value) __naked
 {
+	reg, value;
 	#ifndef DISABLE_SFX
 	__asm
 		pop  af

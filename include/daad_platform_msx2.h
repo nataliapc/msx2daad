@@ -108,6 +108,10 @@
 	#define BYTESxLINE		128		// Screen 5, 6
 #endif
 
+// FONT VRAM Location
+#define FONTINITY			212
+#define FONTTEMPY			(FONTINITY + 32)
+
 // SCREEN_CHAR
 #if SCREEN==12
 	#define SCREEN_CHAR     C
@@ -188,6 +192,8 @@
 #define IMG_CHUNK_PLETTER	4		// Load Pletter5 format data
 #define IMG_CHUNK_RESET		16		// Reset VRAM write pointer to current Window
 #define IMG_CHUNK_CLS		17		// Clear Window (CLS)
+#define IMG_CHUNK_SKIP		18		// Skip VRAM bytes (SKIP)
+#define IMG_CHUNK_PAUSE		19		// Pause in 1/50 sec units (PAUSE)
 
 typedef struct {
 	char     magic[3];				// Magic text: "IMG".
@@ -197,7 +203,7 @@ typedef struct {
 typedef struct {
 	uint8_t  type;					// Chunk type
 	uint16_t chunkSize;				// data[] size compressed   | also can be the target location for type Redirection
-	uint16_t outSize;				// data[] size uncompressed | contain 0xffff if unused
+	uint16_t auxData;				// data[] size uncompressed | contains 0x0000 if unused
 	char     data[IMG_CHUNK_SIZE];	// Compressed data (uncompressed if type=RAW)
 } IMG_CHUNK;
 

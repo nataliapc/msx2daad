@@ -229,7 +229,6 @@ extern Object     *objects;			// Memory allocation for objects data
 extern char       *ramsave;			// Memory to store ram save
 
 extern char       *tmpMsg;			// MAX_TEXT_LEN
-extern uint8_t     offsetText;
 extern uint8_t     flags[256];		// DAAD flags (256 bytes)
 
 extern Window     *windows;			// 0-7 windows definitions

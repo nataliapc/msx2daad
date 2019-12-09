@@ -60,9 +60,6 @@
         .globl PLY_AKG_INIT
         .globl PLY_AKG_PLAY
         .globl PLY_AKG_STOP
-        .globl PLY_AKG_HOOK
-        .globl PLY_AKG_OLDHOOK
-        .globl PLY_AKG_SLOTS
 
 PLY_AKG_Start:
     jp PLY_AKG_INIT
