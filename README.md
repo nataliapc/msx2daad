@@ -87,41 +87,51 @@ To learn more about **how to create your own adventure** your can:
 
 ### MSX graphical modes & limitations
 
-#### **Screen 5**
+#### **Screen 5 (MSX2)**
 
 - 256x212 16 colors (Paletted GRB332)
 - 42x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
-- INK/PAPER color changes will change the 0/15 color palette for all the on screen text/background.
+- Palette changes (using GFX condact) modify text and bitmap colors.
 		
-#### **Screen 6**
+#### **Screen 6 (MSX2)**
 
 - 512x212 4 colors  (Paletted GRB332)
 - 85x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-2: For bitmap images
 - Color 3: Always INK (default: white)
-- INK/PAPER color changes will change the 0/3 color palette for all the on screen text/background.
+- Palette changes (using GFX condact) modify text and bitmap colors.
 
-#### **Screen 7**
+#### **Screen 7 (MSX2)**
 
 - 512x212 16 colors (Paletted GRB332)
 - 85x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
-- INK/PAPER color changes will change the 0/15 color palette for all the on screen text/background.
+- Palette changes (using GFX condact) modify text and bitmap colors.
 
-#### **Screen 8**
+#### **Screen 8 (MSX2)**
 
 - 256x212 256 colors (fixed palette GRB332) **[*DEFAULT MODE*]**
 - 42x26 characters (6x8 font)
 - Bitmap mode with fixed palette (0-255)
-- INK/PAPER color changes will change color of writed new text or when clear screen. Old text remains unchanged.
+- No palette changes allowed.
 
-#### **Screen 12**
+#### **Screen 10 (MSX2+)**
+
+- 256x212 12499 colors (Mixed mode: RGB + YJK)
+- 42x26 characters (6x8 font)
+- Color 0: Always PAPER (default: black)
+- Color 1-14: For bitmap images
+- Color 15: Always INK (default: white)
+- Bitmap mode with fixed palette (0-12499)
+- Palette changes (using GFX condact) modify only text colors, the bitmaps aren't affected.
+
+#### **Screen 12 (MSX2+)**
 - 256x212 19268 colors (fixed palette YJK. Y vary each pixel, J & K remains each 4 pixels providing something like ~RGB555)
 - 42x26 characters (6x8 font)
 - Bitmap mode with fixed palette (0-19268)
