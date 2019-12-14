@@ -22,12 +22,14 @@ This project is a **DAAD** interpreter created from scratch for **MSX2**/**MSX2+
 **DAAD** is a multi-machine and multi-graphics adventure writer, enabling you to target a broad range of 8-bit and 16-bit systems.  
 You can see the classic interpreters [here](https://github.com/daad-adventure-writer/daad).
 
-**MSX2DAAD** is also compatible with [DRC](https://github.com/Utodev/DRC) compiler, and [Maluva DAAD extension](https://github.com/Utodev/MALUVA) emulating his new functionalities to the classic interpreters:
+**MSX2DAAD** is also compatible with [**DRC**](https://github.com/daad-adventure-writer/DRC/wiki) compiler, and [**Maluva DAAD extension**](https://github.com/Utodev/MALUVA/wiki) emulating his new functionalities to the classic interpreters:
 
-- XPICTURE: Load bitmap images from disk.
-- XLOAD/XSAVE: To load/save your gameplay from/to disk.
-- XMES: Use of external texts in a disk file, providing 64kb of additional compressed texts and leaving more free *RAM* memory to create your adventure.
-- XPLAY: Play music using a simplified [MML](https://en.wikipedia.org/wiki/Music_Macro_Language) string, the same format of PLAY instruction from MSX1 Basic.
+- `XPICTURE`: Load bitmap images from disk.
+- `XLOAD`/`XSAVE`: To load/save your gameplay from/to disk.
+- `XMES`: Use of external texts in a disk file, providing 64kb of additional compressed texts and leaving more free *RAM* memory to create your adventure.
+- `XPLAY`: Play music using a simplified [MML](https://en.wikipedia.org/wiki/Music_Macro_Language) string, the same format of PLAY instruction from MSX1 Basic.
+
+...and some others.
 
 ![](https://www.eslamejor.com/img/msx2daad_sample.png) 
 
@@ -59,7 +61,7 @@ To test the /dsk folder content with openMSX (you need to add at least your DAAD
 
 To create your own adventure you need a text source file (**.SCE** or **.DSF**), with the definition of your game, and must be compiled to **DAAD** tokens (**.DDB** file) using a compiler. The **.SCE** files are used by the original [**DC**](https://github.com/daad-adventure-writer/daad) compiler, that needs [DOSBOX](https://www.dosbox.com/) and source files using *CP437* encoding, so we discourage the use of this files.
 
-We recommend the use of the new [**DRC**](https://github.com/Utodev/DRC) compiler (for **.DSF** files). The source file must be encoded with *Windows-1252* or *ISO-8859-1* charsets.  
+We recommend the use of the new [**DRC**](https://github.com/daad-adventure-writer/DRC/wiki) compiler (for **.DSF** files). The source file must be encoded with *Windows-1252* or *ISO-8859-1* charsets.  
 The **DSF** format is an adventure text source very similar to **SCE** but improved in several ways to create the **.DDB** compiled file.
 
 There are empty templates in several languages to start your adventure:
@@ -72,7 +74,7 @@ The compiled **DDB** file must be renamed to **DAAD.DDB** and added to the disk 
 To learn more about **how to create your own adventure** your can:
 
 -  Read our [**Wiki pages with several articles**](https://github.com/nataliapc/msx2daad/wiki) about **DAAD** and **MSX2DAAD**.
-- Also you can follow this great [**DAAD Tutorial for beginners**](https://medium.com/@uto_dev/a-daad-tutorial-for-beginners-1-b2568ec4df05) writed by the author of the **DRC** compiler.
+- Also you can follow this great [**DAAD Tutorial for beginners**](https://medium.com/@uto_dev/a-daad-tutorial-for-beginners-1-b2568ec4df05) writed by the author of the [**DRC**](https://github.com/daad-adventure-writer/DRC/wiki) compiler.
 
 ![](https://www.eslamejor.com/img/msx2daad_tutorial.png) 
 
@@ -94,6 +96,7 @@ To learn more about **how to create your own adventure** your can:
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
+- Default EGA palette.
 - Palette changes (using GFX condact) modify text and bitmap colors.
 		
 #### **Screen 6 (MSX2)**
@@ -103,6 +106,7 @@ To learn more about **how to create your own adventure** your can:
 - Color 0: Always PAPER (default: black)
 - Color 1-2: For bitmap images
 - Color 3: Always INK (default: white)
+- Default Amber palette (4 amber tones).
 - Palette changes (using GFX condact) modify text and bitmap colors.
 
 #### **Screen 7 (MSX2)**
@@ -112,6 +116,7 @@ To learn more about **how to create your own adventure** your can:
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
+- Default EGA palette.
 - Palette changes (using GFX condact) modify text and bitmap colors.
 
 #### **Screen 8 (MSX2)**
@@ -129,6 +134,7 @@ To learn more about **how to create your own adventure** your can:
 - Color 1-14: For bitmap images
 - Color 15: Always INK (default: white)
 - Bitmap mode with fixed palette (0-12499)
+- Default EGA palette.
 - Palette changes (using GFX condact) modify only text colors, the bitmaps aren't affected.
 
 #### **Screen 12 (MSX2+)**
