@@ -82,16 +82,17 @@
 	define('CHUNK_PAUSE',   19);
 
 	$compressors = array(
-		array("raw", "raw", CHUNK_RAW),
-		array("rle", "rle", CHUNK_RLE),
-		array("pletter", "plet5", CHUNK_PLETTER),
+		array("raw", "raw", CHUNK_RAW, "RAW"),
+		array("rle", "rle", CHUNK_RLE, "RLE"),
+		array("pletter", "plet5", CHUNK_PLETTER, "PLETTER"),
 	);
 	define('RAW', 0);
 	define('RLE', 1);
 	define('PLETTER', 2);
-	define('COMP_APP', 0);
-	define('COMP_EXT', 1);
-	define('COMP_ID',  2);
+	define('COMP_APP',  0);
+	define('COMP_EXT',  1);
+	define('COMP_ID',   2);
+	define('COMP_NAME', 3);
 
 	$appname = basename($argv[0]);
 	$magic = "IMG";
@@ -120,7 +121,7 @@
 		$newLoc = $argv[3];
 		if (!is_numeric($newLoc)) {
 			echo "ERROR: Redirect location is not a integer [0-255]...\n";
-			showSyntax();
+			exit;
 		}
 		echo "    Adding redirect location to $newLoc\n";
 		$out = $magic.substr($fileOut,-1).chr(CHUNK_REDIRECT).pack("v",$newLoc).chr(0xff).chr(0xff);
@@ -136,7 +137,7 @@
 		echo "### Loading $fileIn\n";
 		if (!is_numeric($argv[3]) || !is_numeric($argv[4]) || !is_numeric($argv[5]) || !is_numeric($argv[6])) {
 			echo "ERROR: x, y, w, and h must be numeric and greater than zero...\n";
-			showSyntax();
+			exit;
 		}
 		//Coords
 		$x = intval($argv[3]);
@@ -145,9 +146,14 @@
 		$h = intval($argv[6]);
 		//Transparent color
 		$transparent = -1;
-		if (isset($argv[7]) && is_numeric($argv[7])) {
-			$transparent = intval($argv[7]);
-			echo "### Transparent color: $transparent\n";
+		if (isset($argv[7])) {
+			if (is_numeric($argv[7])) {
+				$transparent = intval($argv[7]);
+				echo "### Transparent color: $transparent\n";
+			} else {
+				echo "ERROR: Not decimal number for transparent index color...\n";
+				exit;
+			}
 		}
 		echo "### Compressor: RLE (forced)\n";
 		compressRectangle($fileIn, $x, $y, $w, $h, $transparent);
@@ -161,25 +167,33 @@
 		$lines = $argv[3];
 		if (!is_numeric($lines) || $lines<=0 || $lines>212) {
 			echo "ERROR: lines must be numeric and greater than zero [0-212]...\n";
-			showSyntax();
+			exit;
 		}
 		//Lines
 		$lines = intval($lines);
 		//Compression & Transparent color
-		$compress = "RLE";
+		$compress = "";
 		$transparent = -1;
 		if ($argc>4) {
-			if (is_numeric($argv[4])) {
+			if (is_numeric($argv[4]))
 				$transparent = intval($argv[4]);
-			} else 
+			else
 				$compress = strtoupper($argv[4]);
 		}
 		foreach ($compressors as $comp) {
-			if (strtoupper($comp[0])==$compress) break;
+			if ($comp[COMP_NAME]==$compress) {
+				$compress = $comp[COMP_NAME];
+				break;
+			}
+		}
+		if ($compress=="" && $transparent==-1) {
+			echo "ERROR: Unknown compression method or not decimal number for transparent index color...\n";
+			exit;
 		}
 		if ($transparent>=0) {
 			echo "### Transparent color: $transparent\n";
-			$compress.=" (forced)";
+			$comp = $compressors[1];
+			$compress = $comp[COMP_NAME]." (forced)";
 		}
 		echo "### Compressor: $compress\n";
 		//Compress chunks
@@ -187,11 +201,12 @@
 		exit;
 	}
 
+	// Remove a CHUNK from an image
 	if ($cmd == 'd' && $argc==4) {
 		$id = intval($argv[3]);
 		if (!is_numeric($argv[3]) || $id<0) {
 			echo "ERROR: ChunkID must be numeric and greater than zero...\n";
-			showSyntax();
+			exit;
 		}
 		$fileIn = $argv[2];
 		$out = showImageContent($fileIn, $id);
@@ -201,6 +216,7 @@
 		exit;
 	}
 
+	// Join several IMx files in just one
 	if ($cmd == 'j' && $argc>=4) {
 		echo "### Joining images\n";
 		$out = "";
@@ -224,6 +240,45 @@
 		exit;
 	}
 
+	// Transform a SC5 image to a RGB SC10(SCA) one
+	if ($cmd == '5a' && $argc==5) {
+		$fileIn = $argv[2];
+		$lines = intval($argv[4]);
+		echo "### Loading $fileIn\n";
+		$in = file_get_contents($fileIn);
+		$out = "\xfe\0\0\0\xd4\0\0";
+		echo "### Converting SC5 to SCA...\n";
+		$pos = 7;
+		$size = 128*$lines;
+		while ($size-- && $pos<strlen($in)) {
+			$orig = ord($in[$pos++]);
+			$out .= chr(($orig & 0xf0) | 0x08);
+			$out .= chr(($orig << 4) | 0x08);
+		}
+		echo "### Saving file $argv[3]\n";
+		file_put_contents($argv[3], $out);
+		exit;
+	}
+
+	// Transform a SC12(SCC) image to a YJK SC10(SCA) one
+	if ($cmd == 'ca' && $argc==5) {
+		$fileIn = $argv[2];
+		$lines = intval($argv[4]);
+		echo "### Loading $fileIn\n";
+		$in = file_get_contents($fileIn);
+		$out = "\xfe\0\0\0\xd4\0\0";
+		echo "### Converting SCC to SCA...\n";
+		$pos = 7;
+		$size = 256*$lines;
+		while ($size-- && $pos<strlen($in)) {
+			$orig = ord($in[$pos++]);
+			$out .= chr($orig & 0b11110111);
+		}
+		echo "### Saving file $argv[3]\n";
+		file_put_contents($argv[3], $out);
+		exit;
+	}
+
 	showSyntax();
 
 
@@ -232,18 +287,22 @@
 	{
 		global $appname;
 		
-		echo "\nList image content:\n".
-			 "    $appname l <fileIn>\n\n".
-			 "Create an image IMx:\n".
-			 "    $appname c <fileIn> <lines> [compressor | transparent_color]\n\n".
-			 "Create an image from a rectangle:\n".
-			 "    $appname s <fileIn> <x> <y> <w> <h> [transparent_color]\n\n".
-			 "Create a location redirection:\n".
-			 "    $appname r <fileOut> <target_loc>\n\n".
-			 "Remove a CHUNK from an image:\n".
-			 "    $appname d <fileIn> <chunk_id>\n\n".
-			 "Join several IMx files in just one:\n".
-			 "    $appname j <fileOut> <fileIn1> [fileIn2] [fileIn3] ...\n\n".
+		echo "\nL) List image chunks:\n".
+			 "    $appname l <fileIn.IM?>\n\n".
+			 "C) Create an image IMx:\n".
+			 "    $appname c <fileIn.SC?> <lines> [compressor | transparent_color]\n\n".
+			 "S) Create an image from a rectangle:\n".
+			 "    $appname s <fileIn.SC?> <x> <y> <w> <h> [transparent_color]\n\n".
+			 "R) Create a location redirection:\n".
+			 "    $appname r <fileOut.IM?> <target_loc>\n\n".
+			 "D) Remove a CHUNK from an image:\n".
+			 "    $appname d <fileIn.IM?> <chunk_id>\n\n".
+			 "J) Join several IMx files in just one:\n".
+			 "    $appname j <fileOut.IM?> <fileIn1.IM?> [fileIn2.IM?] [fileIn3] ...\n\n".
+			 "5A) Transform a SC5 image to a RGB SC10(SCA) one:\n".
+			 "    $appname 5a <fileIn.SC5> <fileOut.SCA> <lines>\n\n".
+			 "CA) Transform a SC12(SCC) image to a YJK SC10(SCA) one:\n".
+			 "    $appname ca <fileIn.SCC> <fileOut.SCA> <lines>\n\n".
 			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCA/SCC)\n".
 			 "               Palette can be inside SCx file or PL5 PL6 PL7 files.\n".
 			 " <lines>       Image lines to get from input file.\n".
@@ -251,7 +310,7 @@
 			 "                 RAW: no compression but fastest load.\n".
 			 "                 RLE: light compression but fast load (default).\n".
 			 "                 PLETTER: high compression but slow.\n".
-			 " [transparent] Optional: the color index that will become transparent.\n".
+			 " [transparent] Optional: the color index that will become transparent (decimal).\n".
 			 "               Compression is forced to RLE.\n".
 			 " <target_loc>  Target location number to redirect to.\n".
 			 "                 ex: a 12 redirects to image 012.IMx\n".
@@ -296,7 +355,7 @@
 			echo "ERROR: bad screen mode ['$scr']...\n";
 			exit;
 		}
-		echo "### Mode SCREEN $scr\n";
+		echo "### Mode SCREEN ".hexdec($scr)."\n";
 
 		// Chunks
 		$pos = 4;
@@ -311,7 +370,7 @@
 					echo "    CHUNK $id: Redirect -> ".strpad($sin, 3, '0').".IM$scr\n";
 					break;
 				case CHUNK_PALETTE:
-					echo "    CHUNK $id: Palette $sout bytes\n";
+					echo "    CHUNK $id: RGB333 Palette $sout bytes\n";
 					$size += $sin;
 					break;
 				case CHUNK_RAW:
@@ -361,7 +420,7 @@
 	}
 
 	//=================================================================================
-	function addPalette($file, $scr, $pal, $paper=NULL, $ink=NULL)
+	function addPalette($file, $scr, $pal=NULL, $paper=NULL, $ink=NULL)
 	{
 		$out = "";
 		if ($pal===NULL) {
@@ -371,7 +430,8 @@
 		}
 
 		if ($pal!==NULL || $filePalette!="") {	// Add palette chunk
-			echo "### Adding image palette from file '$filePalette'\n";
+			echo "### Adding image palette from file '$filePalette'\n".
+			     "    #CHUNK  1 RGB333 Palette 32 bytes\n";
 			if ($pal===NULL)
 				$pal = file_get_contents($filePalette);
 
@@ -518,8 +578,8 @@
 		// Check screen mode
 		$out = $magic;
 		$scr = checkScreemMode($file);
-		echo "### Mode SCREEN $scr\n";
-		if (hexdec($scr)>=10 && $x%4!=0 && $w%4!=0) {
+		echo "### Mode SCREEN ".hexdec($scr)."\n";
+		if (hexdec($scr)>=10 && ($x%4!=0 || $w%4!=0)) {
 			die("\nERROR: SCREEN 10/12 needs 'x' and 'w' input to be multiple of 4...\n\n");
 		}
 		$out .= $scr;
@@ -539,7 +599,11 @@
 		// Add palette to paletted screen modes
 		if (hexdec($scr) < 8) {
 			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
-			$out .= addPalette($file, $scr, $pal);
+			$aux = addPalette($file, $scr, $pal);
+			if ($aux!="") {
+				$id++;
+				$out .= $aux;
+			}
 		}
 
 		// Add CHUNK_CLS if not transparent image
@@ -614,7 +678,11 @@
 		// Add palette to paletted screen modes
 		if (hexdec($scr) < 8) {
 			list($in, $paper, $ink) = checkPalettedColors($in, $scr);
-			$out .= addPalette($file, $scr, $pal);
+			$aux = addPalette($file, $scr, $pal);
+			if ($aux!="") {
+				$id++;
+				$out .= $aux;
+			}
 		}
 
 		// Add CHUNK_CLS if not transparent image
