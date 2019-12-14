@@ -5,7 +5,7 @@
 
 // To debug type at openmsx console:
 //    debug set_watchpoint write_io 0x18
-#define DEBUG_BREAKPOINT() __asm out (0x18),a __endasm;
+#define DEBUG_BREAKPOINT __asm out (0x18),a __endasm;
 
 #define DEBUG_BORDERCOLOR __asm \
 	ld  a,X \

@@ -95,6 +95,8 @@ EN_SC7:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=7 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC8:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+EN_SC10:
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=10 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC12:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=12 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC5:
@@ -105,6 +107,8 @@ ES_SC7:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=7 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC8:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com"  _package_single
+ES_SC10:
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=10 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC12:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=12 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC8_TR:
@@ -117,7 +121,9 @@ _package_single: msx2daad.com
 	$(MAKE) clean
 	$(MAKE) msx2daad.com -j
 	@cp msx2daad.com $(PKGDIR)$(OUTFILE)
-package: EN_SC5 EN_SC6 EN_SC7 EN_SC8 EN_SC12 ES_SC5 ES_SC6 ES_SC7 ES_SC8 ES_SC12 EN_SC8_TR ES_SC8_TR
+package: EN_SC5 EN_SC6 EN_SC7 EN_SC8 EN_SC10 EN_SC12 \
+         ES_SC5 ES_SC6 ES_SC7 ES_SC8 ES_SC10 ES_SC12 \
+		 EN_SC8_TR ES_SC8_TR
 
 
 precomp: $(INCDIR)daad_defines.h clean
@@ -129,9 +135,10 @@ test: all
 	; then \
 		echo "**** openmsx already running..." \
 	; else \
-#		openmsx -machine Philips_VG_8230 -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
-#		openmsx -machine turbor -ext ram1mb -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
-		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+#		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+#		openmsx -machine turbor -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+#		openmsx -machine Philips_NMS_8245 -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+		openmsx -machine msx2plus -ext ram1mb -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
 	; fi'
 
 

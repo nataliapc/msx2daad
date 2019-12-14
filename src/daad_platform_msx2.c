@@ -21,6 +21,9 @@
 #if defined(DEBUG) || defined(VERBOSE) || defined(VERBOSE2)
 	#include <stdio.h>
 #endif
+#if defined(TEST) || defined(DEBUG)
+	#include "debug.h"
+#endif
 
 
 //=========================================================
@@ -364,7 +367,13 @@ void printXMES(uint16_t address)
 	#define COLOR_PAPER		(cw->paper)
 #endif
 
-#if SCREEN==6
+#if SCREEN != 10
+	#define COLOR_BLACK 	0x00
+#else
+	#define COLOR_BLACK 	0x08
+#endif
+
+#if SCREEN==6 || SCREEN==12
 	#define AUX_HMMM		CMD_LMMM|LOG_IMP
 	#define AUX_HMMV		CMD_LMMV|LOG_IMP
 #else
@@ -691,12 +700,12 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);
 			} else
 		#endif
-		if (COLOR_PAPER==0) {
+		if (COLOR_PAPER==COLOR_BLACK) {
 			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);							// Paint char in white
 			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);				// Paint char INK foreground
 		} else {
 			//Use VRAM like TEMP working space to avoid glitches
-			if (COLOR_INK==0) {
+			if (COLOR_INK==COLOR_BLACK) {
 				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 255, 0, AUX_HMMV);					// Paint white background destination
 				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
 				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);	// Paint PAPER background destination
@@ -839,7 +848,7 @@ bool gfxPictureShow()
 			//=============================================
 			// Load image palette
 			if (chunk->type==IMG_CHUNK_PALETTE) {
-				#if SCREEN < 8
+				#if SCREEN!=8 && SCREEN!=12
 					size = fread(chunk->data, 32, fp);
 					if (!(size & 0xff00))
 						setPalette(chunk->data);

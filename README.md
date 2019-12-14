@@ -91,7 +91,7 @@ To learn more about **how to create your own adventure** your can:
 
 #### **Screen 5 (MSX2)**
 
-- 256x212 16 colors (Paletted GRB332)
+- 256x212 (16 paletted colors from 512 GRB333)
 - 42x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
@@ -101,7 +101,7 @@ To learn more about **how to create your own adventure** your can:
 		
 #### **Screen 6 (MSX2)**
 
-- 512x212 4 colors  (Paletted GRB332)
+- 512x212 (4 paletted colors from 512 GRB333)
 - 85x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-2: For bitmap images
@@ -111,7 +111,7 @@ To learn more about **how to create your own adventure** your can:
 
 #### **Screen 7 (MSX2)**
 
-- 512x212 16 colors (Paletted GRB332)
+- 512x212 (16 paletted colors from 512 GRB333)
 - 85x26 characters (6x8 font)
 - Color 0: Always PAPER (default: black)
 - Color 1-14: For bitmap images
@@ -121,7 +121,7 @@ To learn more about **how to create your own adventure** your can:
 
 #### **Screen 8 (MSX2)**
 
-- 256x212 256 colors (fixed palette GRB332) **[*DEFAULT MODE*]**
+- 256x212 (256 fixed colors GRB332) **[*DEFAULT MODE*]**
 - 42x26 characters (6x8 font)
 - Bitmap mode with fixed palette (0-255)
 - No palette changes allowed.
