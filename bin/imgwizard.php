@@ -235,7 +235,7 @@
 				$in = substr($in, 4);
 			$out .= $in;
 		} while (++$i<$argc);
-		echo "### Saving file $argv[2]\n";
+		echo "### Saving file $argv[2]\n\n";
 		file_put_contents($argv[2], $out);
 		exit;
 	}
@@ -255,7 +255,7 @@
 			$out .= chr(($orig & 0xf0) | 0x08);
 			$out .= chr(($orig << 4) | 0x08);
 		}
-		echo "### Saving file $argv[3]\n";
+		echo "### Saving file $argv[3]\n\n";
 		file_put_contents($argv[3], $out);
 		exit;
 	}
@@ -274,7 +274,7 @@
 			$orig = ord($in[$pos++]);
 			$out .= chr($orig & 0b11110111);
 		}
-		echo "### Saving file $argv[3]\n";
+		echo "### Saving file $argv[3]\n\n";
 		file_put_contents($argv[3], $out);
 		exit;
 	}
@@ -562,8 +562,8 @@
 		if ($transparent<0) return $transparent;
 		if ($scr==5 || $scr==7) $transparent = $transparent&0x0f | (($transparent&0x0f)<<4);
 		if ($scr==6) { $transparent = $transparent&0x03; $transparent = $transparent | ($transparent<<2) | ($transparent<<4) | ($transparent<<6); }
-		if ($scr=='A' || $scr=='C') {
-			echo "SCREEN 10/12 images can't support transparency at this time...\n";
+		if ($scr=='C') {
+			echo "SCREEN 12 images can't support transparency at this time...\n";
 			exit;
 		}
 		return $transparent;
@@ -659,7 +659,7 @@
 		// Check screen mode
 		$out = $magic;
 		$scr = checkScreemMode($file);
-		echo "### Mode SCREEN $scr\n";
+		echo "### Mode SCREEN ".hexdec($scr)."\n";
 		$out .= $scr;
 		echo "### Lines $lines\n";
 
