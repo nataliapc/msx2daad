@@ -679,7 +679,10 @@ void printChar(char c)
 		case 11:		// \b    Clear screen
 			do_CLS(); return;
 		case 12:		// \k    Wait for a key
-			do_INKEY(); return;
+			clearKeyboardBuffer();
+			while (!checkKeyboardBuffer()) waitingForInput();
+			printedLines = 0;
+			return;
 		case 14:		// \g    Enable graphical charset (128-255)
 			gfxSetGraphCharset(true); return;
 		case 15:		// \t    Enable text charset (0-127)

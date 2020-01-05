@@ -650,10 +650,10 @@ void do_HASNAT()	// value
 #ifndef DISABLE_INKEY
 void do_INKEY()
 {
-	clearKeyboardBuffer();
-	while (!checkKeyboardBuffer()) waitingForInput();
-	flags[fKey1] = getchar();
-	printedLines = 0;
+	if (checkKeyboardBuffer()) {
+		flags[fKey1] = getchar() & 0xff;
+		checkEntry = true;
+	}
 }
 #endif
 
@@ -1988,6 +1988,9 @@ void do_LOAD()		// opt
 		fread((char*)flags, 256, fh);
 		fread((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
 		fclose(fh);
+	} else {
+		flags[fPlayer] = 0;
+		do_RESTART();
 	}
 	pPROC++;
 }
@@ -2331,6 +2334,10 @@ void do_EXTERN()	// value routine
 		case 3:
 			value |= (*pPROC++)<<8;
 			printXMES(value);
+			break;
+		//=================== XUNDONE: Disable done internal flag [***UNTESTED***]
+		case 7:
+			isDone = false;
 			break;
 	}
 }
