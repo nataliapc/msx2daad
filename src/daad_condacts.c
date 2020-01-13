@@ -277,7 +277,7 @@ void do_NOTAT()		// locno
 #ifndef DISABLE_ATGT
 void do_ATGT()		// locno
 {
-	checkEntry = (getValueOrIndirection() > flags[fPlayer]);
+	checkEntry = (flags[fPlayer] > getValueOrIndirection());
 }
 #endif
 
@@ -287,7 +287,7 @@ void do_ATGT()		// locno
 #ifndef DISABLE_ATLT
 void do_ATLT()		// locno
 {
-	checkEntry = (getValueOrIndirection() < flags[fPlayer]);
+	checkEntry = (flags[fPlayer] < getValueOrIndirection());
 }
 #endif
 
@@ -1904,20 +1904,33 @@ void do_DPRINT()	// flagno
 /*	If any objects are present then SM1 ("I can also see:") is printed, followed 
 	by a list of all objects present at the current location.
 	If there are no objects then nothing is printed. */
-#ifndef DISABLE_LISTOBJ
-void do_LISTOBJ() {
+#if !defined(DISABLE_LISTOBJ) || !defined(DISABLE_LISTAT)
+void _internal_listat(uint8_t loc, bool listobj) {
+	uint8_t lastFound = NULLWORD;
 	flags[fOFlags] &= (F53_LISTED ^ 255);
-	for (int i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].location == flags[fPlayer]) {
-			if (!(flags[fOFlags] & F53_LISTED)) {
-				printSystemMsg(1);
+	for (int i=0; i<=hdr->numObjDsc; i++) {
+		if (i==hdr->numObjDsc || objects[i].location == loc) {
+			if (lastFound!=NULLWORD) {
+				if (listobj && !(flags[fOFlags] & F53_LISTED))
+					printSystemMsg(1);
+				if (flags[fOFlags] & F53_LISTED) {
+					if (i<hdr->numObjDsc)
+						printSystemMsg(46);	//", "
+					else
+						printSystemMsg(47);	//" y "
+				}
+				printObjectMsg(lastFound);
 				flags[fOFlags] |= F53_LISTED;
-			} else {
-				printSystemMsg(46);	//", "
 			}
-			printObjectMsg(i);
-		}
+			lastFound = i;
+		} 
 	}
+}
+#endif
+#ifndef DISABLE_LISTOBJ
+void do_LISTOBJ()
+{
+	_internal_listat(flags[fPlayer], true);
 	if (flags[fOFlags] & F53_LISTED) {
 		printSystemMsg(48);	//".\n"
 	}
@@ -1932,16 +1945,7 @@ void do_LISTOBJ() {
 #ifndef DISABLE_LISTAT
 void do_LISTAT()	// locno+
 {
-	uint8_t loc = getValueOrIndirection();
-	flags[fOFlags] &= (F53_LISTED ^ 255);
-	for (int i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].location == loc) {
-			if (flags[fOFlags] & F53_LISTED) 
-				printSystemMsg(46);	//", "
-			flags[fOFlags] |= F53_LISTED;
-			printObjectMsg(i);
-		} 
-	}
+	_internal_listat(getValueOrIndirection(), false);
 	if (flags[fOFlags] & F53_LISTED)
 		printSystemMsg(51);	//".\n"
 	else
@@ -2139,12 +2143,14 @@ void do_PROCESS()	// procno
 
 // =============================================================================
 
-/*	Will restart the currently executing table, allowing */
+/*	Will restart the currently executing table, allowing...
+	TODO:incomplete descripcion in documentation */
 #ifndef DISABLE_REDO
 void do_REDO()
 {
 	currProc->entry = currProc->entryIni;
-	checkEntry = false;
+	currProc->condactIni = getPROCEntryCondacts();
+	currProc->condact = currProc->condactIni;
 }
 #endif
 

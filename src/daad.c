@@ -151,6 +151,7 @@ void initFlags()
 		cw = &windows[i];
 		cw->winW = MAX_COLUMNS;
 		cw->winH = MAX_LINES;
+		cw->mode = 0;
 		gfxSetPaperCol(0);
 		gfxSetInkCol(15);
 	}

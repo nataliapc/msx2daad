@@ -393,6 +393,14 @@
 					echo "    CHUNK $id: CMD:ClearWindow\n";
 					$size += $sin;
 					break;
+				case CHUNK_SKIP:
+					echo "    CHUNK $id: CMD:SkipVRAMBytes\n";
+					$size += $sin;
+					break;
+				case CHUNK_PAUSE:
+					echo "    CHUNK $id: CMD:Pause\n";
+					$size += $sin;
+					break;
 				default:
 					echo "    CHUNK $id: UNKNOWN CHUNK TYPE!!!! [**Aborted**]\n\n";
 					exit;

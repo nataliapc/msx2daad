@@ -491,7 +491,7 @@ void gfxSetScreen()
 	gfxRoutines(6, 0);	// Clear Back screen
 
 	//Disable keys typing sound
-	ADDR_POINTER_BYTE(CLIKSW) = 0;
+//	ADDR_POINTER_BYTE(CLIKSW) = 0;
 	
 	//Set Function keys with basic orders
 	uint8_t *fk = (void*)FNKSTR;
@@ -690,7 +690,7 @@ void gfxSetGraphCharset(bool value)
 void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 {
 	c -= 16;
-	uint16_t graphCharsetOffset = (cw->mode & MODE_FORCEGCHAR) || offsetText ? 256 : 0;
+	uint16_t graphCharsetOffset = ((cw->mode & MODE_FORCEGCHAR) || offsetText) ? (256+8) : 0;
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
 	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY + graphCharsetOffset;
 
