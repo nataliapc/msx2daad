@@ -43,7 +43,8 @@ uint8_t     savedPosY;					//  "    "      "
 #endif
 
 // Internal variables
-uint8_t lsBuffer[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id]
+uint8_t lsBuffer0[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id] for PARSE 0
+uint8_t lsBuffer1[TEXT_BUFFER_LEN/4+1];	// Logical sentence buffer [type+id] for PARSE 1
 char   *tmpMsg;							// TEXT_BUFFER_LEN
 char   *tmpTok;							// Token temp buffer
 char    lastPrompt;
@@ -276,8 +277,8 @@ void prompt()
 void parser()
 {
 	char *tmpVOC = heap_top, *p = tmpMsg, *p2;
-	uint8_t ils = 0;
 	Vocabulary *voc;
+	uint8_t *lsBuffer = lsBuffer0, *aux = lsBuffer1;
 
 	//Clear logical sentences buffer
 	clearLogicalSentences();
@@ -286,12 +287,21 @@ void parser()
 		//Clear tmpVOC
 		memset(tmpVOC, ' ', 5);
 
+		if (*p=='"') {
+			aux = lsBuffer;
+			lsBuffer = lsBuffer1;
+			p++;
+#ifdef VERBOSE2
+cprintf("DETECTED START of literal phrase!\n");
+#endif
+		}
+
 		//Copy first 5 chars max of word
 		p2 = p;
-		while (p2-p<5 && *p2!=' ' && *p2!='\0') p2++;
+		while (p2-p<5 && *p2!=' ' && *p2!='"' && *p2!='\0') p2++;
 		memcpy(tmpVOC, p, p2-p);
 #ifdef VERBOSE2
-printf("%u %c%c%c%c%c: ",p2-p, tmpVOC[0],tmpVOC[1],tmpVOC[2],tmpVOC[3],tmpVOC[4]);
+cprintf("%u %c%c%c%c%c: ",p2-p, tmpVOC[0],tmpVOC[1],tmpVOC[2],tmpVOC[3],tmpVOC[4]);
 #endif
 		for (int i=0; i<5; i++) tmpVOC[i] = 255 - tmpVOC[i];
 
@@ -299,24 +309,32 @@ printf("%u %c%c%c%c%c: ",p2-p, tmpVOC[0],tmpVOC[1],tmpVOC[2],tmpVOC[3],tmpVOC[4]
 		voc = (Vocabulary*)hdr->vocPos;
 		while (voc->word[0]) {
 			if (!memcmp(tmpVOC, voc->word, 5)) {
-				lsBuffer[ils++] = voc->id;
-				lsBuffer[ils++] = voc->type;
+				*lsBuffer++ = voc->id;
+				*lsBuffer++ = voc->type;
+				*lsBuffer = 0;
 #ifdef VERBOSE2
-printf("Found! %u / %u\n",voc->id, voc->type);
+cprintf("Found! %u / %u [%c%c%c%c%c]\n",voc->id, voc->type, 255-voc->word[0], 255-voc->word[1], 255-voc->word[2], 255-voc->word[3], 255-voc->word[4]);
 #endif
 				break;
 			}
 			voc++;
 		}
 #ifdef VERBOSE2
-if (!voc->word[0]) printf("NOT FOUND!\n");
+if (!voc->word[0]) cprintf("NOT FOUND!\n");
 #endif
-		p = strchr(p2, ' ');
-		if (!p) break;
-		p++;
+		while (*p!=' ' && *p!='\0') {
+			if (*p=='"') {
+				lsBuffer = aux;
+#ifdef VERBOSE2
+cprintf("DETECTED END of literal phrase!\n");
+#endif
+			}
+			p++;
+		}
+		while (*p!='\0' && *p==' ') p++;
 	}
 #ifdef VERBOSE2
-printf("%02u %02u %02u %02u %02u %02u %02u %02u \n",lsBuffer[0],lsBuffer[1],lsBuffer[2],lsBuffer[3],lsBuffer[4],lsBuffer[5],lsBuffer[6],lsBuffer[7]);
+cprintf("%u %u %u %u %u %u %u %u \n",lsBuffer[0],lsBuffer[1],lsBuffer[2],lsBuffer[3],lsBuffer[4],lsBuffer[5],lsBuffer[6],lsBuffer[7]);
 #endif
 }
 
@@ -331,11 +349,8 @@ printf("%02u %02u %02u %02u %02u %02u %02u %02u \n",lsBuffer[0],lsBuffer[1],lsBu
  */
 bool getLogicalSentence()
 {
-	char *p = lsBuffer, type, id, adj = fAdject1;
-	bool ret = false;
-
-	// If not logical sentences in buffer we ask to user again
-	if (!*p) {
+	// If not logical sentences in buffer we ask the user again
+	if (!*lsBuffer0) {
 		char newPrompt;
 
 		newPrompt = flags[fPrompt];
@@ -347,6 +362,20 @@ bool getLogicalSentence()
 		prompt();
 		parser();
 	}
+	return populateLogicalSentence();
+}
+
+/*
+ * Function: populateLogicalSentence
+ * --------------------------------
+ * Set the flags with the current logical sentence.
+ * 
+ * @return		Boolean with True if any logical sentence found.
+ */
+bool populateLogicalSentence()
+{
+	char *p = lsBuffer0, type, id, adj = fAdject1;
+	bool ret = false;
 
 	// Clear parser flags
 	flags[fVerb] = flags[fNoun1] = flags[fAdject1] = flags[fAdverb] = flags[fPrep] = flags[fNoun2] = flags[fAdject2] = 
@@ -404,11 +433,25 @@ printf("populateLogicalSentence()\n");
 		}
 	}
 #ifdef VERBOSE2
-printf("VERB:%u NOUN1:%u ADJ1:%u, ADVERB:%u PREP: %u NOUN2:%u, ADJ2:%u %u\n",flags[fVerb],flags[fNoun1],flags[fAdject1],flags[fAdverb],flags[fPrep],flags[fNoun2],flags[fAdject2]);
+cprintf("VERB:%u NOUN1:%u ADJ1:%u, ADVERB:%u PREP: %u NOUN2:%u, ADJ2:%u\n",
+		flags[fVerb],flags[fNoun1],flags[fAdject1],flags[fAdverb],flags[fPrep],flags[fNoun2],flags[fAdject2]);
 #endif
 	nextLogicalSentence();
 
 	return ret;
+}
+
+/*
+ * Function: useLiteralSentence
+ * --------------------------------
+ * Copy sentence between "..." if any typed.
+ * 
+ * @return			Boolean with True if any logical sentence found.
+ */
+bool useLiteralSentence()
+{
+	memcpy(lsBuffer0, lsBuffer1, sizeof(lsBuffer1));
+	return populateLogicalSentence();
 }
 
 /*
@@ -423,7 +466,8 @@ void clearLogicalSentences()
 #ifdef VERBOSE2
 printf("clearLogicalSentences()\n");
 #endif
-	memset(lsBuffer, 0, sizeof(lsBuffer));
+	memset(lsBuffer0, 0, sizeof(lsBuffer0));
+	memset(lsBuffer1, 0, sizeof(lsBuffer1));
 }
 
 /*
@@ -439,7 +483,7 @@ void nextLogicalSentence()
 #ifdef VERBOSE2
 printf("nextLogicalSentence()\n");
 #endif
-	char *p = lsBuffer, *c = lsBuffer;
+	char *p = lsBuffer0, *c = lsBuffer0;
 	while (*p!=CONJUNCTION && *p!=0) p+=2;
 	p+=2;
 	for (;;) {

@@ -145,8 +145,21 @@ char* nextSentence(char *txt)
 	return txt;
 }
 
+char* copyText(char *dest, char *orig)
+{
+	char *dest1 = dest;
+	while (*orig) {
+		if (*orig=='"') *dest1++ = '\\';
+		*dest1++ = *orig++;
+	}
+	*dest1 = '\0';
+	return dest;
+}
+
 void parent(int toChild[2], int toParent[2], int pid)
 {
+	char *aux = (char*)malloc(256);
+
 	printf("Parent\n");
 	close(toChild[0]);
 	close(toParent[1]);
@@ -183,7 +196,7 @@ void parent(int toChild[2], int toParent[2], int pid)
 			}
 			if (*checkText=='>') {
 				usleep(75000);
-				sprintf(sentence, "type \"%s\r\"", checkText+1);
+				sprintf(sentence, "type \"%s\r\"", copyText(aux, checkText+1));
 				sendCommand(sentence);
 				fprintf(stderr, "%lu: #OK %s\n", line, checkText);
 				checkText = nextSentence(checkText);

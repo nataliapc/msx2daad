@@ -233,7 +233,7 @@ extern uint8_t     flags[256];		// DAAD flags (256 bytes)
 
 extern Window     *windows;			// 0-7 windows definitions
 extern Window     *cw;				// Pointer to current active window
-extern uint8_t 	printedLines;		// To know how many lines is printed at one time ("More..." feature)
+extern uint8_t 	   printedLines;	// To know how many lines is printed at one time ("More..." feature)
 #ifndef DISABLE_SAVEAT
 extern uint8_t     savedPosX;		// For SAVEAT/BACKAT
 extern uint8_t     savedPosY;		//  "    "      "
@@ -254,6 +254,7 @@ void parser();
 void clearLogicalSentences();
 bool getLogicalSentence();
 void nextLogicalSentence();
+bool useLiteralSentence();
 
 void printBase10(uint16_t value);
 bool waitForTimeout(uint16_t timerFlag);

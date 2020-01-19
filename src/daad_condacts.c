@@ -230,7 +230,6 @@ printf("  ======================> VERB+NOUN OK\n");
 //      GFX 		//TODO implement MSX2 compliant routines
 //		SAVE		//TODO get filename from player
 //		LOAD		//TODO get filename from player
-//      PARSE		//TODO PARSE 1
 //      GET 		//TODO cancel DOALL loop
 //      TAKEOUT 	//TODO cancel DOALL loop
 //      RESTART 	//TODO cancel DOALL loop
@@ -2081,11 +2080,10 @@ void do_PAUSE()		// value
 #ifndef DISABLE_PARSE
 void do_PARSE()
 {
-	if (getValueOrIndirection()==0) {
+	if (getValueOrIndirection()==0) {	// PARSE 0
 		checkEntry = !getLogicalSentence();
-	} else {
-		//TODO: PARSE 1 not implemented
-		do_NOT_USED();
+	} else {							// PARSE 1
+		checkEntry = !useLiteralSentence();
 	}
 }
 #endif

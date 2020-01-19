@@ -709,7 +709,7 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 		if (COLOR_PAPER==COLOR_BLACK) {
 			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);							// Paint char in white
 			if (COLOR_INK!=COLOR_WHITE) {
-				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);				// Paint char INK foreground
+				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);			// Paint char INK foreground
 			}
 		} else {
 			//Use VRAM like TEMP working space to avoid glitches
