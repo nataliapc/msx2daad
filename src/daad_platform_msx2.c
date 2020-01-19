@@ -367,10 +367,15 @@ void printXMES(uint16_t address)
 	#define COLOR_PAPER		(cw->paper)
 #endif
 
-#if SCREEN != 10
+#if SCREEN == 8
 	#define COLOR_BLACK 	0x00
-#else
+	#define COLOR_WHITE 	0xff
+#elif SCREEN == 10
 	#define COLOR_BLACK 	0x08
+	#define COLOR_WHITE 	0xf8
+#else
+	#define COLOR_BLACK 	0x00
+	#define COLOR_WHITE 	0x0f
 #endif
 
 #if SCREEN==6 || SCREEN==12
@@ -690,9 +695,10 @@ void gfxSetGraphCharset(bool value)
 void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 {
 	c -= 16;
-	uint16_t graphCharsetOffset = ((cw->mode & MODE_FORCEGCHAR) || offsetText) ? (256+8) : 0;
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
-	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY + graphCharsetOffset;
+	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY;
+
+	if ((cw->mode & MODE_FORCEGCHAR) || offsetText) sy += (256+8);
 
 	#if SCREEN <= 10
 		#ifdef DISABLE_GFXCHAR_COLOR
@@ -702,7 +708,9 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 		#endif
 		if (COLOR_PAPER==COLOR_BLACK) {
 			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);							// Paint char in white
-			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);				// Paint char INK foreground
+			if (COLOR_INK!=COLOR_WHITE) {
+				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);				// Paint char INK foreground
+			}
 		} else {
 			//Use VRAM like TEMP working space to avoid glitches
 			if (COLOR_INK==COLOR_BLACK) {
