@@ -153,6 +153,7 @@ void initFlags()
 		cw->winW = MAX_COLUMNS;
 		cw->winH = MAX_LINES;
 		cw->mode = 0;
+		cw->lastPicLocation = 256;
 		gfxSetPaperCol(0);
 		gfxSetInkCol(15);
 	}
@@ -162,7 +163,6 @@ void initFlags()
 	#endif
 
 	//Initialize last onscreen picture
-	lastPicLocation = 255;
 	lastPicShow = false;
 
 	//Clear logical sentences

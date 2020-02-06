@@ -25,7 +25,7 @@ bool    indirection;			// True if the current condact use indirection for the fi
 bool    checkEntry;				// Boolean to check if a Process entry must continue or a condition fails.
 bool    isDone, lastIsDone;		// Variables for ISDONE/ISNOTDONE condacts.
 bool    lastPicShow;			// True if last location picture was drawed.
-uint8_t lastPicLocation;		// Location number of last pictured drawed.
+
 
 const CONDACT_LIST condactList[] = {
 	{ do_AT,        0 }, { do_NOTAT,     0 }, { do_ATGT,      0 }, { do_ATLT,      0 },	{ do_PRESENT,	0 },	// 0-4
@@ -1689,6 +1689,8 @@ void do_WINAT()		// line col
 	cw->winX = *pPROC++;
 	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
+	cw->lastPicLocation = 256;
+	lastPicShow = false;
 	printedLines = 0;
 }
 #endif
@@ -1704,6 +1706,8 @@ void do_WINSIZE()	// height width
 	cw->winW = *pPROC++;
 	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
+	cw->lastPicLocation = 256;
+	lastPicShow = false;
 	printedLines = 0;
 }
 #endif
@@ -1727,6 +1731,8 @@ void do_CLS()
 {
 	gfxClearWindow();
 	cw->cursorX = cw->cursorY = 0;
+	cw->lastPicLocation = 256;
+	lastPicShow = false;
 	printedLines = 0;
 }
 #endif
@@ -2449,10 +2455,10 @@ void do_GFX()		// pa routine
 	is executed. */
 #if !defined(DISABLE_PICTURE) || !defined(DISABLE_EXTERN)
 void _internal_picture(uint8_t newPic) {
-	lastPicShow = (newPic==lastPicLocation);
+	lastPicShow = (newPic==cw->lastPicLocation);
 	if (!lastPicShow) {
-		lastPicLocation = newPic;
-		checkEntry = gfxPicturePrepare(lastPicLocation);
+		cw->lastPicLocation = newPic;
+		checkEntry = gfxPicturePrepare((uint8_t)cw->lastPicLocation);
 	}
 }
 #endif
@@ -2473,8 +2479,6 @@ void do_PICTURE()	// picno
 void _internal_display(uint8_t value) {
 	if (value) {
 		do_CLS();
-		lastPicLocation = 255;
-		lastPicShow = false;
 	} else {
 		if (!lastPicShow) {
 			gfxPictureShow();

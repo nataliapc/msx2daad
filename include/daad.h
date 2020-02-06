@@ -129,15 +129,16 @@ typedef struct {
 
 // Window
 typedef struct {
-	uint8_t winX;
-	uint8_t winY;
-	uint8_t winW;
-	uint8_t winH;
-	uint8_t cursorX;
-	uint8_t cursorY;
-	uint8_t mode;			// See MODE condact
-	uint8_t paper;
-	uint8_t ink;
+	uint8_t  winX;
+	uint8_t  winY;
+	uint8_t  winW;
+	uint8_t  winH;
+	uint8_t  cursorX;
+	uint8_t  cursorY;
+	uint8_t  mode;					// See MODE condact
+	uint8_t  paper;
+	uint8_t  ink;
+	uint16_t lastPicLocation;		// Last pictured drawed.
 } Window;
 
 // Object Entry
@@ -240,7 +241,6 @@ extern uint8_t     savedPosY;		//  "    "      "
 #endif
 
 extern bool    lastPicShow;			// True if last location picture was drawed.
-extern uint8_t lastPicLocation;		// Location number of last pictured drawed.
 
 
 // DAAD Core function definitions
@@ -255,6 +255,7 @@ void clearLogicalSentences();
 bool getLogicalSentence();
 void nextLogicalSentence();
 bool useLiteralSentence();
+bool populateLogicalSentence();
 
 void printBase10(uint16_t value);
 bool waitForTimeout(uint16_t timerFlag);

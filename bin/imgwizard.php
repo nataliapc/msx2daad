@@ -11,8 +11,8 @@
 	Output file format:
 		Offset Size  Description
 		0x0000  3    Image magic string: "IMG"
-		0x0003  1    Source screen type ('5', '6', '7', '8')
-		0x0004 ...   Chunks containing the image (chunk max length: 5+2048 bytes each)
+		0x0003  1    Source screen type ('5', '6', '7', '8', 'A', 'C')
+		0x0004 ...   Chunks containing the image (chunk max length: 5+2043 bytes each)
 
 	Chunk Redirect format:
 		Offset Size  Description
@@ -65,7 +65,7 @@
 		0x0001  2    Chunk data length (max: 2043 bytes)
 		0x0003  2    Uncompressed data length in bytes
 		---data---
-		0x0005 ...   Chunk data (1-2043 bytes length)
+		0x0005 ...   Image data (1-2043 bytes length)
 */
 
 	define('CHUNK_HEAD', 5);
@@ -287,7 +287,12 @@
 	{
 		global $appname;
 		
-		echo "\nL) List image chunks:\n".
+		echo "\n".
+			 "IMGWIZARD v1.3.01 for MSX2DAAD\n".
+			 "===================================================================\n".
+			 "A tool to create and manage MSX image files in several screen modes\n".
+			 "to be used by MSX2DAAD engine.\n\n".
+			 "L) List image chunks:\n".
 			 "    $appname l <fileIn.IM?>\n\n".
 			 "C) Create an image IMx:\n".
 			 "    $appname c <fileIn.SC?> <lines> [compressor | transparent_color]\n\n".
