@@ -575,19 +575,20 @@ void errorCode(uint8_t code)
 {
 	gfxSetInkCol(14);
 	gfxSetPaperCol(4);
-	printOutMsg("Game Error ");
+	printOutMsg("\nGame Error ");
 	printChar(code+'0');
-// TODO
-//	#ifdef TEST
-//		printChar(' ');
-//		printfBase10(currProc->num);
-//		printChar(':');
-//		printfBase10(currProc->entry->verb);
-//		printChar(',');
-//		printfBase10(currProc->entry->noun);
-//		printChar('>');
-//		printfBase10(currCondact->condact);
-//	#endif
+
+	#ifdef TEST
+		printChar(' ');
+		gfxSetPaperCol(1);
+		printBase10(currProc->num);
+		printChar(':');
+		printBase10(currProc->entry->verb);
+		printChar(',');
+		printBase10(currProc->entry->noun);
+		printChar('>');
+		printBase10(*(currProc->condact));
+	#endif
 	for (;;);
 }
 

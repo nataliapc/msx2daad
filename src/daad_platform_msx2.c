@@ -618,7 +618,7 @@ void gfxScrollUp()
 {
 	ASM_HALT;
 	if (cw->winH > 1) {
-		bitBlt(0, (cw->winY+1)*FONTHEIGHT, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_YMMM);
+		bitBlt(0, (cw->winY+1)*FONTHEIGHT, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_HMMM);
 	}
 	gfxClearScreenBlock(cw->winX, (cw->winY+cw->winH-1), cw->winW, 1);
 }
@@ -798,7 +798,7 @@ bool gfxPicturePrepare(uint8_t location)
 	location /= 10;
 	pic[0] = location%10 + '0';
 	
-	posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
+	posVRAM = cw->winX * FONTWIDTH / PIXELSxBYTE + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
 	return fileexists(FILE_IMG);
 }
 
@@ -840,7 +840,7 @@ bool gfxPictureShow()
 			//=============================================
 			// Reset VRAM write position to current Window
 			if (chunk->type==IMG_CHUNK_RESET) {
-				posVRAM = cw->winX * FONTWIDTH + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
+				posVRAM = cw->winX * FONTWIDTH / PIXELSxBYTE + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
 			} else
 			//=============================================
 			// Skip VRAM bytes

@@ -657,6 +657,7 @@
 		// Write put file
 		echo "### Writing $fileOut\n";
 		file_put_contents($fileOut, $out);
+		echo "### Done\n\n";
 	}
 
 	//=================================================================================

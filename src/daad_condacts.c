@@ -364,7 +364,9 @@ void do_NOTCARR()
 #if !defined(DISABLE_ISAT) || !defined(DISABLE_ISNOTAT)
 void do_ISAT()		// objno locno+
 {
-	checkEntry = (objects[getValueOrIndirection()].location==*pPROC++);
+	uint8_t objloc = objects[getValueOrIndirection()].location;
+	uint8_t loc = *pPROC++;
+	checkEntry = (objloc==loc || (loc==LOC_HERE && objloc==flags[fPlayer]));
 }
 #endif
 
@@ -752,9 +754,9 @@ void _internal_drop(uint8_t objno)
 	Object *obj = objects + objno;
 	referencedObject(objno);
 	if (obj->location==LOC_CARRIED) {
-		obj->location = flags[fPlayer];
 		printSystemMsg(39);
-		flags[fNOCarr]--;
+		obj->location = flags[fPlayer];
+		if (flags[fNOCarr]) flags[fNOCarr]--;
 		return;
 	} else
 	if (obj->location==LOC_WORN) {
@@ -814,7 +816,7 @@ void _internal_wear(uint8_t objno)
 	} else {
 		printSystemMsg(37);
 		obj->location = LOC_WORN;
-		flags[fNOCarr]--;
+		if (flags[fNOCarr]) flags[fNOCarr]--;
 		return;
 	}
 	do_NEWTEXT();
@@ -889,7 +891,7 @@ void do_CREATE()	// objno
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
-	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
+	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = flags[fPlayer];
 }
 #endif
@@ -904,7 +906,7 @@ void do_DESTROY()	// objno
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
-	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
+	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = LOC_NOTCREATED;
 }
 #endif
@@ -937,8 +939,9 @@ void do_PLACE()		// objno locno+
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
-	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
+	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = *pPROC++;
+	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
 }
 #endif
 
@@ -952,7 +955,7 @@ void do_PLACE()		// objno locno+
 void do_PUTO()		// locno+
 {
 	Object *obj = objects + flags[fCONum];
-	if (obj->location==LOC_CARRIED) flags[fNOCarr]--;
+	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = getValueOrIndirection();
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
 }
@@ -995,7 +998,7 @@ void _internal_putin(uint8_t objno, uint8_t locno)
 		do_DONE();
 	} else {
 		obj->location = locno;
-		flags[fNOCarr]--;
+		if (flags[fNOCarr]) flags[fNOCarr]--;
 		printSystemMsg(44);
 		do_SPACE();
 		printObjectMsgModif(flags[fO2Num], '_');

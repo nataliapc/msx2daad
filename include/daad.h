@@ -229,6 +229,8 @@ extern DDB_Header *hdr;				// Struct pointer to DDB Header
 extern Object     *objects;			// Memory allocation for objects data
 extern char       *ramsave;			// Memory to store ram save
 
+extern PROCstack  *currProc;		// Pointer to current active condact.
+
 extern char       *tmpMsg;			// MAX_TEXT_LEN
 extern uint8_t     flags[256];		// DAAD flags (256 bytes)
 

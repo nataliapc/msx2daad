@@ -108,6 +108,16 @@
 	#define BYTESxLINE		128		// Screen 5, 6
 #endif
 
+// PIXELSxBYTE
+#if SCREEN >= 8
+	#define PIXELSxBYTE 	1		// Screen 8, 10, 12
+#elif SCREEN ==6
+	#define PIXELSxBYTE 	4		// Screen 6
+#else
+	#define PIXELSxBYTE		2		// Screen 5, 7
+#endif
+
+
 // FONT VRAM Location
 #define FONTINITY			212
 #define FONTTEMPY			(FONTINITY + 32)
