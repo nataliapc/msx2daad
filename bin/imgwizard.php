@@ -94,6 +94,10 @@
 	define('COMP_ID',   2);
 	define('COMP_NAME', 3);
 
+	if (!extension_loaded('gd')) {
+		die("\nERROR: The PHP \"gd\" extension must be installed...\n\n");
+	}
+
 	$appname = basename($argv[0]);
 	$magic = "IMG";
 

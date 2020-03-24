@@ -1380,8 +1380,8 @@ void do_COPYFO()	// flagno objno
 void do_WHATO()
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
-	if (objno!=NULLWORD)
-		referencedObject(objno);
+	if (objno==NULLWORD) objno = getObjectId(flags[fNoun1], flags[fAdject1], LOC_HERE);
+	referencedObject(objno);
 }
 #endif
 

@@ -28,6 +28,9 @@ Object     *objects;					// Memory allocation for objects data
 uint8_t     flags[256];					// DAAD flags (256 bytes)
 char       *ramsave;					// Memory to store ram save (RAMSAVE)
 
+const uint8_t nullObjFake[] = { 0, 0, 0, 0, 0, 0 };
+const Object  *nullObject;
+
 #ifndef DISABLE_WINDOW
 	#define WINDOWS_NUM		8
 #else
@@ -115,6 +118,7 @@ bool initDAAD(int argc, char **argv)
 	memset(ramsave, 0, 1+256+sizeof(Object)*hdr->numObjDsc);
 	//Get memory for objects
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
+	nullObject = (Object *) nullObjFake;
 	//Get memory for tmpTok & tmpMsg
 	tmpTok = (char*)malloc(32);
 	tmpMsg = (char*)malloc(TEXT_BUFFER_LEN);
@@ -150,6 +154,7 @@ void initFlags()
 	flags[fCurWin] = 0;
 	for (int i=0; i<WINDOWS_NUM; i++) {
 		cw = &windows[i];
+		cw->winX = cw->winY = 0;
 		cw->winW = MAX_COLUMNS;
 		cw->winH = MAX_LINES;
 		cw->mode = 0;
@@ -510,7 +515,7 @@ printf("nextLogicalSentence()\n");
 void printBase10(uint16_t value)
 {
 	if (value<10) {
-		if (value) printChar('0'+(uint8_t)value);
+		printChar('0'+(uint8_t)value);
 		return;
 	}
 	printBase10(value/10);
@@ -963,13 +968,15 @@ uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
  */
 void referencedObject(uint8_t objno)
 {
-	flags[fCONum] = objno;
-	flags[fCOLoc] = objects[objno].location;
-	flags[fCOWei] = objects[objno].attribs.mask.weight;
-	flags[fCOCon] = flags[fCOCon] & 0b01111111 | (objects[objno].attribs.mask.isContainer << 7);
-	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | (objects[objno].attribs.mask.isWareable << 7);
-	flags[fCOAtt] = objects[objno].extAttr1;
-	flags[fCOAtt+1] = objects[objno].extAttr2;
+	Object *objRef = objno==NULLWORD ? nullObject : &objects[objno];
+
+	flags[fCONum] = objno;							// Flag 51
+	flags[fCOLoc] = objRef->location;				// Flag 54
+	flags[fCOWei] = objRef->attribs.mask.weight;	// Flag 55
+	flags[fCOCon] = flags[fCOCon] & 0b01111111 | (objRef->attribs.mask.isContainer << 7);	// Flag 56
+	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | (objRef->attribs.mask.isWareable << 7);		// Flag 57
+	flags[fCOAtt] = objRef->extAttr1;				// Flag 58
+	flags[fCOAtt+1] = objRef->extAttr2;				// Flag 59
 }
 
 /*
