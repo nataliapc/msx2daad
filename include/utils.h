@@ -5,6 +5,13 @@
 
 void die(const char *s, ...);
 
+void mouseInit();
+
+void enableR800CPU();
+
+void enableTurboCPU();
+void disableTurboCPU();
+
 void unRLE(char *source, char *target);
 void unRLE_vram(char *srcmem, uint32_t vram);
 

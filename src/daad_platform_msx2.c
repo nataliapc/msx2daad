@@ -18,9 +18,6 @@
 #include "daad.h"
 #include "vdp.h"
 #include "dos.h"
-#if defined(DEBUG) || defined(VERBOSE) || defined(VERBOSE2)
-	#include <stdio.h>
-#endif
 #if defined(TEST) || defined(DEBUG)
 	#include "debug.h"
 #endif
@@ -127,7 +124,7 @@ bool checkPlatformSystem()
  */
 uint16_t getFreeMemory()
 {
-    return ADDR_POINTER_WORD(TPA_LIMIT) - heap_top + hdr->fileLength;
+    return ADDR_POINTER_WORD(TPA_LIMIT) - heap_top + hdr->fileLength - sizeof(IMG_CHUNK);
 }
 
 /*
@@ -255,6 +252,8 @@ void loadFilesBin(int argc, char **argv)
 	memcpy(aux, FILE_IMG, 11);
 	//Show LOADING picture
 	memcpy(FILE_IMG, FILE_LOAD, 11);
+	cw = (Window*)(heap_top+IMG_MAXREAD);	//Fake current Window
+	cw->winX = cw->winY = 0;
 	posVRAM = 0;
 	gfxPictureShow();
 
@@ -448,6 +447,10 @@ uint8_t getColor(uint8_t col)
  */
 void gfxSetScreen()
 {
+	//Enable R800 / Turbo CPU
+	enableR800CPU();
+	enableTurboCPU();
+
 	//Set Color 15,0,0
 	setColor(15, 0, 0);
 	//Set SCREEN mode with interslot BIOS call
@@ -618,7 +621,7 @@ void gfxScrollUp()
 {
 	ASM_HALT;
 	if (cw->winH > 1) {
-		bitBlt(0, (cw->winY+1)*FONTHEIGHT, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_HMMM);
+		bitBlt(cw->winX*FONTWIDTH, (cw->winY+1)*FONTHEIGHT, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_HMMM);
 	}
 	gfxClearScreenBlock(cw->winX, (cw->winY+cw->winH-1), cw->winW, 1);
 }
@@ -848,7 +851,7 @@ bool gfxPictureShow()
 				posVRAM += chunk->auxData;
 			} else
 			//=============================================
-			// Reset VRAM write position to current Window
+			// Pause the image load in 1/50 sec units
 			if (chunk->type==IMG_CHUNK_PAUSE) {
 				setTime(0);
 				while (getTime() < chunk->auxData) waitingForInput();
