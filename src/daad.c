@@ -11,9 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "daad.h"
-#if defined(DEBUG) || defined(VERBOSE) || defined(VERBOSE2)
-	#include <stdio.h>
-#endif
 
 
 // External
@@ -77,28 +74,32 @@ bool initDAAD(int argc, char **argv)
 	p = (uint16_t *)&hdr->tokensPos;
 
 	#ifdef DEBUG
-		printf("Version.......... %u\n", hdr->version);
-		printf("Machine.......... %u\n", hdr->target.value.machine);
-		printf("Language......... %u\n", hdr->target.value.language);
-		printf("Magic............ 0x%02x\n", hdr->magic);
-		printf("Num.Obj.......... %u\n", hdr->numObjDsc);
-		printf("Num.Locations.... %u\n", hdr->numLocDsc);
-		printf("Num.Usr.Msg...... %u\n", hdr->numUsrMsg);
-		printf("Num.Sys.Msg...... %u\n", hdr->numSysMsg);
-		printf("Num.Proc......... %u\n", hdr->numPrc);
-		printf("Tokens pos....... 0x%04x\n", hdr->tokensPos);
-		printf("Proc list pos.... 0x%04x\n", hdr->prcLstPos);
-		printf("Obj. list pos.... 0x%04x\n", hdr->objLstPos);
-		printf("Loc. list pos.... 0x%04x\n", hdr->locLstPos);
-		printf("Usr. msg. pos.... 0x%04x\n", hdr->usrMsgPos);
-		printf("Sys. msg. pos.... 0x%04x\n", hdr->sysMsgPos);
-		printf("Connections pos.. 0x%04x\n", hdr->conLstPos);
-		printf("Vocabulary pos... 0x%04x\n", hdr->vocPos);
-		printf("Obj.Loc. list.... 0x%04x\n", hdr->objLocLst);
-		printf("Obj.Name pos..... 0x%04x\n", hdr->objNamePos);
-		printf("Obj.Attr pos..... 0x%04x\n", hdr->objAttrPos);
-		printf("Obj.Extr pos..... 0x%04x\n", hdr->objExtrPos);
-		printf("File length...... %u bytes\n", hdr->fileLength);
+		cprintf("Version.......... %u\n"
+				"Machine.......... %u\n"
+				"Language......... %u\n"
+				"Magic............ 0x%x\n"
+				"Num.Obj.......... %u\n"
+				"Num.Locations.... %u\n"
+				"Num.Usr.Msg...... %u\n"
+				"Num.Sys.Msg...... %u\n"
+				"Num.Proc......... %u\n"
+				"Tokens pos....... 0x%x\n"
+				"Proc list pos.... 0x%x\n"
+				"Obj. list pos.... 0x%x\n"
+				"Loc. list pos.... 0x%x\n"
+				"Usr. msg. pos.... 0x%x\n"
+				"Sys. msg. pos.... 0x%x\n"
+				"Connections pos.. 0x%x\n"
+				"Vocabulary pos... 0x%x\n"
+				"Obj.Loc. list.... 0x%x\n"
+				"Obj.Name pos..... 0x%x\n"
+				"Obj.Attr pos..... 0x%x\n"
+				"Obj.Extr pos..... 0x%x\n\n",
+				hdr->version, hdr->target.value.machine, hdr->target.value.language, hdr->magic, 
+				hdr->numObjDsc, hdr->numLocDsc, hdr->numUsrMsg, hdr->numSysMsg, hdr->numPrc, 
+				hdr->tokensPos, hdr->prcLstPos, hdr->objLstPos, hdr->locLstPos, hdr->usrMsgPos, 
+				hdr->sysMsgPos, hdr->conLstPos, hdr->vocPos, hdr->objLocLst, hdr->objNamePos, 
+				hdr->objAttrPos, hdr->objExtrPos);
 	#endif
 
 	//If not a valid DDB version exits
@@ -114,7 +115,7 @@ bool initDAAD(int argc, char **argv)
 	while ((*(char*)(hdr->tokensPos++) & 0x80) == 0);
 
 	//Get memory for RAMSAVE
-	ramsave = (char*)malloc(256+sizeof(Object)*hdr->numObjDsc);
+	ramsave = (char*)malloc(512);	// 256 bytes for Flags + 256 bytes for Objects location
 	memset(ramsave, 0, 1+256+sizeof(Object)*hdr->numObjDsc);
 	//Get memory for objects
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
@@ -123,8 +124,9 @@ bool initDAAD(int argc, char **argv)
 	tmpTok = (char*)malloc(32);
 	tmpMsg = (char*)malloc(TEXT_BUFFER_LEN);
 
-	#ifdef DEBUG
-		printf("\nDDB max size..... %u bytes\n", getFreeMemory());
+	#if defined(DEBUG) || defined(TEST)
+		cprintf("File length...... %u bytes\n"
+				"DDB max size..... %u bytes\n\n", hdr->fileLength, getFreeMemory());
 	#endif
 
 	#ifdef TRANSCRIPT
@@ -386,7 +388,7 @@ bool populateLogicalSentence()
 	flags[fVerb] = flags[fNoun1] = flags[fAdject1] = flags[fAdverb] = flags[fPrep] = flags[fNoun2] = flags[fAdject2] = 
 		flags[fCPNoun] = flags[fCPAdject] = NULLWORD;
 #ifdef VERBOSE2
-printf("populateLogicalSentence()\n");
+cputs("populateLogicalSentence()\n");
 #endif
 	while (*p && *(p+1)!=CONJUNCTION) {
 		id = *p;
@@ -469,7 +471,7 @@ bool useLiteralSentence()
 void clearLogicalSentences()
 {
 #ifdef VERBOSE2
-printf("clearLogicalSentences()\n");
+cputs("clearLogicalSentences()\n");
 #endif
 	memset(lsBuffer0, 0, sizeof(lsBuffer0));
 	memset(lsBuffer1, 0, sizeof(lsBuffer1));
@@ -486,7 +488,7 @@ printf("clearLogicalSentences()\n");
 void nextLogicalSentence()
 {
 #ifdef VERBOSE2
-printf("nextLogicalSentence()\n");
+cputs("nextLogicalSentence()\n");
 #endif
 	char *p = lsBuffer0, *c = lsBuffer0;
 	while (*p!=CONJUNCTION && *p!=0) p+=2;

@@ -10,9 +10,7 @@
 #include <string.h>
 #include "daad.h"
 #include "daad_condacts.h"
-#if defined(DEBUG) || defined(VERBOSE) || defined(VERBOSE2)
-	#include <stdio.h>
-#endif
+
 
 #define NUM_PROCS		10
 #define pPROC 			currProc->condact
@@ -97,7 +95,7 @@ void _internal_display(uint8_t value);
 void initializePROC()
 {
 //#ifdef VERBOSE
-//printf("initializePROC()\n");
+//cputs("initializePROC()\n");
 //#endif
 	memset(procStack, 0, sizeof(procStack));
 	currProc = procStack-1;
@@ -107,7 +105,7 @@ void initializePROC()
 void pushPROC(uint8_t proc)
 {
 //#ifdef VERBOSE
-//printf("pushPROC(%u)\n",proc);
+//cprintf("pushPROC(%u)\n",proc);
 //#endif
 	currProc++;
 	if (currProc-procStack >= NUM_PROCS)
@@ -131,7 +129,7 @@ void _popPROC()
 bool popPROC()
 {
 #ifdef VERBOSE
-//printf("popPROC()\n");
+//cputs("popPROC()\n");
 #endif
 	_popPROC();
 	lastIsDone = isDone;
@@ -144,8 +142,8 @@ bool popPROC()
 PROCentry* getPROCess(uint8_t proc)
 {
 //#ifdef VERBOSE
-//printf("getPROCess(%u)\n",proc);
-//printf("    Pos: %p\n",*(((uint16_t*)hdr->prcLstPos) + proc));
+//cprintf("getPROCess(%u)\n",proc);
+//cprintf("    Pos: %p\n",*(((uint16_t*)hdr->prcLstPos) + proc));
 //#endif
 	if (proc >= hdr->numPrc) errorCode(6);
 	return (PROCentry*)&ddb[*(((uint16_t*)hdr->prcLstPos) + proc)];
@@ -155,8 +153,8 @@ PROCentry* getPROCess(uint8_t proc)
 char* getPROCEntryCondacts()
 {
 //#ifdef VERBOSE
-//printf("getPROCEntryCondacts()\n");
-//printf("    Pos: %p\n",(uint16_t)(currProc->entry->pCondacts));
+//cputs("getPROCEntryCondacts()\n");
+//cprintf("    Pos: %p\n",(uint16_t)(currProc->entry->pCondacts));
 //#endif
 	return &ddb[(uint16_t)(currProc->entry->pCondacts)];
 }
@@ -172,8 +170,8 @@ char* stepPROCEntryCondacts(int8_t step)
 void processPROC()
 {
 //#ifdef VERBOSE
-//printf("processPROC()\n");
-//printf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
+//cputs("processPROC()\n");
+//cprintf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
 //#endif
 	CondactStruct *currCondact;
 	uint8_t temp;
@@ -187,14 +185,14 @@ void processPROC()
 			currCondact = (CondactStruct*)pPROC++;
 			indirection = currCondact->indirection;
 #ifdef VERBOSE
-printf("     [%p][%3u] %s ",(char*)(pPROC-1)-ddb, *((uint8_t*)currCondact), CONDACTS[currCondact->condact].name);
+cprintf("     [%p][%u] %s ",(char*)(pPROC-1)-ddb, *((uint8_t*)currCondact), CONDACTS[currCondact->condact].name);
 if (CONDACTS[currCondact->condact].args>=1) {
-	if (indirection) printf("@");
-	printf("%u", *(pPROC));
+	if (indirection) cputs("@");
+	cprintf("%u", *(pPROC));
 }
-if (CONDACTS[currCondact->condact].args>=2) printf(" %u", *(pPROC+1));
-/*********************************/printf(" [isDone:%d last:%d]",isDone,lastIsDone);
-printf("\n");
+if (CONDACTS[currCondact->condact].args>=2) cprintf(" %u", *(pPROC+1));
+/*********************************/cprintf(" [isDone:%d last:%d]",isDone,lastIsDone);
+cputs("\n");
 #endif
 			condactList[currCondact->condact].function();
 			isDone |= condactList[currCondact->condact].flag;
@@ -209,12 +207,12 @@ printf("\n");
 				currProc->condact = currProc->condactIni;
 			}
 //#ifdef VERBOSE
-//printf("  VERB:%u NOUN:%u [Pos:%p]\n",currProc->entry->verb, currProc->entry->noun, (char*)currProc->entry-ddb);
+//cprintf("  VERB:%u NOUN:%u [Pos:%p]\n",currProc->entry->verb, currProc->entry->noun, (char*)currProc->entry-ddb);
 //#endif
 		} while (!((currProc->entry->verb==NULLWORD || currProc->entry->verb==flags[fVerb]) &&
 				 (currProc->entry->noun==NULLWORD || currProc->entry->noun==flags[fNoun1])));
 #ifdef VERBOSE
-printf("  ======================> VERB+NOUN OK\n");
+cputs("  ======================> VERB+NOUN OK\n");
 #endif
 		lastIsDone = isDone;	//Fixed issue#13 ????
 		isDone = false;
@@ -1681,8 +1679,8 @@ void do_WINDOW()	// window
 #if !defined(DISABLE_WINAT) || !defined(DISABLE_WINSIZE)
 void _internal_windowCheck()
 {
-	if (cw->winW + cw->winX >= MAX_COLUMNS) cw->winW = MAX_COLUMNS - cw->winX;
-	if (cw->winH + cw->winY >= MAX_LINES) cw->winH = MAX_LINES - cw->winY;
+	if (cw->winW + cw->winX > MAX_COLUMNS) cw->winW = MAX_COLUMNS - cw->winX;
+	if (cw->winH + cw->winY > MAX_LINES) cw->winH = MAX_LINES - cw->winY;
 }
 #endif
 #ifndef DISABLE_WINAT
@@ -2001,6 +1999,7 @@ void do_LOAD()		// opt
 		fread((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
 		fclose(fh);
 	} else {
+		printSystemMsg(57);
 		flags[fPlayer] = 0;
 		do_RESTART();
 	}
@@ -2019,7 +2018,8 @@ void do_LOAD()		// opt
 void do_RAMSAVE()
 {
 	memcpy(ramsave, flags, 256);
-	memcpy(ramsave+256, objects, sizeof(Object)*hdr->numObjDsc);
+	for (int i=0; i<256; i++)
+		*(ramsave+256+i) = objects[i].location;
 }
 #endif
 
@@ -2041,7 +2041,8 @@ void do_RAMLOAD()	// flagno
 	uint8_t flagno = getValueOrIndirection();
 
 	memcpy(flags, ramsave, flagno);
-	memcpy(objects, ramsave+256, sizeof(Object)*hdr->numObjDsc);
+	for (int i=0; i<256; i++)
+		objects[i].location = *(ramsave+256+i);
 }
 #endif
 
@@ -2335,13 +2336,13 @@ void do_EXTERN()	// value routine
 			break;
 		//=================== XSAVE: Save Game
 		case 1:
-			pPROC--;
 			do_SAVE();
+			pPROC--;
 			break;
 		//=================== XLOAD: Load Game
 		case 2:
-			pPROC--;
 			do_LOAD();
+			pPROC--;
 			break;
 		//=================== XMES: External message
 		case 3:
