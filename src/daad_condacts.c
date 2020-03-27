@@ -113,6 +113,7 @@ void pushPROC(uint8_t proc)
 	currProc->num = proc;
 	currProc->entryIni = getPROCess(proc);
 	currProc->entry = currProc->entryIni - 1;
+	currProc->condactDOALL = NULL;
 
 	lastIsDone = false;
 	isDone = false;
@@ -221,20 +222,14 @@ cputs("  ======================> VERB+NOUN OK\n");
 }
 
 // TODO High Priority:
-//		DOALL
 //      INPUT
 //
 // TODO Low Priority:
-//      GFX 		//TODO implement MSX2 compliant routines
 //		SAVE		//TODO get filename from player
 //		LOAD		//TODO get filename from player
-//      GET 		//TODO cancel DOALL loop
-//      TAKEOUT 	//TODO cancel DOALL loop
-//      RESTART 	//TODO cancel DOALL loop
 //      CALL
 //
 // TODO Undocumented:
-//      SFX 		//Undocumented
 //      MOUSE 		//Undocumented
 
 //===============================================
@@ -714,7 +709,7 @@ void _internal_get(uint8_t objno)
 	} else
 	if (flags[fNOCarr] >= flags[fMaxCarr]) {
 		printSystemMsg(27);
-		//TODO cancel DOALL loop
+		currProc->condactDOALL = NULL;
 	} else {
 		printSystemMsg(36);
 		obj->location = LOC_CARRIED;
@@ -1077,7 +1072,7 @@ void _internal_takeout(uint8_t objno, uint8_t locno)
 		printSystemMsg(27);
 		do_NEWTEXT();
 		do_DONE();
-		//TODO cancel DOALL loop
+		currProc->condactDOALL = NULL;
 	} else {
 		printSystemMsg(36);
 		obj->location = LOC_CARRIED;
@@ -2188,10 +2183,36 @@ void do_REDO()
 	doors are often flags only and would have to bemade into objects if they were to 
 	be included in a DOALL. */
 #ifndef DISABLE_DOALL
-void do_DOALL() {	// locno+
-	//TODO: DOALL not implemented yet
-	do_NOT_USED();
+void _internal_doall() {
+	uint8_t objno = flags[fDAObjNo] + 1;
+	uint8_t locno = *(currProc->condactDOALL - 1);
+	if (*(currProc->condactDOALL - 2) > 127) locno = flags[locno];
+	if (locno==LOC_HERE) locno = flags[fPlayer];
+
+	while (objects[objno].location!=locno || (objects[objno].nounId==flags[fNoun2] && objects[objno].adjectiveId==flags[fAdject2])) {
+		objno++;
+		if (objno >= hdr->numObjDsc) {
+			currProc->condactDOALL = NULL;
+			do_DONE();
+			return;
+		}
+	}
+	flags[fDAObjNo] = objno++;
+	flags[fNoun1] = objects[flags[fDAObjNo]].nounId;
+	flags[fAdject1] = objects[flags[fDAObjNo]].adjectiveId;
+	pPROC = currProc->condactDOALL;
+	currProc->entry = currProc->entryDOALL;
 }
+void do_DOALL() {	// locno+
+
+	if (currProc->condactDOALL) errorCode(4);
+	currProc->condactDOALL = ++pPROC;
+	currProc->entryDOALL = currProc->entry;
+	flags[fDAObjNo] = -1;
+	_internal_doall();
+}
+#else
+void _internal_doall() {}
 #endif
 
 // =============================================================================
@@ -2213,8 +2234,7 @@ void do_SKIP()		// distance
 #ifndef DISABLE_RESTART
 void do_RESTART()
 {
-	//TODO cancel DOALL loop
-	while (popPROC());
+	while (popPROC());	// popPROC() cancel the current DOALL
 	pushPROC(0);
 	checkEntry = false;
 }
@@ -2284,8 +2304,12 @@ void do_EXIT()		// value
 #ifndef DISABLE_DONE
 void do_DONE()
 {
-	isDone = true;
-	popPROC();
+	if (currProc->condactDOALL) {
+		_internal_doall();
+	} else {
+		isDone = true;
+		popPROC();
+	}
 }
 #endif
 
@@ -2300,8 +2324,12 @@ void do_DONE()
 #ifndef DISABLE_NOTDONE
 void do_NOTDONE()
 {
-	isDone = false;
-	popPROC();
+	if (currProc->condactDOALL) {
+		_internal_doall();
+	} else {
+		isDone = false;
+		popPROC();
+	}
 }
 #endif
 

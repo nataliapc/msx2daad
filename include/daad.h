@@ -119,6 +119,8 @@ typedef struct {
 	PROCentry *entry;			// Current entry in current PROCess
 	char      *condactIni;		// First condact in current entry
 	char      *condact;			// Current condact in current entry
+	PROCentry *entryDOALL;		// Entry where is located the DOALL
+	char      *condactDOALL;	// Next condact to the DOALL (NULL if not in a loop)
 } PROCstack;
 
 // Condact struct
