@@ -12,7 +12,6 @@ int putchar(int c) __naked {
     ld a,e
     cp #0x0a
     
-    ld e,a
     ld c,#CONOUT
     jp nz,jumpPutchar$
 

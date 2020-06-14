@@ -18,7 +18,7 @@
 	;--- Step 1: Initialize globals
 
 init:
-	call    gsinit
+;	call    gsinit
 
 	;--- Step 2: Build the parameter pointers table on 0x100,
 	;    and terminate each parameter with 0.
@@ -147,11 +147,11 @@ cont:
 _heap_top::
 	.dw 0
 
-gsinit:
-	.area   _GSINIT
-
-	.area   _GSFINAL
-	ret
+;gsinit:
+;	.area   _GSINIT
+;
+;	.area   _GSFINAL
+;	ret
 
 	;* These doesn't seem to be necessary... (?)
 

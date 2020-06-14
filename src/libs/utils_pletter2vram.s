@@ -9,7 +9,7 @@
 ; http://www.gamopat-forum.com/t75544-termine-pang-msx
 ; Size: 244 bytes
 ;-----------------------------------------------------------
-; Adapter to MSX2 (VRAM 128kb) by Natalia Pujol
+; Adapted to MSX2 (VRAM 128kb) by Natalia Pujol
 
  ; global from this code
 

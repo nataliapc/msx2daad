@@ -33,10 +33,10 @@ const char FILES_BIN[] = "FILES.BIN\0  ";
 //Default FILES.BIN content (overwrited if a FILES.BIN exists)
 const char FILES[] = 
 	"FONT    IM"SCREEN_CHAR"\n"		// Filename for Font file
-	"DAAD    DDB\n"								// Filename for DDB file
-	"TEXTS   XDB\n"								// Filename with externalized texts (XMES/XMESSAGE)
+	"DAAD    DDB\n"					// Filename for DDB file
+	"TEXTS   XDB\n"					// Filename with externalized texts (XMES/XMESSAGE)
 	"LOADING IM"SCREEN_CHAR"\n"		// Filename for loading screen
-	"000     IM"SCREEN_CHAR"\n";		// Buffer to fill with the image to load (XPICTURE)
+	"000     IM"SCREEN_CHAR"\n";	// Buffer to fill with the image to load (XPICTURE)
 
 #define FILE_FONT	&FILES[0]
 #define FILE_DDB	&FILES[12]
@@ -112,6 +112,11 @@ bool checkPlatformSystem()
 			printf("Page2 default RAM segment: %u\n\n", PAGE2_RAMSEG);
 		#endif
 	#endif
+
+	//Enable R800 / Turbo CPU
+//	enableR800CPU();
+//	enableTurboCPU();
+
     return true;
 }
 
@@ -177,13 +182,22 @@ uint16_t getTime() __naked
 
 uint16_t checkKeyboardBuffer()
 {
-	ASM_HALT;
-	return kbhit();
+	return ADDR_POINTER_WORD(PUTPNT)-ADDR_POINTER_WORD(GETPNT);
 }
 
 void clearKeyboardBuffer()
 {
-	while (checkKeyboardBuffer()) getchar();
+	ADDR_POINTER_WORD(PUTPNT) = ADDR_POINTER_WORD(GETPNT);
+}
+
+uint8_t  getKeyInBuffer()
+{
+	uint8_t *pnt = (uint8_t*)ADDR_POINTER_WORD(GETPNT);
+	uint8_t ret = *pnt;
+	pnt++;
+	if (pnt >= (uint8_t*)(KEYBUF+40)) pnt = (uint8_t*)KEYBUF;
+	ADDR_POINTER_WORD(GETPNT) = (uint16_t)pnt;
+	return ret;
 }
 
 void waitingForInput()
@@ -447,10 +461,6 @@ uint8_t getColor(uint8_t col)
  */
 void gfxSetScreen()
 {
-	//Enable R800 / Turbo CPU
-	enableR800CPU();
-	enableTurboCPU();
-
 	//Set Color 15,0,0
 	setColor(15, 0, 0);
 	//Set SCREEN mode with interslot BIOS call
@@ -484,8 +494,12 @@ void gfxSetScreen()
 	#elif SCREEN_HEIGHT==212
 		enable212lines();
 	#endif
+
+	//Clear VRAM page 2
+	gfxRoutines(6, 0);	// Clear Back screen
+
+	//Disable hardware sprites
 	disableSPR();
-	//enable50Hz();
 
 	//Set screen adjust
 	setRegVDP8(18, ADDR_POINTER_BYTE(0xFFF1));
@@ -494,9 +508,6 @@ void gfxSetScreen()
 	#if SCREEN!=8 && SCREEN!=12
 		setPalette(colorTranslation);
 	#endif
-
-	//Clear VRAM page 2
-	gfxRoutines(6, 0);	// Clear Back screen
 
 	//Disable keys typing sound
 //	ADDR_POINTER_BYTE(CLIKSW) = 0;
@@ -938,6 +949,7 @@ void gfxRoutines(uint8_t routine, uint8_t value)
 	}
 }
 
+
 //=========================================================
 // SOUND (SFX)
 //=========================================================
@@ -1081,4 +1093,5 @@ void sfxTone(uint8_t duration, uint8_t tone) __naked
 	__endasm;
 }
 #endif //DISABLE_BEEP
+
 

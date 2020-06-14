@@ -43,6 +43,7 @@ void     setTime(uint16_t time);
 uint16_t getTime();
 uint16_t checkKeyboardBuffer();
 void     clearKeyboardBuffer();
+uint8_t  getKeyInBuffer();
 void     waitingForInput();
 
 

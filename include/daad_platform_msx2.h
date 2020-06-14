@@ -174,8 +174,10 @@
 // System variables
 #define TPA_LIMIT	0x0006
 #define CLIKSW		0xf3db	// (BYTE) SCREEN ,,n will write to this address (0:disables_keys_click 1:enables_keys_click)
+#define PUTPNT		0xf3f8	// (WORD) Address in the keyboard buffer where a character will be written
+#define GETPNT		0xf3fa	// (WORD) Address in the keyboard buffer where the next character is read
 #define FNKSTR		0xf87f	// (10*16 bytes) Value of the function keys
-#define HTIMI   	0xfd9f	// Hook VBLANK interrupt
+#define KEYBUF		0xfbf0	// (40 bytes) Key code buffer [0xfbf0...0xfc17]
 #define MODE		0xfafc	/*Flag for screen mode. (1B/R)
 								bit 7: 1 = conversion to Katakana; 0 = conversion to Hiragana. (MSX2+~)
 								bit 6: 1 if Kanji ROM level 2. (MSX2+~)

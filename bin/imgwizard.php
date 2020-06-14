@@ -403,11 +403,11 @@
 					$size += $sin;
 					break;
 				case CHUNK_SKIP:
-					echo "    CHUNK $id: CMD:SkipVRAMBytes\n";
+					echo "    CHUNK $id: CMD:SkipVRAMBytes ($sout bytes)\n";
 					$size += $sin;
 					break;
 				case CHUNK_PAUSE:
-					echo "    CHUNK $id: CMD:Pause\n";
+					echo "    CHUNK $id: CMD:Pause ($sout/50 seconds)\n";
 					$size += $sin;
 					break;
 				default:

@@ -9,9 +9,9 @@ void exit(int code) __naked {
     push ix
     ld ix,#4
     add ix,sp
+    ld b,(ix)
     pop ix
 
-    ld b,(ix)
     ld c,#TERM
     DOSCALL
 

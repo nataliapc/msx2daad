@@ -251,7 +251,7 @@ void prompt()
 			}
 		}
 		while (!checkKeyboardBuffer()) waitingForInput();
-		c = getchar();
+		c = getKeyInBuffer();
 		if ((c=='\r' || c==' ') && p<=tmpMsg) { c = 0; continue; }	// Avoid enter an empty text order
 		if (c==0x08) {												// Back space (BS)
 			if (p<=tmpMsg) continue;

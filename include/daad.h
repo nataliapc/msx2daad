@@ -45,6 +45,11 @@
 #define F29_MOUSE			1		// (fGFlags) Bitmask: Mouse available
 #define F29_GMODE			128		// (fGFlags) Bitmask: Graphics available
 
+// Used by INPUT
+#define INPUT_CLEARWINDOW   1
+#define INPUT_PRINTCOMPLETE 2
+#define INPUT_PRINTTIMEOUT  4
+
 // Bitmask used by TIME and flag fTIFlags
 #define TIME_FIRSTCHAR		1		// Set this so timeout can occur at start of input only
 #define TIME_MORE			2		// Set this so timeout can occur on "More..."

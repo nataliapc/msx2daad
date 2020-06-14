@@ -645,7 +645,7 @@ void do_HASNAT()	// value
 void do_INKEY()
 {
 	if (checkKeyboardBuffer()) {
-		flags[fKey1] = getchar() & 0xff;
+		flags[fKey1] = getKeyInBuffer();
 		checkEntry = true;
 	}
 }

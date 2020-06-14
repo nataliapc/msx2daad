@@ -6,14 +6,15 @@ CC = sdcc
 HEX2BIN = hex2bin
 
 ifndef VERSION
-	VERSION := 1.3
+	VERSION := 1.4
 endif
 ifndef CXXFLAGS
 	CXXFLAGS := -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSXDOS1 -DMSX2
 endif
 LDFLAGS := -rc
+OPFLAGS := --opt-code-size --allow-unsafe-read
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
-CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx --opt-code-size $(CXXFLAGS) $(WRFLAGS)
+CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
 
 SRCDIR = src/
 SRCLIB = $(SRCDIR)libs/
