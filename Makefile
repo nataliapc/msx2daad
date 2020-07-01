@@ -25,6 +25,7 @@ PKGDIR = package/
 DIR_GUARD=@mkdir -p $(OBJDIR)
 LIB_GUARD=@mkdir -p $(LIBDIR)
 
+EMUSCRIPTS = -script ./emulation/boot.tcl -script ./emulation/info_daad.tcl
 
 LIBS := dos.lib vdp.lib utils.lib
 REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel daad.rel daad_condacts.rel \
@@ -136,10 +137,10 @@ test: all
 	; then \
 		echo "**** openmsx already running..." \
 	; else \
-#		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
-#		openmsx -machine turbor -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
-#		openmsx -machine Philips_NMS_8245 -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
-		openmsx -machine msx2plus -ext ram1mb -ext debugdevice -diska dsk/ -script ./emulation/boot.tcl \
+#		openmsx -machine Philips_NMS_8245 -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
+#		openmsx -machine turbor -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
+#		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
+		openmsx -machine msx2plus -ext ram1mb -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 	; fi'
 
 

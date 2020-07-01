@@ -8,6 +8,9 @@
 #define BIOSCALL ld iy,(#EXPTBL-1) \
                  call CALSLT
 
+#define MAX_PATH 64
+#define NULL     0
+
 /* SYSTEM vars */
 #if defined(MSX2) || defined(CPM)
 	#define SYSFCB	0x005c	// File control block in the CP/M system area
@@ -90,9 +93,15 @@
 #define SEEK_END	2	//End of file *
 
 /* file attributes */
-#define ATTR_READ_ONLY (1)
-#define ATTR_DIRECTORY (1 << 4)
-#define ATTR_ARCHIVE   (1 << 5)
+#define ATTR_NONE      0		// None.
+#define ATTR_READONLY  1		// If set then the file cannot be written to or deleted, but can be read, renamed or moved.
+#define ATTR_HIDDEN    2		// If set then the file will only be found by the FFIRST function if ATTR_HIDDEN bit is set in attributes byte.
+#define ATTR_SYSTEM    4		// For MSX-DOS functions, this bit has exactly the same effect as ATTR_HIDDEN bit except that the FNEW and CREATE calls will not automatically delete a SYSTEM file.
+#define ATTR_VOLUME    8		// If set then this entry defines the name of the volume. Only occur in the root directory, and only once. Rest of bits are ignored.
+#define ATTR_DIRECTORY 16		// The entry is a subdirectory and cannot be opened for reading and writing. Only the hidden bit has any meaning for sub-directories.
+#define ATTR_ARCHIVE   32		// Is set when a file was written to and closed. This bit can be examined by, for example, the XCOPY command to determine whether the file has been changed.
+#define ATTR_RESERVED  64		// Reserved (always 0).
+#define ATTR_DEVICE    128		// This is set to indicate that the FIB refers to a character device (eg. "CON") rather than a disk file. All of the other attributes bits are ignored.
 
 /*
 	MSX-DOS Call Errors
@@ -176,18 +185,45 @@ typedef struct {
 	uint8_t  reserved[3];	//     DE+29..31 - Reserved (0h fill)
 } DPARM_info;	// Disk drive parameters info
 
+typedef struct {
+	uint8_t  magic;			// [1]   0 - Always 0xFF
+	char     filename[13];	// [13]  1 - Filename as an ASCIIZ string
+	uint8_t  attribs;		// [1]  14 - File attributes byte
+	union {					// [2]  15 - Time of last modification
+		struct {
+			unsigned hours:   5;
+			unsigned minutes: 6; 
+			unsigned seconds: 5;
+		};
+		uint16_t raw;
+	} modifTime;
+	union {					// [2]  17 - Date of last modification
+		struct {
+			unsigned year:  7;
+			unsigned month: 4;
+			unsigned day:   5;
+		};
+		uint16_t raw;
+	} modifDate;
+	uint16_t startCluster;	// [2]  19 - Start cluster
+	uint32_t fileSize;		// [4]  21 - File size
+	uint8_t  drive;			// [1]  25 - Logical drive
+	uint8_t  internal[38];	// [38] 26 - Internal information, must not be modified
+} FFBLK;
+
 
 //char get_screen_size(void);
 
-int getchar(void);
-int putchar(int c);
+int  getchar(void);
+int  putchar(int c);
 void cputs(char *s);
-int cprintf(const char *format, ...);
-int kbhit(void);
+int  cprintf(const char *format, ...);
+int  kbhit(void);
 
-char get_current_drive(void);
-char get_current_directory(char drive, char *path);
-char get_drive_params(char drive, DPARM_info *param);
+char  get_current_drive(void);
+char  get_current_directory(char drive, char *path);
+char* get_program_path();
+char  get_drive_params(char drive, DPARM_info *param);
 
 uint16_t fopen(char *fn, char mode);
 uint8_t  fclose(char fp);
@@ -196,14 +232,15 @@ uint16_t remove(char *file);
 uint16_t fread(char* buf, uint16_t size, char fp);
 uint16_t fwrite(char* buf, uint16_t size, char fp);
 uint16_t fputs(char* str, char fp);
+uint16_t fgets(char* bug, uint16_t size, uint16_t fh);
 uint32_t fseek (char fp, uint32_t offset, char origin);
 uint16_t filesize(char *fn);
-char fileexists(char *fn);
+char     fileexists(char *fn);
 
-int parse_pathname(char volume_name_flag, char* s);
+char dosver(void);
+int  parse_pathname(char volume_name_flag, char* s);
 void exit(int code);
 void exit0();
-char dosver(void);
 void explain(char* buffer, char error_code);
 char get_env(char* name, char* buffer, char buffer_size);
 
