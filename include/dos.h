@@ -9,7 +9,9 @@
                  call CALSLT
 
 #define MAX_PATH 64
-#define NULL     0
+#ifndef NULL
+	#define NULL     0
+#endif
 
 /* SYSTEM vars */
 #if defined(MSX2) || defined(CPM)
