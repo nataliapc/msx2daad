@@ -2456,25 +2456,7 @@ void do_GFX()		// pa routine
 	uint16_t value = (uint16_t)getValueOrIndirection();
 	uint8_t  routine = *pPROC++;
 
-	switch (routine) {
-		//=================== SET PALETTE
-		case 9:
-			gfxSetPalette(flags[value], flags[value+1], flags[value+2], flags[value+3]);
-			break;
-		//=================== GET PALETTE
-		case 10:
-			//TODO: not implemented
-			break;
-		//=================== BACK->PHYS
-		//=================== PHYS->BACK
-		//=================== SWAP PHYS<->BACK
-		//=================== CLEAR PHYS
-		//=================== CLEAR BACK
-		default:
-			gfxRoutines(routine, value);
-			break;
-
-	}
+	gfxRoutines(routine, value);
 }
 #endif
 

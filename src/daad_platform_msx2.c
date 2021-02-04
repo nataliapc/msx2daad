@@ -496,7 +496,7 @@ void gfxSetScreen()
 	#endif
 
 	//Clear VRAM page 2
-	gfxRoutines(6, 0);	// Clear Back screen
+	gfxRoutines(GFX_CLEAR_BACK, 0);	// Clear Back screen
 
 	//Disable hardware sprites
 	disableSPR();
@@ -913,37 +913,58 @@ void gfxRoutines(uint8_t routine, uint8_t value)
 {
 	value;
 	uint16_t page_offset = 0;
+	uint16_t cwX, cwY, cwY2;
 
 	switch (routine) {
 #ifndef DISABLE_GFX
-		//=================== BACK->PHYS
-		case 0:
+		//=================== Copy BACK->PHYS (0)
+		case GFX_FULL_COPY_TO_PHYS:
 			bitBlt(0, 256, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMM); // Copy screen
 			break;
-		//=================== PHYS->BACK
-		case 1:
+		//=================== Copy PHYS->BACK (1)
+		case GFX_FULL_COPY_TO_BACK:
 			bitBlt(0, 0, 0, 256, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMM); // Copy screen
 			break;
-		//=================== SWAP PHYS<->BACK
-		case 2:
+		//=================== Swap PHYS<->BACK (2)
+		case GFX_SWAP_PHYS_BACK:
 			currentPage = !currentPage;
 			waitVDPready();
 			if (currentPage) setVPage(1); else setVPage(0);
 			break;
-		//=================== Graphics Write to Phys
-		case 3:
+		//=================== Graphics Write to Phys (3)
+		case GFX_GRAPHICS_IN_PHYS:
 			gfxPictureOffet = 0;
 			break;
-		//=================== Graphics Write to Back
-		case 4:
+		//=================== Graphics Write to Back (4)
+		case GFX_GRAPHICS_IN_BACK:
 			gfxPictureOffet = 256l * BYTESxLINE;
 			break;
+		//=================== Set Palette (9)
+		case GFX_SET_PALETTE:
+			gfxSetPalette(flags[value], flags[value+1], flags[value+2], flags[value+3]);
+			break;
+		//=================== Get Palette (10)
+		case GFX_GET_PALETTE:
+			//TODO: not implemented
+			break;
+		//=================== Copy current Window BACK->PHYS (128)
+		case GFX_CURRENT_WIN_TO_PHYS:
+		//=================== Copy current Window PHYS->BACK (129)
+		case GFX_CURRENT_WIN_TO_BACK:
+			cwX = cw->winX*FONTWIDTH;
+			cwY = cwY2 = cw->winY*FONTHEIGHT;
+			if (routine==GFX_CURRENT_WIN_TO_PHYS)
+				cwY += 256;
+			else
+				cwY2 += 256;
+			bitBlt(cwX, cwY, cwX, cwY2, cw->winW*FONTWIDTH, cw->winH*FONTHEIGHT, 0, 0, CMD_HMMM);	// Copy current Window to Back
+			break;
 #endif//DISABLE_GFX
-		//=================== Clear Back
-		case 6:
+		//=================== Clear Back (6)
+		case GFX_CLEAR_BACK:
 			page_offset = 256l;
-		//=================== Clear Phys
-		case 5:
+		//=================== Clear Phys (5)
+		case GFX_CLEAR_PHYS:
 			bitBlt(0, 0, 0, page_offset, SCREEN_WIDTH, SCREEN_HEIGHT, getColor(0), 0, CMD_HMMV);
 			break;
 	}

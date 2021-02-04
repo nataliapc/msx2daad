@@ -76,6 +76,21 @@ bool gfxPicturePrepare(uint8_t location);
 bool gfxPictureShow();
 void gfxRoutines(uint8_t routine, uint8_t value);
 
+// GFX constants
+#define GFX_FULL_COPY_TO_PHYS		0
+#define GFX_FULL_COPY_TO_BACK		1
+#define GFX_SWAP_PHYS_BACK			2
+#define GFX_GRAPHICS_IN_PHYS		3
+#define GFX_GRAPHICS_IN_BACK		4
+#define GFX_CLEAR_PHYS				5
+#define GFX_CLEAR_BACK				6
+#define GFX_TEXTS_IN_PHYS			7	//**UNUSED YET**
+#define GFX_TEXTS_IN_BACK			8	//**UNUSED YET**
+#define GFX_SET_PALETTE				9
+#define GFX_GET_PALETTE				10
+#define GFX_CURRENT_WIN_TO_PHYS		128
+#define GFX_CURRENT_WIN_TO_BACK		129
+
 
 // SFX functions
 void sfxInit();
