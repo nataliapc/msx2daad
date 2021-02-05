@@ -874,6 +874,7 @@ void printObjectMsg(uint8_t num)
  * Function: printObjectMsgModif
  * --------------------------------
  * Extract object message, change the article and print it:
+ * "Un palo" -> "El palo"
  * "Una linterna" -> "La linterna"
  * "A lantern" -> "Lantern"
  *  
@@ -885,13 +886,15 @@ void printObjectMsgModif(uint8_t num, char modif)
 {
 	modif;
 	char *ini = tmpMsg, *p = tmpMsg;
+
 	printMsg(_ptrToMessage((uint16_t*)hdr->objLstPos, num), false);
+
 #ifdef LANG_ES
-	if (tmpMsg[2]==' ') {
+	if (!strnicmp("un ", tmpMsg, 3)) {
 		tmpMsg[0] = modif=='@'?'E':'e';
 		tmpMsg[1] = 'l';
 	} else
-	if (tmpMsg[3]==' ') {
+	if (!strnicmp("una ", tmpMsg, 3)) {
 		ini++;
 		tmpMsg[1] = modif=='@'?'L':'l';
 	}
@@ -900,9 +903,12 @@ void printObjectMsgModif(uint8_t num, char modif)
 		p++;
 	}
 #elif LANG_EN
-	if (tmpMsg[1]==' ') ini+=2;
-	else
-	if (tmpMsg[2]==' ') ini+=3;
+	if (!strnicmp("a ", tmpMsg)) {
+		ini+=2;
+	} else
+	if (!strnicmp("an ", tmpMsg)) {
+		ini+=3;
+	}
 #endif
 	printOutMsg(ini);
 }

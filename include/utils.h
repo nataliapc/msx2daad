@@ -23,4 +23,6 @@ void dzx7vram (char *data, uint32_t vram_offset);
 void dzx7b(char *input, char *output);
 void dzx7bvram(char *input, char *output, uint32_t vram);
 
+int strnicmp (const char *s1, const char *s2, int maxlen);
+
 #endif // __UTILS_H__

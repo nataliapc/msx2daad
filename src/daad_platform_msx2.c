@@ -942,6 +942,7 @@ void gfxRoutines(uint8_t routine, uint8_t value)
 		//=================== Set Palette (9)
 		case GFX_SET_PALETTE:
 			gfxSetPalette(flags[value], flags[value+1], flags[value+2], flags[value+3]);
+			//TODO: change the colors array
 			break;
 		//=================== Get Palette (10)
 		case GFX_GET_PALETTE:
@@ -957,7 +958,7 @@ void gfxRoutines(uint8_t routine, uint8_t value)
 				cwY += 256;
 			else
 				cwY2 += 256;
-			bitBlt(cwX, cwY, cwX, cwY2, cw->winW*FONTWIDTH, cw->winH*FONTHEIGHT, 0, 0, CMD_HMMM);	// Copy current Window to Back
+			bitBlt(cwX, cwY, cwX, cwY2, cw->winW*FONTWIDTH, cw->winH*FONTHEIGHT, 0, 0, CMD_HMMM);	// Copy current Window
 			break;
 #endif//DISABLE_GFX
 		//=================== Clear Back (6)
