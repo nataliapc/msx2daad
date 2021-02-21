@@ -159,8 +159,8 @@ typedef struct {
 			unsigned isWareable  : 1;
 		} mask;
 	} attribs;
-	uint8_t extAttr1;		// Extended attributes
-	uint8_t extAttr2;
+	uint8_t extAttr2;		// Extended attributes (little endian)
+	uint8_t extAttr1;
 	uint8_t nounId;			// Noun
 	uint8_t adjectiveId;	// Adjective
 } Object;

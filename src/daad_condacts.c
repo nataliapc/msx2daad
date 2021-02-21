@@ -580,38 +580,11 @@ void do_ISNDONE()
 #if !defined(DISABLE_HASAT) || !defined(DISABLE_HASNAT)
 void _internal_hasat(uint8_t value, bool negate)
 {
-	uint8_t flag, bit;
-	switch (value) {
-		case 0:  flag=fCOAtt;   bit=0b00000001; break;
-		case 1:  flag=fCOAtt;   bit=0b00000010; break;
-		case 2:  flag=fCOAtt;   bit=0b00000100; break;
-		case 3:  flag=fCOAtt;   bit=0b00001000; break;
-		case 4:  flag=fCOAtt;   bit=0b00010000; break;
-		case 5:  flag=fCOAtt;   bit=0b00100000; break;
-		case 6:  flag=fCOAtt;   bit=0b01000000; break;
-		case 7:  flag=fCOAtt;   bit=0b10000000; break;
-		case 8:  flag=fCOAtt+1; bit=0b00000001; break;
-		case 9:  flag=fCOAtt+1; bit=0b00000010; break;
-		case 10: flag=fCOAtt+1; bit=0b00000100; break;
-		case 11: flag=fCOAtt+1; bit=0b00001000; break;
-		case 12: flag=fCOAtt+1; bit=0b00010000; break;
-		case 13: flag=fCOAtt+1; bit=0b00100000; break;
-		case 14: flag=fCOAtt+1; bit=0b01000000; break;
-		case 15: flag=fCOAtt+1; bit=0b10000000; break;
-		case HAS_WAREABLE:  flag=fCOWR;    bit=F57_WAREABLE;  break; // Flag 57 Bit#7
-		case HAS_CONTAINER: flag=fCOCon;   bit=F56_CONTAINER; break; // Flag 56 Bit#7
-		case HAS_LISTED:    flag=fOFlags;  bit=F53_LISTED;    break; // Flag 53 Bit#7
-		case HAS_TIMEOUT:   flag=fTIFlags; bit=TIME_TIMEOUT;  break; // Flag 49 Bit#7
-		case HAS_MOUSE:     flag=fGFlags;  bit=F29_MOUSE;     break; // Flag 29 Bit#0
-		case HAS_GMODE:     flag=fGFlags;  bit=F29_GMODE;     break; // Flag 29 Bit#7
-	#ifdef DEBUG
-		default:
-				die("===== HASAT/HASNAT value not implemented\n");
-	#endif
-	}
-	flag = flags[flag] & bit;
-	if (negate) flag = !flag;
-	checkEntry = flag;
+	uint8_t bit = 1 << (value % 8);
+	uint8_t flagValue = flags[(fCOAtt+1)-(value>>3)] & bit;
+
+	if (negate) flagValue = !flagValue;
+	checkEntry = flagValue;
 }
 #endif
 

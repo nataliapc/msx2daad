@@ -983,8 +983,8 @@ void referencedObject(uint8_t objno)
 	flags[fCOWei] = objRef->attribs.mask.weight;	// Flag 55
 	flags[fCOCon] = flags[fCOCon] & 0b01111111 | (objRef->attribs.mask.isContainer << 7);	// Flag 56
 	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | (objRef->attribs.mask.isWareable << 7);		// Flag 57
-	flags[fCOAtt] = objRef->extAttr1;				// Flag 58
-	flags[fCOAtt+1] = objRef->extAttr2;				// Flag 59
+	flags[fCOAtt] = objRef->extAttr2;				// Flag 58
+	flags[fCOAtt+1] = objRef->extAttr1;				// Flag 59
 }
 
 /*
