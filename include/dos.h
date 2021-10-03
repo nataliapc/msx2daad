@@ -181,7 +181,7 @@ typedef struct {
 	uint16_t dataSec;		//     DE+15..16 - First data sector number
 	uint16_t maxClus;		//     DE+17..18 - Maximum cluster number
 	uint8_t  dirtyFlag;		//     DE+19     - Dirty disk flag
-	uint16_t volId;			//     DE+20..23 - Volume id. (-1 => no volume id)
+	uint32_t volId;			//     DE+20..23 - Volume id. (-1 => no volume id)
 	uint32_t totalSec32;	//     DE+24..27 - Reserved (0h fill) | NEXTOR: Logical sectors as a 32 bit value
 	uint8_t  fsType;		//     DE+28     - Reserved (0h fill) | NEXTOR: Filesystem type (0:FAT12 1:FAT16 255:Other)
 	uint8_t  reserved[3];	//     DE+29..31 - Reserved (0h fill)

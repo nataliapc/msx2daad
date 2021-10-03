@@ -8,6 +8,7 @@ void die(const char *s, ...);
 void mouseInit();
 
 void enableR800CPU();
+void disableR800CPU();
 
 void enableTurboCPU();
 void disableTurboCPU();
