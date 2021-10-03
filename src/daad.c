@@ -903,10 +903,10 @@ void printObjectMsgModif(uint8_t num, char modif)
 		p++;
 	}
 #elif LANG_EN
-	if (!strnicmp("a ", tmpMsg)) {
+	if (!strnicmp("a ", tmpMsg, 2)) {
 		ini+=2;
 	} else
-	if (!strnicmp("an ", tmpMsg)) {
+	if (!strnicmp("an ", tmpMsg, 3)) {
 		ini+=3;
 	}
 #endif
