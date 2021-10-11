@@ -12,7 +12,7 @@ ifndef CXXFLAGS
 	CXXFLAGS := -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSXDOS1 -DMSX2
 endif
 LDFLAGS := -rc
-OPFLAGS := --opt-code-size --allow-unsafe-read
+OPFLAGS := --opt-code-size --max-allocs-per-node 2000000
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
 CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
 
@@ -39,44 +39,44 @@ all: $(PROGRAMS) bin/testdaad
 $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
 	@echo "#### ASM $@"
-	$(DIR_GUARD)
-	$(AS) -o $@ $^
+	@$(DIR_GUARD)
+	@$(AS) -o $@ $^
 
 $(OBJDIR)%.rel: $(SRCDIR)%.c
 	@echo "#### CC $@"
-	$(DIR_GUARD)
-	$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
 
 $(OBJDIR)%.c.rel: $(SRCLIB)%.c
 	@echo "#### CC $@"
-	$(DIR_GUARD)
-	$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
 
 $(OBJDIR)%.s.rel: $(SRCLIB)%.s
 	@echo "#### ASM $@"
-	$(DIR_GUARD)
-	$(AS) -o $@ $^
+	@$(DIR_GUARD)
+	@$(AS) -o $@ $^
 
 $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos_*))
 	@echo "######## Compiling $@"
-	$(LIB_GUARD)
-	$(AR) $(LDFLAGS) $@ $^
+	@$(LIB_GUARD)
+	@$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)vdp.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)vdp_*))
 	@echo "######## Compiling $@"
-	$(LIB_GUARD)
-	$(AR) $(LDFLAGS) $@ $^
+	@$(LIB_GUARD)
+	@$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)utils_*))
 	@echo "######## Compiling $@"
-	$(LIB_GUARD)
-	$(AR) $(LDFLAGS) $@ $^
+	@$(LIB_GUARD)
+	@$(AR) $(LDFLAGS) $@ $^
 
 
 msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
 	@echo "######## Compiling $@"
-	$(DIR_GUARD)
-	$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^)
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^)
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
 	@echo "**** Copying .COM files to DSK/"
 	@cp *.com dsk/

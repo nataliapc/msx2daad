@@ -25,8 +25,8 @@ Object     *objects;					// Memory allocation for objects data
 uint8_t     flags[256];					// DAAD flags (256 bytes)
 char       *ramsave;					// Memory to store ram save (RAMSAVE)
 
-const uint8_t nullObjFake[] = { 0, 0, 0, 0, 0, 0 };
-const Object  *nullObject;
+static const uint8_t nullObjFake[] = { 0, 0, 0, 0, 0, 0 };
+static const Object  *nullObject;
 
 #ifndef DISABLE_WINDOW
 	#define WINDOWS_NUM		8
@@ -43,16 +43,16 @@ uint8_t     savedPosY;					//  "    "      "
 #endif
 
 // Internal variables
-uint8_t lsBuffer0[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id] for PARSE 0
-uint8_t lsBuffer1[TEXT_BUFFER_LEN/4+1];	// Logical sentence buffer [type+id] for PARSE 1
-char   *tmpMsg;							// TEXT_BUFFER_LEN
-char   *tmpTok;							// Token temp buffer
-char    lastPrompt;
-uint8_t doingPrompt;
+static uint8_t lsBuffer0[TEXT_BUFFER_LEN/2+1];	// Logical sentence buffer [type+id] for PARSE 0
+static uint8_t lsBuffer1[TEXT_BUFFER_LEN/4+1];	// Logical sentence buffer [type+id] for PARSE 1
+char   *tmpMsg;									// TEXT_BUFFER_LEN
+static char   *tmpTok;							// Token temp buffer
+static char    lastPrompt;
+static uint8_t doingPrompt;
 
 // Transcript variables
 #ifdef TRANSCRIPT
-	uint16_t trIdx;
+	static uint16_t trIdx;
 #endif
 
 //=========================================================

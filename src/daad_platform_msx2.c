@@ -28,10 +28,10 @@
 //=========================================================
 
 //Optional file containing changes to default filename for FONT and DDB files.
-const char FILES_BIN[] = "FILES.BIN\0  ";
+static const char FILES_BIN[] = "FILES.BIN\0  ";
 
 //Default FILES.BIN content (overwrited if a FILES.BIN exists)
-const char FILES[] = 
+static const char FILES[] = 
 	"FONT    IM"SCREEN_CHAR"\n"		// Filename for Font file
 	"DAAD    DDB\n"					// Filename for DDB file
 	"TEXTS   XDB\n"					// Filename with externalized texts (XMES/XMESSAGE)
@@ -45,14 +45,14 @@ const char FILES[] =
 #define FILE_IMG	&FILES[48]
 
 //MSX special chars (DAAD chars 16-31)
-const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\x80\x81\x9A";	//ª¡¿«»áéíóúñÑçÇüÜ
+static const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\x80\x81\x9A";	//ª¡¿«»áéíóúñÑçÇüÜ
 
 //Function keys redefinitions
 #ifdef LANG_ES
-	const char FUNC_KEYS[5][10] = { "examinar ", "coger \0  ", "soltar \0 ", "buscar \0 ", "lanzar \0 " };
+	static const char FUNC_KEYS[5][10] = { "examinar ", "coger \0  ", "soltar \0 ", "buscar \0 ", "lanzar \0 " };
 #endif
 #ifdef LANG_EN
-	const char FUNC_KEYS[5][9]  = { "examine ", "get \0   ", "drop \0  ", "search \0", "throw \0 " };
+	static const char FUNC_KEYS[5][9]  = { "examine ", "get \0   ", "drop \0  ", "search \0", "throw \0 " };
 #endif
 
 
@@ -61,21 +61,21 @@ const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\xA5\x87\
 //=========================================================
 
 // Start position in VRAM where draw a image file
-uint32_t posVRAM;
+static uint32_t posVRAM;
 
 // Offset to set/unset the graphical charset
-bool offsetText;
+static bool offsetText;
 // Offset to set/unset the VRAM page where load images
 uint32_t gfxPictureOffet;
 // Current VRAM page visible
-bool currentPage;
+static bool currentPage;
 
 // RAM Mapper variables [experimental]
 #ifdef RAM_MAPPER
-	bool    DOS2MAPPER;
-	uint8_t MAX_MAPPER_PAGES;
-	uint8_t PAGE2_RAMSEG;
-	uint8_t FIRST_RAMSEG[4];
+	static bool    DOS2MAPPER;
+	static uint8_t MAX_MAPPER_PAGES;
+	static uint8_t PAGE2_RAMSEG;
+	static uint8_t FIRST_RAMSEG[4];
 #endif
 
 
@@ -152,15 +152,13 @@ char* getCharsTranslation()
  * @param time   	System time in 1/50 sec fragments.
  * @return			none.
  */
-void setTime(uint16_t time) __naked
+void setTime(uint16_t time) __naked __z88dk_fastcall
 {
 	time;
 	__asm
-		push af
-		push hl
-		pop  hl
-		pop  af
+		di
 		ld (#JIFFY),hl
+		ei
 		ret
 	__endasm;
 }
@@ -343,7 +341,7 @@ void loadExtendedTexts(char *filename)
  * @param address	Message address in a virtual 64kb file/RAM.
  * @return			none.
  */
-void printXMES(uint16_t address)
+void printXMES(uint16_t address) __z88dk_fastcall
 {
 	#ifdef RAM_MAPPER
 		if (FIRST_RAMSEG[0]) {
@@ -400,13 +398,13 @@ void printXMES(uint16_t address)
 #endif
 
 #if SCREEN == 8		//SCREEN 8 fixed colors
-	const uint8_t colorTranslationSC8[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
+	static const uint8_t colorTranslationSC8[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
 	//  000   006   600   606   060   066   260   666   222   447   733   737   373   377   773   777      (GGGRRRBBB) 9bits color guide
 		0x00, 0x02, 0xc0, 0xc3, 0x18, 0x1b, 0x58, 0xdb, 0x49, 0x93, 0xed, 0xef, 0x7d, 0x7f, 0xfd, 0xff	// (GGGRRRBB) 8bits real color used
 	};
 #endif
 #if SCREEN == 6	//SCREEN 6 paletted colors
-	const uint16_t colorTranslation[] = {	// Amber Palette -> MSX grb
+	static const uint16_t colorTranslation[] = {	// Amber Palette -> MSX grb
 		0x000, // 0: 000 black
 		0x230, // 1: 320 dark amber
 		0x450, // 2: 540 medium amber
@@ -414,7 +412,7 @@ void printXMES(uint16_t address)
 		0,0,0,0, 0,0,0,0, 0,0,0,0
 	};
 #else										//Paletted colors
-	const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb
+	static const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb
 		0x000, // 0: 000 black
 		0x006, // 1: 006 blue
 		0x600, // 2: 060 green
@@ -436,7 +434,6 @@ void printXMES(uint16_t address)
 
 uint8_t getColor(uint8_t col)
 {
-	col;
 	#if SCREEN == 6
 		col %= 4;
 		return col | (col << 2) | (col << 4) | (col << 6);
@@ -593,7 +590,8 @@ void gfxSetScreenModeFlags()
  */
 void gfxClearScreenBlock(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
 {
-	uint16_t w2 = w<MAX_COLUMNS ? w*FONTWIDTH : SCREEN_WIDTH;
+	static uint16_t w2;
+	w2 = w<MAX_COLUMNS ? w*FONTWIDTH : SCREEN_WIDTH;
 	bitBlt(0, 0, x*FONTWIDTH, y*FONTHEIGHT, w2, h*FONTHEIGHT, COLOR_PAPER, 0, CMD_HMMV);
 }
 
@@ -604,7 +602,7 @@ void gfxClearScreenBlock(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
  * 
  * @return			none.
  */
-void gfxClearWindow()
+inline void gfxClearWindow()
 {
 	gfxClearScreenBlock(cw->winX, cw->winY, cw->winW, cw->winH);
 }
@@ -616,7 +614,7 @@ void gfxClearWindow()
  * 
  * @return			none.
  */
-void gfxClearCurrentLine()
+inline void gfxClearCurrentLine()
 {
 	gfxClearScreenBlock(cw->winX, cw->winY+cw->cursorY, cw->winW, 1);
 }
@@ -628,7 +626,7 @@ void gfxClearCurrentLine()
  * 
  * @return			none.
  */
-void gfxScrollUp()
+inline void gfxScrollUp()
 {
 	ASM_HALT;
 	if (cw->winH > 1) {
@@ -645,9 +643,8 @@ void gfxScrollUp()
  * @param col		EGA color to set.
  * @return			none.
  */
-void gfxSetPaperCol(uint8_t col)
+inline void gfxSetPaperCol(uint8_t col)
 {
-	col;
 	#if SCREEN < 12
 		COLOR_PAPER = getColor(col);
 	#endif
@@ -661,9 +658,8 @@ void gfxSetPaperCol(uint8_t col)
  * @param col		EGA color to set.
  * @return			none.
  */
-void gfxSetInkCol(uint8_t col)
+inline void gfxSetInkCol(uint8_t col)
 {
-	col;
 	#if SCREEN < 12
 		COLOR_INK = getColor(col);
 	#endif
@@ -678,7 +674,7 @@ void gfxSetInkCol(uint8_t col)
  * @param col		EGA color to set.
  * @return			none.
  */
-void gfxSetBorderCol(uint8_t col)
+inline void gfxSetBorderCol(uint8_t col)
 {
 	setBorder(colorTranslation[col % 16]);
 }
@@ -691,7 +687,7 @@ void gfxSetBorderCol(uint8_t col)
  * @param value		Boolean to set/unset the charset.
  * @return			none.
  */
-void gfxSetGraphCharset(bool value)
+inline void gfxSetGraphCharset(bool value)
 {
 	offsetText = value;
 }
@@ -706,7 +702,7 @@ void gfxSetGraphCharset(bool value)
  * @param dy		Coord-Y to write the char.
  * @return			none.
  */
-void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
+static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 {
 	c -= 16;
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
@@ -753,10 +749,11 @@ void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
  * @param c			Char to write.
  * @return			none.
  */
-void gfxPutChWindow(uint8_t c)
+inline void gfxPutChWindow(uint8_t c)
 {
-	uint16_t dx = (cw->cursorX+cw->winX)*FONTWIDTH,
-	         dy = (cw->cursorY+cw->winY)*FONTHEIGHT;
+	static uint16_t dx, dy;
+	dx = (cw->cursorX+cw->winX)*FONTWIDTH;
+	dy = (cw->cursorY+cw->winY)*FONTHEIGHT;
 	gfxPutChPixels(c, dx, dy);
 }
 
@@ -768,7 +765,7 @@ void gfxPutChWindow(uint8_t c)
  * @param c			Char to print.
  * @return			none.
  */
-void gfxPutInputEcho(char c, bool keepPos)
+inline void gfxPutInputEcho(char c, bool keepPos)
 {
 	if (c==0x08) c=' ';
 	if (keepPos)
@@ -788,7 +785,7 @@ void gfxPutInputEcho(char c, bool keepPos)
  * @param blue		Blue component.
  * @return			none.
  */
-void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
+inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
 {
 	setColorPal(index%16, (((uint16_t)red & 0b11100000)<<3) | ((green & 0b11100000)>>1) | ((blue & 0b11100000)>>5));
 }
@@ -802,7 +799,7 @@ void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
  * @param location	DAAD location number.
  * @return			none.
  */
-bool gfxPicturePrepare(uint8_t location)
+bool gfxPicturePrepare(uint8_t location) __z88dk_fastcall
 {
 	char *pic = FILE_IMG;
 	
@@ -824,7 +821,7 @@ bool gfxPicturePrepare(uint8_t location)
  * 
  * @return			none.
  */
-bool gfxPictureShow()
+inline bool gfxPictureShow()
 {
 	uint16_t fp;
 	IMG_CHUNK *chunk = (IMG_CHUNK*)heap_top;
@@ -909,7 +906,7 @@ bool gfxPictureShow()
  * @param value		Optional value if the routine needs it.
  * @return			none.
  */
-void gfxRoutines(uint8_t routine, uint8_t value)
+inline void gfxRoutines(uint8_t routine, uint8_t value)
 {
 	value;
 	uint16_t page_offset = 0;

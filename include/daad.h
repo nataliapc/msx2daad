@@ -289,11 +289,11 @@ void transcript_flush();
 void transcript_char(char c) __z88dk_fastcall;
 
 void initializePROC();
-void pushPROC(uint8_t proc);
+void pushPROC(uint8_t proc) __z88dk_fastcall;
 bool popPROC();
-PROCentry* getPROCess(uint8_t proc);
+PROCentry* getPROCess(uint8_t proc) __z88dk_fastcall;
 char* getPROCEntryCondacts();
-char* stepPROCEntryCondacts(int8_t step);
+char* stepPROCEntryCondacts(int8_t step) __z88dk_fastcall;
 void processPROC();
 
 
