@@ -93,7 +93,7 @@ bool currentPage;
 bool checkPlatformSystem()
 {
    	// Check for MSX2 with at least 128Kb VRAM
-	if ((ADDR_POINTER_BYTE(MODE) & 0x06) < 0x04) {
+	if ((varMODE & 0x06) < 0x04) {
 		die("MSX2 with 128Kb VRAM is needed!\n");
 	}
 	// If compiled with MSXDOS2 lib check for DOS version
@@ -129,7 +129,7 @@ bool checkPlatformSystem()
  */
 uint16_t getFreeMemory()
 {
-    return ADDR_POINTER_WORD(TPA_LIMIT) - heap_top + hdr->fileLength - sizeof(IMG_CHUNK);
+    return varTPALIMIT - heap_top + hdr->fileLength - sizeof(IMG_CHUNK);
 }
 
 /*
@@ -182,21 +182,21 @@ uint16_t getTime() __naked
 
 uint16_t checkKeyboardBuffer()
 {
-	return ADDR_POINTER_WORD(PUTPNT)-ADDR_POINTER_WORD(GETPNT);
+	return varPUTPNT - varGETPNT;
 }
 
 void clearKeyboardBuffer()
 {
-	ADDR_POINTER_WORD(PUTPNT) = ADDR_POINTER_WORD(GETPNT);
+	varPUTPNT = varGETPNT;
 }
 
 uint8_t  getKeyInBuffer()
 {
-	uint8_t *pnt = (uint8_t*)ADDR_POINTER_WORD(GETPNT);
+	uint8_t *pnt = (uint8_t*)varGETPNT;
 	uint8_t ret = *pnt;
 	pnt++;
 	if (pnt >= (uint8_t*)(KEYBUF+40)) pnt = (uint8_t*)KEYBUF;
-	ADDR_POINTER_WORD(GETPNT) = (uint16_t)pnt;
+	varGETPNT = (uint16_t)pnt;
 	return ret;
 }
 

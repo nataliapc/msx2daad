@@ -66,7 +66,8 @@ uint8_t doingPrompt;
  */
 bool initDAAD(int argc, char **argv)
 {
-	uint16_t *p;
+	static uint16_t *p;
+	static uint8_t i;
 	
 	loadFilesBin(argc, argv);
 
@@ -107,7 +108,7 @@ bool initDAAD(int argc, char **argv)
 		return false;
 
 	//Update header positions addresses
-	for (int i=0; i<12; i++) {
+	for (i=0; i<12; i++) {
 		*(p++) += (uint16_t)ddb;
 	}
 
@@ -145,6 +146,8 @@ bool initDAAD(int argc, char **argv)
  */
 void initFlags()
 {
+	static uint8_t i;
+
 	//Clear flag of player location
 	flags[fPlayer] = 0;
 
@@ -154,7 +157,7 @@ void initFlags()
 	windows = malloc(sizeof(Window)*WINDOWS_NUM);
 	memset(windows, 0, sizeof(windows)*WINDOWS_NUM);
 	flags[fCurWin] = 0;
-	for (int i=0; i<WINDOWS_NUM; i++) {
+	for (i=0; i<WINDOWS_NUM; i++) {
 		cw = &windows[i];
 		cw->winX = cw->winY = 0;
 		cw->winW = MAX_COLUMNS;
@@ -187,10 +190,11 @@ void initFlags()
  */
 void initObjects()
 {
-	uint8_t  *objLoc = (uint8_t*)hdr->objLocLst;
-	uint8_t  *attrLoc = (uint8_t*)hdr->objAttrPos;
-	uint8_t  *extAttrLoc = (uint8_t*)hdr->objExtrPos;
-	uint8_t  *nameObj = (uint8_t*)hdr->objNamePos;
+	static uint8_t *objLoc, *attrLoc, *extAttrLoc, *nameObj;
+	objLoc = (uint8_t*)hdr->objLocLst;
+	attrLoc = (uint8_t*)hdr->objAttrPos;
+	extAttrLoc = (uint8_t*)hdr->objExtrPos;
+	nameObj = (uint8_t*)hdr->objNamePos;
 
 	flags[fNOCarr] = 0;
 
@@ -231,7 +235,8 @@ void mainLoop()
  */
 void prompt()
 {
-	char c, *p = tmpMsg, *extChars;
+	static char c, *p, *extChars;
+	p = tmpMsg;
 
 	#ifdef TRANSCRIPT
 		transcript_flush();
@@ -283,9 +288,14 @@ void prompt()
  */
 void parser()
 {
-	char *tmpVOC = heap_top, *p = tmpMsg, *p2;
-	Vocabulary *voc;
-	uint8_t *lsBuffer = lsBuffer0, *aux = lsBuffer1;
+	static uint8_t i;
+	static char *tmpVOC, *p, *p2;
+	static Vocabulary *voc;
+	uint8_t *lsBuffer, *aux;
+	tmpVOC = heap_top;
+	p = tmpMsg;
+	lsBuffer = lsBuffer0;
+	aux = lsBuffer1;
 
 	//Clear logical sentences buffer
 	clearLogicalSentences();
@@ -310,7 +320,7 @@ cprintf("DETECTED START of literal phrase!\n");
 #ifdef VERBOSE2
 cprintf("%u %c%c%c%c%c: ",p2-p, tmpVOC[0],tmpVOC[1],tmpVOC[2],tmpVOC[3],tmpVOC[4]);
 #endif
-		for (int i=0; i<5; i++) tmpVOC[i] = 255 - tmpVOC[i];
+		for (i=0; i<5; i++) tmpVOC[i] = 255 - tmpVOC[i];
 
 		//Search it in VOCabulary table
 		voc = (Vocabulary*)hdr->vocPos;
@@ -356,10 +366,10 @@ cprintf("%u %u %u %u %u %u %u %u \n",lsBuffer[0],lsBuffer[1],lsBuffer[2],lsBuffe
  */
 bool getLogicalSentence()
 {
+	static char newPrompt;
+
 	// If not logical sentences in buffer we ask the user again
 	if (!*lsBuffer0) {
-		char newPrompt;
-
 		newPrompt = flags[fPrompt];
 		if (!newPrompt)
 			while ((newPrompt=(rand()%4)+2)==lastPrompt);
@@ -381,8 +391,11 @@ bool getLogicalSentence()
  */
 bool populateLogicalSentence()
 {
-	char *p = lsBuffer0, type, id, adj = fAdject1;
-	bool ret = false;
+	static char *p, type, id, adj;
+	static bool ret;
+	p = lsBuffer0;
+	adj = fAdject1;
+	ret = false;
 
 	// Clear parser flags
 	flags[fVerb] = flags[fNoun1] = flags[fAdject1] = flags[fAdverb] = flags[fPrep] = flags[fNoun2] = flags[fAdject2] = 
@@ -490,7 +503,10 @@ void nextLogicalSentence()
 #ifdef VERBOSE2
 cputs("nextLogicalSentence()\n");
 #endif
-	char *p = lsBuffer0, *c = lsBuffer0;
+	static char *p, *c;
+	p = lsBuffer0;
+	c = lsBuffer0;
+
 	while (*p!=CONJUNCTION && *p!=0) p+=2;
 	p+=2;
 	for (;;) {
@@ -514,7 +530,7 @@ cputs("nextLogicalSentence()\n");
  * @param value		Number to print.
  * @return			none.
  */
-void printBase10(uint16_t value)
+void printBase10(uint16_t value) __z88dk_fastcall
 {
 	if (value<10) {
 		printChar('0'+(uint8_t)value);
@@ -532,9 +548,10 @@ void printBase10(uint16_t value)
  * @param timeFlag	A mask to compare with Timer Flag.
  * @return			Boolean for timeout if reached or not.
  */
-bool waitForTimeout(uint16_t timerFlag)
+bool waitForTimeout(uint16_t timerFlag) __z88dk_fastcall
 {
-	uint16_t timeout = flags[fTime]*50;
+	static uint16_t timeout;
+	timeout = flags[fTime]*50;
 
 	clearKeyboardBuffer();
 	if (flags[fTIFlags] & timerFlag) {
@@ -610,10 +627,12 @@ void errorCode(uint8_t code)
  * @param num   	To get the token number 'num' in the token list.
  * @return			Return a pointer to the requested token.
  */
-char* getToken(uint8_t num)
+char* getToken(uint8_t num) __z88dk_fastcall
 {
-	char *p = (char*)hdr->tokensPos;
-	uint8_t i=0;
+	static char *p;
+	static uint8_t i;
+	p = (char*)hdr->tokensPos;
+	i=0;
 
 	// Skip previous tokens
 	while (num) {
@@ -642,8 +661,9 @@ char* getToken(uint8_t num)
  */
 void printMsg(char *p, bool print)
 {
-	char c, *token;
-	uint16_t i = 0;
+	static char c, *token;
+	static uint16_t i;
+	i = 0;
 
 	tmpMsg[0]='\0';
 	do {
@@ -688,9 +708,11 @@ void printMsg(char *p, bool print)
  * @param str		String to write.
  * @return			none.
  */
-void printOutMsg(char *str)
+void printOutMsg(char *str) __z88dk_fastcall
 {
-	char *p = str, *aux = NULL, c;
+	static char *p, *aux, c;
+	p = str;
+	aux = NULL;
 
 	while ((c = *p)) {
 		if (c==' ' || !aux) {
@@ -719,8 +741,11 @@ void printOutMsg(char *str)
  * @param c			Char to write.
  * @return			none.
  */
-void printChar(char c)
+void printChar(int ch) __z88dk_fastcall
 {
+	static char c;
+	c = (char)ch;
+
 	#if (defined(DEBUG) || defined(TEST)) && !defined(TRANSCRIPT)
 		putchar(c);
 	#endif
@@ -769,6 +794,8 @@ void printChar(char c)
  */
 void checkPrintedLines()
 {
+	static char *oldTmpMsg;
+
 	if (cw->mode & MODE_DISABLEMORE || cw->winH==1) return;
 	if (++printedLines >= cw->winH-1) {	// Must show "More..."?
 		if (cw->cursorY >= cw->winH) {
@@ -777,7 +804,7 @@ void checkPrintedLines()
 			gfxScrollUp();
 		}
 		// Print SYS32 "More..."
-		char *oldTmpMsg = tmpMsg;
+		oldTmpMsg = tmpMsg;
 		tmpMsg = malloc(0);
 		printSystemMsg(32);
 		tmpMsg = oldTmpMsg;
@@ -810,7 +837,7 @@ char* _ptrToMessage(uint16_t *lst, uint8_t num)
  * @param num		Number of system message.
  * @return			none.
  */
-void getSystemMsg(uint8_t num)
+void getSystemMsg(uint8_t num) __z88dk_fastcall
 {
 	printMsg(_ptrToMessage((uint16_t*)hdr->sysMsgPos, num), false);
 }
@@ -823,7 +850,7 @@ void getSystemMsg(uint8_t num)
  * @param num		Number of system message.
  * @return			none.
  */
-void printSystemMsg(uint8_t num)
+void printSystemMsg(uint8_t num) __z88dk_fastcall
 {
 	printMsg(_ptrToMessage((uint16_t*)hdr->sysMsgPos, num), true);
 }
@@ -836,7 +863,7 @@ void printSystemMsg(uint8_t num)
  * @param num		Number of user message.
  * @return			none.
  */
-void printUserMsg(uint8_t num)
+void printUserMsg(uint8_t num) __z88dk_fastcall
 {
 	if (num > hdr->numUsrMsg) errorCode(7);
 	printMsg(_ptrToMessage((uint16_t*)hdr->usrMsgPos, num), true);
@@ -850,7 +877,7 @@ void printUserMsg(uint8_t num)
  * @param num		Number of location message.
  * @return			none.
  */
-void printLocationMsg(uint8_t num)
+void printLocationMsg(uint8_t num) __z88dk_fastcall
 {
 	if (num > hdr->numLocDsc) errorCode(1);
 	printMsg(_ptrToMessage((uint16_t*)hdr->locLstPos, num), true);
@@ -864,7 +891,7 @@ void printLocationMsg(uint8_t num)
  * @param num		Number of object message.
  * @return			none.
  */
-void printObjectMsg(uint8_t num)
+void printObjectMsg(uint8_t num) __z88dk_fastcall
 {
 	if (num > hdr->numObjDsc) errorCode(0);
 	printMsg(_ptrToMessage((uint16_t*)hdr->objLstPos, num), true);
@@ -884,8 +911,9 @@ void printObjectMsg(uint8_t num)
  */
 void printObjectMsgModif(uint8_t num, char modif)
 {
-	modif;
-	char *ini = tmpMsg, *p = tmpMsg;
+	static char *ini, *p;
+	ini = tmpMsg;
+	p = tmpMsg;
 
 	printMsg(_ptrToMessage((uint16_t*)hdr->objLstPos, num), false);
 
@@ -925,7 +953,8 @@ void printObjectMsgModif(uint8_t num, char modif)
  */
 uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
 {
-	for (int i=0; i<hdr->numObjDsc; i++) {
+	static uint16_t i;
+	for (i=0; i<hdr->numObjDsc; i++) {
 		if (objects[i].nounId==noun && 
 		   (adjc==NULLWORD || objects[i].adjectiveId==adjc) && 							// If 'adjc' not needed or 'adjc' matchs
 		   ((location==LOC_HERE || objects[i].location==location) ||					// It's in anywhere or placed in 'location'...
@@ -951,9 +980,13 @@ uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
  */
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
 {
-	uint16_t weight = 0;
-	Object *obj = objects;
-	for (int i=0; i<hdr->numObjDsc; i++) {
+	static uint16_t weight;
+	Object *obj;
+	static uint16_t i;
+	weight = 0;
+	obj = objects;
+
+	for (i=0; i<hdr->numObjDsc; i++) {
 		if ((objno==NULLWORD || objno==i) && (!isCarriedWorn || obj->location==LOC_CARRIED || obj->location==LOC_WORN)) {
 			if (obj->attribs.mask.isContainer && obj->attribs.mask.weight!=0) {
 				weight += getObjectWeight(i, false);
@@ -968,15 +1001,16 @@ uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
 /*
  * Function: referencedObject
  * --------------------------------
- * Modify DAAD flags to reference the las object used
+ * Modify DAAD flags to reference the last object used
  * in a logical sentence.
  *  
  * @param objno		Object ID.
  * @return			none.
  */
-void referencedObject(uint8_t objno)
+void referencedObject(uint8_t objno) __z88dk_fastcall
 {
-	Object *objRef = objno==NULLWORD ? nullObject : &objects[objno];
+	Object *objRef;
+	objRef = objno==NULLWORD ? nullObject : &objects[objno];
 
 	flags[fCONum] = objno;							// Flag 51
 	flags[fCOLoc] = objRef->location;				// Flag 54
@@ -996,17 +1030,17 @@ void referencedObject(uint8_t objno)
  * @return			none.
  */
 #ifdef TRANSCRIPT
-const uint8_t transcript_translate[] = {
+static const uint8_t transcript_translate[] = {
 	"ª¡¿«»áéíóúñÑçÇüÜ"
 };
 
-const char transcript_filename[] = "TRANSCR.TXT";
-char transcript_buff[1024];
+static const char transcript_filename[] = "TRANSCR.TXT";
+static char transcript_buff[1024];
 
 void transcript_flush()
 {
-	uint16_t fp;
-	uint32_t size;
+	static uint16_t fp;
+	static uint32_t size;
 
 	size = filesize(transcript_filename);
 	if (size>=0xff00)
@@ -1023,8 +1057,10 @@ void transcript_flush()
 	transcript_buff[0] = '\0';
 }
 
-void transcript_char(char c)
+void transcript_char(char c) __z88dk_fastcall
 {
+	char *utf;
+
 	if (c == 127) {
 		transcript_buff[trIdx++] = ' ';
 	} else
@@ -1032,7 +1068,7 @@ void transcript_char(char c)
 		transcript_buff[trIdx++] = '\n';
 	} else
 	if (c < 32) {
-		char *utf = transcript_translate+((c-16)<<1);
+		utf = transcript_translate+((c-16)<<1);
 		transcript_buff[trIdx++] = *utf++;
 		transcript_buff[trIdx++] = *utf;
 	} else {

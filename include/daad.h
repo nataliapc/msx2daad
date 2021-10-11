@@ -266,27 +266,27 @@ void nextLogicalSentence();
 bool useLiteralSentence();
 bool populateLogicalSentence();
 
-void printBase10(uint16_t value);
-bool waitForTimeout(uint16_t timerFlag);
+void printBase10(uint16_t value) __z88dk_fastcall;
+bool waitForTimeout(uint16_t timerFlag) __z88dk_fastcall;
 void errorCode(uint8_t code);
 
-char* getToken(uint8_t num);
+char* getToken(uint8_t num) __z88dk_fastcall;
 void printMsg(char *p, bool print);
-void printOutMsg(char *str);
-void printChar(char c);
+void printOutMsg(char *str) __z88dk_fastcall;
+void printChar(int c) __z88dk_fastcall;
 void checkPrintedLines();
-void getSystemMsg(uint8_t num);
-void printSystemMsg(uint8_t num);
-void printUserMsg(uint8_t num);
-void printLocationMsg(uint8_t num);
-void printObjectMsg(uint8_t num);
+void getSystemMsg(uint8_t num) __z88dk_fastcall;
+void printSystemMsg(uint8_t num) __z88dk_fastcall;
+void printUserMsg(uint8_t num) __z88dk_fastcall;
+void printLocationMsg(uint8_t num) __z88dk_fastcall;
+void printObjectMsg(uint8_t num) __z88dk_fastcall;
 void printObjectMsgModif(uint8_t num, char modif);
 uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location);
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn);
-void referencedObject(uint8_t objno);
+void referencedObject(uint8_t objno) __z88dk_fastcall;
 
 void transcript_flush();
-void transcript_char(char c);
+void transcript_char(char c) __z88dk_fastcall;
 
 void initializePROC();
 void pushPROC(uint8_t proc);
