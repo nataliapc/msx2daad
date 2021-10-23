@@ -202,6 +202,16 @@ void waitingForInput()
 {
 }
 
+inline void *safeMemoryAllocate()
+{
+	return heap_top;
+}
+
+inline void safeMemoryDeallocate(void *pointer)
+{
+	pointer;
+}
+
 
 //=========================================================
 // FILESYSTEM

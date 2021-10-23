@@ -272,7 +272,7 @@ void errorCode(uint8_t code);
 
 char* getToken(uint8_t num) __z88dk_fastcall;
 void printMsg(char *p, bool print);
-void printOutMsg(char *str) __z88dk_fastcall;
+void printOutMsg(char *str);
 void printChar(int c) __z88dk_fastcall;
 void checkPrintedLines();
 void getSystemMsg(uint8_t num) __z88dk_fastcall;

@@ -35,7 +35,8 @@ static const Object  *nullObject;
 #endif
 Window     *windows;					// 0-7 windows definitions
 Window     *cw;							// Pointer to current active window
-uint8_t 	printedLines;				// For "More..." feature
+uint8_t     printedLines;				// For "More..." feature
+bool checkPrintedLines_inUse;
 
 #ifndef DISABLE_SAVEAT
 uint8_t     savedPosX;					// For SAVEAT/BACKAT
@@ -124,6 +125,8 @@ bool initDAAD(int argc, char **argv)
 	//Get memory for tmpTok & tmpMsg
 	tmpTok = (char*)malloc(32);
 	tmpMsg = (char*)malloc(TEXT_BUFFER_LEN);
+
+	checkPrintedLines_inUse = false;
 
 	#if defined(DEBUG) || defined(TEST)
 		cprintf("File length...... %u bytes\n"
@@ -292,7 +295,7 @@ void parser()
 	static char *tmpVOC, *p, *p2;
 	static Vocabulary *voc;
 	uint8_t *lsBuffer, *aux;
-	tmpVOC = heap_top;
+	tmpVOC = safeMemoryAllocate();
 	p = tmpMsg;
 	lsBuffer = lsBuffer0;
 	aux = lsBuffer1;
@@ -350,6 +353,7 @@ cprintf("DETECTED END of literal phrase!\n");
 		}
 		while (*p!='\0' && *p==' ') p++;
 	}
+	safeMemoryDeallocate(tmpVOC);
 #ifdef VERBOSE2
 cprintf("%u %u %u %u %u %u %u %u \n",lsBuffer[0],lsBuffer[1],lsBuffer[2],lsBuffer[3],lsBuffer[4],lsBuffer[5],lsBuffer[6],lsBuffer[7]);
 #endif
@@ -658,12 +662,14 @@ char* getToken(uint8_t num) __z88dk_fastcall
  * @param num   	To get the string number 'num' in that list.
  * @param print		Output the string to the current window or not.
  * @return			none.
+ *
+ * Reentrant function, don't use static variables!
  */
 void printMsg(char *p, bool print)
 {
-	static char c, *token;
-	static uint16_t i;
-	i = 0;
+	char c;
+	uint16_t i = 0;
+	char *token;
 
 	tmpMsg[0]='\0';
 	do {
@@ -707,12 +713,12 @@ void printMsg(char *p, bool print)
  * 
  * @param str		String to write.
  * @return			none.
+ *
+ * Reentrant function, don't use static variables!
  */
-void printOutMsg(char *str) __z88dk_fastcall
+void printOutMsg(char *str)
 {
-	static char *p, *aux, c;
-	p = str;
-	aux = NULL;
+	char *p = str, *aux = NULL, c;
 
 	while ((c = *p)) {
 		if (c==' ' || !aux) {
@@ -794,9 +800,16 @@ void printChar(int ch) __z88dk_fastcall
  */
 void checkPrintedLines()
 {
-	static char *oldTmpMsg;
+	char *oldTmpMsg;
 
-	if (cw->mode & MODE_DISABLEMORE || cw->winH==1) return;
+	if (checkPrintedLines_inUse ||
+		cw->mode & MODE_DISABLEMORE || 
+		cw->winH==1)
+	{
+		return;
+	}
+	checkPrintedLines_inUse = true;
+
 	if (++printedLines >= cw->winH-1) {	// Must show "More..."?
 		if (cw->cursorY >= cw->winH) {
 			cw->cursorX = 0;
@@ -805,14 +818,16 @@ void checkPrintedLines()
 		}
 		// Print SYS32 "More..."
 		oldTmpMsg = tmpMsg;
-		tmpMsg = malloc(0);
+		tmpMsg = safeMemoryAllocate();
 		printSystemMsg(32);
 		tmpMsg = oldTmpMsg;
+		safeMemoryDeallocate(tmpMsg);
 		waitForTimeout(TIME_MORE);
 		gfxClearCurrentLine();
 		cw->cursorX = 0;
 		printedLines=0;
 	}
+	checkPrintedLines_inUse = false;
 }
 
 /*
@@ -911,6 +926,7 @@ void printObjectMsg(uint8_t num) __z88dk_fastcall
  */
 void printObjectMsgModif(uint8_t num, char modif)
 {
+	modif;
 	static char *ini, *p;
 	ini = tmpMsg;
 	p = tmpMsg;

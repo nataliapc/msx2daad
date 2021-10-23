@@ -12,17 +12,21 @@
 #include "daad_condacts.h"
 
 
-#define NUM_PROCS	10
 #define pPROC 		currProc->condact
 
 
-static PROCstack procStack[NUM_PROCS];	// Stack of calls using PROCESS condact.
-PROCstack *currProc;					// Pointer to current active condact.
+extern PROCstack procStack[NUM_PROCS];	// Stack of calls using PROCESS condact.
+extern PROCstack *currProc;				// Pointer to current active condact.
 
-static bool indirection;				// True if the current condact use indirection for the first argument.
-static bool checkEntry;					// Boolean to check if a Process entry must continue or a condition fails.
-static bool isDone, lastIsDone;			// Variables for ISDONE/ISNOTDONE condacts.
-bool        lastPicShow;				// True if last location picture was drawed.
+extern bool indirection;				// True if the current condact use indirection for the first argument.
+extern bool checkEntry;					// Boolean to check if a Process entry must continue or a condition fails.
+extern bool isDone, lastIsDone;			// Variables for ISDONE/ISNOTDONE condacts.
+extern bool lastPicShow;				// True if last location picture was drawed.
+
+#ifdef UNIT_TESTS
+	#undef pPROC
+	extern char *pPROC;
+#endif
 
 
 static const CONDACT_LIST condactList[] = {
@@ -135,7 +139,6 @@ bool popPROC()
 	_popPROC();
 	lastIsDone = isDone;
 	isDone = false;
-	checkEntry = true;
 	return (currProc >= procStack);	//Any PROCs in the stack?
 }
 
@@ -248,7 +251,7 @@ static uint8_t getValueOrIndirection()
 
 /*	Succeeds if the current location is the same as locno. */
 #if !defined(DISABLE_AT) || !defined(DISABLE_NOTAT)
-static void do_AT()		// locno 
+void do_AT()		// locno 
 {
 	checkEntry = (getValueOrIndirection() == flags[fPlayer]);
 }
@@ -258,7 +261,7 @@ static void do_AT()		// locno
 
 /*	Succeeds if the current location is different to locno. */
 #ifndef DISABLE_NOTAT
-static void do_NOTAT()		// locno
+void do_NOTAT()		// locno
 {
 	do_AT();
 	checkEntry = !checkEntry;
@@ -269,7 +272,7 @@ static void do_NOTAT()		// locno
 
 /*	Succeeds if the current location is greater than locno. */
 #ifndef DISABLE_ATGT
-static void do_ATGT()		// locno
+void do_ATGT()		// locno
 {
 	checkEntry = (flags[fPlayer] > getValueOrIndirection());
 }
@@ -279,7 +282,7 @@ static void do_ATGT()		// locno
 
 /*	Succeeds if the current location is less than locno. */
 #ifndef DISABLE_ATLT
-static void do_ATLT()		// locno
+void do_ATLT()		// locno
 {
 	checkEntry = (flags[fPlayer] < getValueOrIndirection());
 }
@@ -292,7 +295,7 @@ static void do_ATLT()		// locno
 /*	Succeeds if Object objno. is carried (254), worn (253) or at the current 
 	location [fPlayer]. */
 #if !defined(DISABLE_PRESENT) || !defined(DISABLE_ABSENT)
-static void do_PRESENT()	// objno
+void do_PRESENT()	// objno
 {
 	static Object *obj;
 	obj = &objects[getValueOrIndirection()];
@@ -306,7 +309,7 @@ static void do_PRESENT()	// objno
 /*	Succeeds if Object objno. is not carried (254), not worn (253) and not at 
 	the current location [fPlayer]. */
 #ifndef DISABLE_ABSENT
-static void do_ABSENT()	// objno
+void do_ABSENT()	// objno
 {	
 	do_PRESENT();
 	checkEntry = !checkEntry;
@@ -317,7 +320,7 @@ static void do_ABSENT()	// objno
 
 /*	Succeeds if object objno. is worn. */
 #if !defined(DISABLE_WORN) || !defined(DISABLE_NOTWORN)
-static void do_WORN()		// objno
+void do_WORN()		// objno
 {
 	checkEntry = (objects[getValueOrIndirection()].location==LOC_WORN);
 }
@@ -327,7 +330,7 @@ static void do_WORN()		// objno
 
 /*	Succeeds if Object objno. is not worn. */
 #ifndef DISABLE_NOTWORN
-static void do_NOTWORN()	// objno
+void do_NOTWORN()	// objno
 {
 	do_WORN();
 	checkEntry = !checkEntry;
@@ -338,7 +341,7 @@ static void do_NOTWORN()	// objno
 
 /*	Succeeds if Object objno. is carried. */
 #if !defined(DISABLE_CARRIED) || !defined(DISABLE_NOTCARR)
-static void do_CARRIED()	// objno
+void do_CARRIED()	// objno
 {
 	checkEntry = (objects[getValueOrIndirection()].location==LOC_CARRIED);
 }
@@ -348,7 +351,7 @@ static void do_CARRIED()	// objno
 
 /*	Succeeds if Object objno. is not carried. */
 #ifndef DISABLE_NOTCARR
-static void do_NOTCARR()
+void do_NOTCARR()
 {
 	do_CARRIED();
 	checkEntry = !checkEntry;
@@ -359,7 +362,7 @@ static void do_NOTCARR()
 
 /*	Succeeds if Object objno. is at Location locno. */
 #if !defined(DISABLE_ISAT) || !defined(DISABLE_ISNOTAT)
-static void do_ISAT()		// objno locno+
+void do_ISAT()		// objno locno+
 {
 	static uint8_t objloc;
 	static uint8_t loc;
@@ -374,7 +377,7 @@ static void do_ISAT()		// objno locno+
 
 /*	Succeeds if Object objno. is not at Location locno. */
 #ifndef DISABLE_ISNOTAT
-static void do_ISNOTAT()	// objno locno+
+void do_ISNOTAT()	// objno locno+
 {
 	do_ISAT();
 	checkEntry = !checkEntry;
@@ -387,7 +390,7 @@ static void do_ISNOTAT()	// objno locno+
 
 /*	Succeeds if Flag flagno. is set to zero. */
 #ifndef DISABLE_ZERO
-static void do_ZERO()		// flagno
+void do_ZERO()		// flagno
 {
 	checkEntry = !flags[getValueOrIndirection()];
 }
@@ -397,7 +400,7 @@ static void do_ZERO()		// flagno
 
 /*	Succeeds if Flag flagno. is not set to zero. */
 #ifndef DISABLE_NOTZERO
-static void do_NOTZERO()	// flagno
+void do_NOTZERO()	// flagno
 {
 	checkEntry = flags[getValueOrIndirection()];
 }
@@ -407,7 +410,7 @@ static void do_NOTZERO()	// flagno
 
 /*	Succeeds if Flag flagno. is equal to value. */
 #if !defined(DISABLE_EQ) || !defined(DISABLE_NOTEQ)
-static void do_EQ()		// flagno value
+void do_EQ()		// flagno value
 {
 	checkEntry = (flags[getValueOrIndirection()] == *pPROC++);
 }
@@ -417,7 +420,7 @@ static void do_EQ()		// flagno value
 
 /*	Succeeds if Flag flagno. is not equal to value. */
 #ifndef DISABLE_NOTEQ
-static void do_NOTEQ()		// flagno value
+void do_NOTEQ()		// flagno value
 {
 	do_EQ();
 	checkEntry = !checkEntry;
@@ -428,7 +431,7 @@ static void do_NOTEQ()		// flagno value
 
 /*	Succeeds if Flag flagno. is greater than value. */
 #ifndef DISABLE_GT
-static void do_GT()		// flagno value
+void do_GT()		// flagno value
 {
 	checkEntry = (flags[getValueOrIndirection()] > *pPROC++);
 }
@@ -438,7 +441,7 @@ static void do_GT()		// flagno value
 
 /*	Succeeds if Flag flagno. is set to less than value. */
 #ifndef DISABLE_LT
-static void do_LT()		// flagno value
+void do_LT()		// flagno value
 {
 	checkEntry = (flags[getValueOrIndirection()] < *pPROC++);
 }
@@ -448,7 +451,7 @@ static void do_LT()		// flagno value
 
 /*	Succeeds if Flag flagno 1 has the same value as Flag flagno 2. */
 #if !defined(DISABLE_SAME) || !defined(DISABLE_NOTSAME)
-static void do_SAME()		// flagno1 flagno2
+void do_SAME()		// flagno1 flagno2
 {
 	checkEntry = (flags[getValueOrIndirection()] == flags[*pPROC++]);
 }
@@ -458,7 +461,7 @@ static void do_SAME()		// flagno1 flagno2
 
 /*	Succeeds if Flag flagno 1 does not have the same value as Flag flagno 2 . */
 #ifndef DISABLE_NOTSAME
-static void do_NOTSAME()	// flagno1 flagno2
+void do_NOTSAME()	// flagno1 flagno2
 {
 	do_SAME();
 	checkEntry = !checkEntry;
@@ -469,7 +472,7 @@ static void do_NOTSAME()	// flagno1 flagno2
 
 /*	Will be true if flagno 1 is larger than flagno 2 */
 #ifndef DISABLE_BIGGER
-static void do_BIGGER()	// flagno1 flagno2
+void do_BIGGER()	// flagno1 flagno2
 {
 	checkEntry = (flags[getValueOrIndirection()] > flags[*pPROC++]);
 }
@@ -479,7 +482,7 @@ static void do_BIGGER()	// flagno1 flagno2
 
 /*	Will be true if flagno 1 is smaller than flagno 2 */
 #ifndef DISABLE_SMALLER
-static void do_SMALLER()	// flagno1 flagno2
+void do_SMALLER()	// flagno1 flagno2
 {
 	checkEntry = (flags[getValueOrIndirection()] < flags[*pPROC++]);
 }
@@ -491,7 +494,7 @@ static void do_SMALLER()	// flagno1 flagno2
 
 /*	Succeeds if the first noun's adjective in the current LS is word. */
 #ifndef DISABLE_ADJECT1
-static void do_ADJECT1()
+void do_ADJECT1()	// word
 {
 	checkEntry = (flags[fAdject1] == getValueOrIndirection());
 }
@@ -501,7 +504,7 @@ static void do_ADJECT1()
 
 /*	Succeeds if the adverb in the current LS is word. */
 #ifndef DISABLE_ADVERB
-static void do_ADVERB()
+void do_ADVERB()	// word
 {
 	checkEntry = (flags[fAdverb] == getValueOrIndirection());
 }
@@ -511,7 +514,7 @@ static void do_ADVERB()
 
 /*	Succeeds if the preposition in the current LS is word. */
 #ifndef DISABLE_PREP
-static void do_PREP()
+void do_PREP()		// word
 {
 	checkEntry = (flags[fPrep] == getValueOrIndirection());
 }
@@ -521,7 +524,7 @@ static void do_PREP()
 
 /*	Succeeds if the second noun in the current LS is word. */
 #ifndef DISABLE_NOUN2
-static void do_NOUN2()
+void do_NOUN2()		// word
 {
 	checkEntry = (flags[fNoun2] == getValueOrIndirection());
 }
@@ -531,7 +534,7 @@ static void do_NOUN2()
 
 /*	Succeeds if the second noun's adjective in the current LS is word. */
 #ifndef DISABLE_ADJECT2
-static void do_ADJECT2()
+void do_ADJECT2()	// word
 {
 	checkEntry = (flags[fAdject2] == getValueOrIndirection());
 }
@@ -546,7 +549,7 @@ static void do_ADJECT2()
 	next CondAct only if the random number generated was between 1 and 50, a 50% 
 	chance of success. */
 #ifndef DISABLE_CHANCE
-static void do_CHANCE()	// percent
+void do_CHANCE()	// percent
 {
 	checkEntry = (rand()%100)+1 < getValueOrIndirection();
 }
@@ -563,7 +566,7 @@ static void do_CHANCE()	// percent
 	least one CondAct (other than NOTDONE) was done.
 	See also ISNDONE and NOTDONE actions. */
 #ifndef DISABLE_ISDONE
-static void do_ISDONE()
+void do_ISDONE()
 {
 	checkEntry = lastIsDone;
 }
@@ -574,7 +577,7 @@ static void do_ISDONE()
 /*	Succeeds if the last table ended without doing anything or with a NOTDONE 
 	action. */
 #ifndef DISABLE_ISNDONE
-static void do_ISNDONE()
+void do_ISNDONE()
 {
 	checkEntry = !lastIsDone;
 }
@@ -602,13 +605,13 @@ static void _internal_hasat(uint8_t value, bool negate)
 	the current object. There are also several attribute numbers specified as 
 	symbols in SYMBOLS.SCE which check certain parts of the DAAD system flags */
 #ifndef DISABLE_HASAT
-static void do_HASAT()		// value
+void do_HASAT()		// value
 {
 	_internal_hasat(getValueOrIndirection(), false);
 }
 #endif
 #ifndef DISABLE_HASNAT
-static void do_HASNAT()	// value
+void do_HASNAT()	// value
 {
 	_internal_hasat(getValueOrIndirection(), true);
 }
@@ -623,7 +626,7 @@ static void do_HASNAT()	// value
 	code pair.
 	On 8 bit only Key1 will be valid, and the code will be machine specific. */
 #ifndef DISABLE_INKEY
-static void do_INKEY()
+void do_INKEY()
 {
 	if (checkKeyboardBuffer()) {
 		flags[fKey1] = getKeyInBuffer();
@@ -638,7 +641,7 @@ static void do_INKEY()
 	starts with the first letter of SM30 ("Y") to then the remainder of the entry is 
 	discarded is carried out. */
 #ifndef DISABLE_QUIT
-static void do_QUIT()
+void do_QUIT()
 {
 	printSystemMsg(12);
 	do_NEWLINE();
@@ -694,6 +697,7 @@ static void _internal_get(uint8_t objno)
 		printSystemMsg(36);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
+		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -701,7 +705,7 @@ static void _internal_get(uint8_t objno)
 }
 #endif
 #ifndef DISABLE_GET
-static void do_GET()		// objno
+void do_GET()		// objno
 {
 	_internal_get(getValueOrIndirection());
 }
@@ -730,6 +734,7 @@ static void _internal_drop(uint8_t objno)
 		printSystemMsg(39);
 		obj->location = flags[fPlayer];
 		if (flags[fNOCarr]) flags[fNOCarr]--;
+		checkEntry = true;
 		return;
 	} else
 	if (obj->location==LOC_WORN) {
@@ -745,7 +750,7 @@ static void _internal_drop(uint8_t objno)
 }
 #endif
 #ifndef DISABLE_DROP
-static void do_DROP()		// objno
+void do_DROP()		// objno
 {
 	_internal_drop(getValueOrIndirection());
 }
@@ -789,6 +794,7 @@ static void _internal_wear(uint8_t objno)
 		printSystemMsg(37);
 		obj->location = LOC_WORN;
 		if (flags[fNOCarr]) flags[fNOCarr]--;
+		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -796,7 +802,7 @@ static void _internal_wear(uint8_t objno)
 }
 #endif
 #ifndef DISABLE_WEAR
-static void do_WEAR()		// objno
+void do_WEAR()		// objno
 {
 	_internal_wear(getValueOrIndirection());
 }
@@ -828,7 +834,7 @@ static void _internal_remove(uint8_t objno)
 	if (obj->location==LOC_CARRIED || obj->location==flags[fPlayer]) {
 		printSystemMsg(50);
 	} else
-	if (obj->location!=flags[fPlayer]) {
+	if (obj->location!=flags[fPlayer] && obj->location!=LOC_WORN) {
 		printSystemMsg(23);
 	} else
 	if (!obj->attribs.mask.isWareable) {
@@ -840,6 +846,7 @@ static void _internal_remove(uint8_t objno)
 		printSystemMsg(38);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
+		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -847,7 +854,7 @@ static void _internal_remove(uint8_t objno)
 }
 #endif
 #ifndef DISABLE_REMOVE
-static void do_REMOVE()	// objno
+void do_REMOVE()	// objno
 {
 	_internal_remove(getValueOrIndirection());
 }
@@ -858,13 +865,14 @@ static void do_REMOVE()	// objno
 /*	The position of Object objno. is changed to the current location and Flag 1
 	is decremented if the object was carried. */
 #ifndef DISABLE_CREATE
-static void do_CREATE()	// objno
+void do_CREATE()	// objno
 {
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = flags[fPlayer];
+	checkEntry = true;
 }
 #endif
 
@@ -873,13 +881,14 @@ static void do_CREATE()	// objno
 /*	The position of Object objno. is changed to not-created and Flag 1 is 
 	decremented if the object was carried. */
 #ifndef DISABLE_DESTROY
-static void do_DESTROY()	// objno
+void do_DESTROY()	// objno
 {
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = LOC_NOTCREATED;
+	checkEntry = true;
 }
 #endif
 
@@ -888,7 +897,7 @@ static void do_DESTROY()	// objno
 /*	The positions of the two objects are exchanged. Flag 1 is not adjusted. The 
 	currently referenced object is set to be Object objno 2. */
 #ifndef DISABLE_SWAP
-static void do_SWAP()		// objno1 objno2
+void do_SWAP()		// objno1 objno2
 {
 	Object *obj1 = objects + getValueOrIndirection();
 	uint8_t objno2 = *pPROC++;
@@ -897,6 +906,7 @@ static void do_SWAP()		// objno1 objno2
 	obj1->location = obj2->location;
 	obj2->location = aux;
 	referencedObject(objno2);
+	checkEntry = true;
 }
 #endif
 
@@ -906,7 +916,7 @@ static void do_SWAP()		// objno1 objno2
 	decremented if the object was carried. It is incremented if the object is 
 	placed at location 254 (carried). */
 #ifndef DISABLE_PLACE
-static void do_PLACE()		// objno locno+
+void do_PLACE()		// objno locno+
 {
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
@@ -914,6 +924,7 @@ static void do_PLACE()		// objno locno+
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = *pPROC++;
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
+	checkEntry = true;
 }
 #endif
 
@@ -924,7 +935,7 @@ static void do_PLACE()		// objno locno+
 	remains its old location. Flag 1 is decremented if the object was carried. 
 	It is incremented if the object is placed at location 254 (carried). */
 #ifndef DISABLE_PUTO
-static void do_PUTO()		// locno+
+void do_PUTO()		// locno+
 {
 	Object *obj = objects + flags[fCONum];
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
@@ -980,7 +991,7 @@ static void _internal_putin(uint8_t objno, uint8_t locno)
 }
 #endif
 #ifndef DISABLE_PUTIN
-static void do_PUTIN()		// objno locno
+void do_PUTIN()		// objno locno
 {
 	_internal_putin(getValueOrIndirection(), *pPROC++);
 }
@@ -1060,7 +1071,7 @@ static void _internal_takeout(uint8_t objno, uint8_t locno)
 }
 #endif
 #ifndef DISABLE_TAKEOUT
-static void do_TAKEOUT()	// objno locno
+void do_TAKEOUT()	// objno locno
 {
 	_internal_takeout(getValueOrIndirection(), *pPROC++);
 }
@@ -1074,7 +1085,7 @@ static void do_TAKEOUT()	// objno locno
 	Note that a DOALL 254 will carry out a true DROP ALL, taking care of any special 
 	actions included. */
 #ifndef DISABLE_DROPALL
-static void do_DROPALL()
+void do_DROPALL()
 {
 	int i=0;
 	do {
@@ -1107,7 +1118,7 @@ static void _internal_autoend(uint8_t msgOK, uint8_t msgKO)
 }
 #endif
 #ifndef DISABLE_AUTOG
-static void do_AUTOG()
+void do_AUTOG()
 {
 	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
 	uint8_t objno = getObjectId(noun, adjc, flags[fPlayer]);	// HERE
@@ -1149,7 +1160,7 @@ static uint8_t _internal_checkLocCARR_WORN_HERE()
 	return objno;
 }
 #ifndef DISABLE_AUTOD
-static void do_AUTOD()
+void do_AUTOD()
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno!=NULLWORD)
@@ -1174,7 +1185,7 @@ static void do_AUTOD()
 	It is not a valid object but does exist in the game). Either way actions 
 	NEWTEXT & DONE are performed */
 #ifndef DISABLE_AUTOW
-static void do_AUTOW()
+void do_AUTOW()
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno!=NULLWORD)
@@ -1199,7 +1210,7 @@ static void do_AUTOW()
 	(i.e. It is not a valid object but does exist in the game). Either way 
 	actions NEWTEXT & DONE are performed */
 #ifndef DISABLE_AUTOR
-static void do_AUTOR()
+void do_AUTOR()
 {
 	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
 	uint8_t objno = getObjectId(noun, adjc, LOC_WORN);
@@ -1230,7 +1241,7 @@ static void do_AUTOR()
 	(i.e. It is not a valid object but does exist in the game). Either way actions 
 	NEWTEXT & DONE are performed */
 #ifndef DISABLE_AUTOP
-static void do_AUTOP()		// locno
+void do_AUTOP()		// locno
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno!=NULLWORD)
@@ -1256,7 +1267,7 @@ static void do_AUTOP()		// locno
 	that.") is printed (i.e. It is not a valid object but does exist in the game).
 	Either way actions NEWTEXT & DONE are performed */
 #ifndef DISABLE_AUTOT
-static void do_AUTOT()		// locno
+void do_AUTOT()		// locno
 {
 	uint8_t locno = getValueOrIndirection();
 	uint8_t noun = flags[fNoun1], adjc = flags[fAdject1];
@@ -1291,7 +1302,7 @@ static void do_AUTOT()		// locno
 /*	The position of Object objno2 is set to be the same as the position of 
 	Object Objno1. The currently referenced object is set to be Object objno2 */
 #ifndef DISABLE_COPYOO
-static void do_COPYOO()	// objno1 objno2
+void do_COPYOO()	// objno1 objno2
 {
 	uint8_t objno1 = getValueOrIndirection();
 	uint8_t objno2 = *pPROC++;
@@ -1307,7 +1318,7 @@ static void do_COPYOO()	// objno1 objno2
 	start table. It also sets the relevant flags dealing with no of objects 
 	carried etc. */
 #ifndef DISABLE_RESET
-static void do_RESET() {
+void do_RESET() {
 	initObjects();
 }
 #endif
@@ -1319,7 +1330,7 @@ static void do_RESET() {
 /*	The position of Object objno. is copied into Flag flagno. This could be used 
 	to examine the location of an object in a comparison with another flag value. */
 #ifndef DISABLE_COPYOF
-static void do_COPYOF()	// objno flagno
+void do_COPYOF()	// objno flagno
 {
 	Object *obj = objects + getValueOrIndirection();
 	flags[*pPROC++] = obj->location;
@@ -1333,7 +1344,7 @@ static void do_COPYOF()	// objno flagno
 	Setting an object to an invalid location will still be accepted as it 
 	presents no danger to the operation of PAW. */
 #ifndef DISABLE_COPYFO
-static void do_COPYFO()	// flagno objno
+void do_COPYFO()	// flagno objno
 {
 	flags[getValueOrIndirection()] = (objects + *pPROC++)->location;
 }
@@ -1349,7 +1360,7 @@ static void do_COPYFO()	// flagno objno
 	parameters in flags 54-57. This allows you to create other auto actions (the
 	tutorial gives an example of this for dropping objects in the tree). */
 #ifndef DISABLE_WHATO
-static void do_WHATO()
+void do_WHATO()
 {
 	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno==NULLWORD) objno = getObjectId(flags[fNoun1], flags[fAdject1], LOC_HERE);
@@ -1361,7 +1372,7 @@ static void do_WHATO()
 
 /*	Sets the currently referenced object to objno. */
 #ifndef DISABLE_SETCO
-static void do_SETCO()		// objno
+void do_SETCO()		// objno
 {
 	referencedObject(getValueOrIndirection());
 }
@@ -1376,7 +1387,7 @@ static void do_SETCO()		// objno
 	be exceeded. If Object objno. is a container of zero weight, Flag flagno 
 	will be cleared as objects in zero weight containers, also weigh zero! */
 #ifndef DISABLE_WEIGH
-static void do_WEIGH()		// objno flagno
+void do_WEIGH()		// objno flagno
 {
 	uint8_t weight = getObjectWeight(getValueOrIndirection(), false);
 	flags[*pPROC++] = weight;
@@ -1389,7 +1400,7 @@ static void do_WEIGH()		// objno flagno
 
 /*	Flag flagno. is set to 255. */
 #ifndef DISABLE_SET
-static void do_SET()		// flagno
+void do_SET()		// flagno
 {
 	flags[getValueOrIndirection()] = 255;
 }
@@ -1399,7 +1410,7 @@ static void do_SET()		// flagno
 
 /*	Flag flagno. is cleared to 0. */
 #ifndef DISABLE_CLEAR
-static void do_CLEAR()		// flagno
+void do_CLEAR()		// flagno
 {
 	flags[getValueOrIndirection()] = 0;
 }
@@ -1409,7 +1420,7 @@ static void do_CLEAR()		// flagno
 
 /*	Flag flagno. is set to value. */
 #ifndef DISABLE_LET
-static void do_LET()		// flagno value
+void do_LET()		// flagno value
 {
 	flags[getValueOrIndirection()] = *pPROC++;
 }
@@ -1420,7 +1431,7 @@ static void do_LET()		// flagno value
 /*	Flag flagno. is increased by value. If the result exceeds 255 the flag is
 	set to 255. */
 #ifndef DISABLE_PLUS
-static void do_PLUS()		// flagno value
+void do_PLUS()		// flagno value
 {
 	uint8_t flagno = getValueOrIndirection();
 	uint16_t value = (uint16_t)flags[flagno] + *pPROC++;
@@ -1434,7 +1445,7 @@ static void do_PLUS()		// flagno value
 /*	Flag flagno. is decreased by value. If the result is negative the flag is 
 	set to 0. */
 #ifndef DISABLE_MINUS
-static void do_MINUS()		// flagno value
+void do_MINUS()		// flagno value
 {
 	uint8_t flagno = getValueOrIndirection();
 	uint8_t value = *pPROC++;
@@ -1447,7 +1458,7 @@ static void do_MINUS()		// flagno value
 /*	Flag flagno 2 has the contents of Flag flagno 1 added to it. If the result 
 	exceeds 255 the flag is set to 255. */
 #ifndef DISABLE_ADD
-static void do_ADD()		// flagno1 flagno2
+void do_ADD()		// flagno1 flagno2
 {
 	uint16_t sum = flags[getValueOrIndirection()];
 	uint8_t flagno2 = *pPROC++;
@@ -1461,7 +1472,7 @@ static void do_ADD()		// flagno1 flagno2
 /*	Flag flagno 2 has the contents of Flag flagno 1 subtracted from it. If the
 	result is negative the flag is set to 0. */
 #ifndef DISABLE_SUB
-static void do_SUB()		// flagno1 flagno2
+void do_SUB()		// flagno1 flagno2
 {
 	uint8_t subs = flags[getValueOrIndirection()];
 	uint8_t flagno2 = *pPROC++;
@@ -1473,7 +1484,7 @@ static void do_SUB()		// flagno1 flagno2
 
 /*	The contents of Flag flagno 1 is copied to Flag flagno 2. */
 #ifndef DISABLE_COPYFF
-static void do_COPYFF()	// flagno1 flagno2
+void do_COPYFF()	// flagno1 flagno2
 {
 	uint8_t flagno1 = getValueOrIndirection();
 	flags[*pPROC++] = flags[flagno1];
@@ -1485,7 +1496,7 @@ static void do_COPYFF()	// flagno1 flagno2
 /*	Same as COPYFF but the source and destination are reversed, so that 
 	indirection can be used. */
 #ifndef DISABLE_COPYBF
-static void do_COPYBF()	// flagno1 flagno2
+void do_COPYBF()	// flagno1 flagno2
 {
 	flags[getValueOrIndirection()] = flags[*pPROC++];
 }
@@ -1496,7 +1507,7 @@ static void do_COPYBF()	// flagno1 flagno2
 /*	Flag flagno. is set to a number from the Pseudo-random sequence from 1 
 	to 100. */
 #ifndef DISABLE_RANDOM
-static void do_RANDOM()	// flagno
+void do_RANDOM()	// flagno
 {
 	flags[getValueOrIndirection()] = (rand()%100)+1;
 }
@@ -1512,7 +1523,7 @@ static void do_RANDOM()	// flagno
 	If the verb is not found, or the original location number was invalid, then 
 	PAW considers the next entry in the table - if present. */
 #ifndef DISABLE_MOVE
-static void do_MOVE()		// flagno
+void do_MOVE()		// flagno
 {
 	uint8_t flagno = getValueOrIndirection();
 
@@ -1538,7 +1549,7 @@ static void do_MOVE()		// flagno
 /*	Changes the current location to locno. This effectively sets flag 38 to the value
 	locno. */
 #ifndef DISABLE_GOTO
-static void do_GOTO()		// locno
+void do_GOTO()		// locno
 {
 	flags[fPlayer] = getValueOrIndirection();
 }
@@ -1552,7 +1563,7 @@ static void do_GOTO()		// locno
 	This would be useful to ensure the player was not carrying too much weight 
 	to cross a bridge without it collapsing etc. */
 #ifndef DISABLE_WEIGHT
-static void do_WEIGHT()	// flagno
+void do_WEIGHT()	// flagno
 {
 	flags[getValueOrIndirection()] = getObjectWeight(NULLWORD, true);
 }
@@ -1568,7 +1579,7 @@ static void do_WEIGHT()	// flagno
 	correctly and prevent the player carrying any more objects, even if you set 
 	the value lower than that which is already carried! */
 #ifndef DISABLE_ABILITY
-static void do_ABILITY()	// value1 value2
+void do_ABILITY()	// value1 value2
 {
 	flags[fMaxCarr] = getValueOrIndirection();
 	flags[fStrength] = *pPROC++;
@@ -1587,7 +1598,7 @@ static void do_ABILITY()	// value1 value2
 	e.g. MODE 3 stops the 'More...' prompt and causes all to be translated to 
 	the 128-256 range. */
 #ifndef DISABLE_MODE
-static void do_MODE() {	// option
+void do_MODE() {	// option
 	cw->mode = getValueOrIndirection();
 }
 #endif
@@ -1603,7 +1614,7 @@ static void do_MODE() {	// option
 		2 - Reprint input line in current stream when complete.
 		4 - Reprint current text of input after a timeout. */
 #ifndef DISABLE_INPUT
-static void do_INPUT() {	// stream option
+void do_INPUT() {	// stream option
 	//TODO: INPUT not implemented yet
 	do_NOT_USED();
 }
@@ -1626,7 +1637,7 @@ static void do_INPUT() {	// stream option
 	"More...".
 	TIME 0 0 will stop timeouts (default). */
 #ifndef DISABLE_TIME
-static void do_TIME()		// duration option
+void do_TIME()		// duration option
 {
 	flags[fTime] = getValueOrIndirection();		// Timeout duration required
 	flags[fTIFlags] = *pPROC++;					// Timeout Control bitmask flags
@@ -1639,7 +1650,7 @@ static void do_TIME()		// duration option
 
 /*	Selects window (0-7) as current print output stream. */
 #ifndef DISABLE_WINDOW
-static void do_WINDOW()	// window
+void do_WINDOW()	// window
 {
 	flags[fCurWin] = getValueOrIndirection();
 	cw = &windows[flags[fCurWin]];
@@ -1658,7 +1669,7 @@ static void _internal_windowCheck()
 }
 #endif
 #ifndef DISABLE_WINAT
-static void do_WINAT()		// line col
+void do_WINAT()		// line col
 {
 	cw->winY = getValueOrIndirection();
 	cw->winX = *pPROC++;
@@ -1675,7 +1686,7 @@ static void do_WINAT()		// line col
 /*	Sets current window size to given height and width. Clipping needed to fit 
 	available screen. */
 #ifndef DISABLE_WINSIZE
-static void do_WINSIZE()	// height width
+void do_WINSIZE()	// height width
 {
 	cw->winH = getValueOrIndirection();;
 	cw->winW = *pPROC++;
@@ -1692,7 +1703,7 @@ static void do_WINSIZE()	// height width
 /*	Will ensure the current window is centered for the current column width of the 
 	screen. (Does not affect line position). */
 #ifndef DISABLE_CENTRE
-static void do_CENTRE()
+void do_CENTRE()
 {
 	cw->winX = (MAX_COLUMNS - cw->winW) >> 1;
 }
@@ -1720,7 +1731,7 @@ void do_CLS()
 	may find use in the creation of a new input line or in animation 
 	sequences... */
 #ifndef DISABLE_SAVEAT
-static void do_SAVEAT()
+void do_SAVEAT()
 {
 	savedPosX = cw->cursorX;
 	savedPosY = cw->cursorY;
@@ -1730,7 +1741,7 @@ static void do_SAVEAT()
 // =============================================================================
 
 #ifndef DISABLE_BACKAT
-static void do_BACKAT()
+void do_BACKAT()
 {
 	cw->cursorX = savedPosX;
 	cw->cursorY = savedPosY;
@@ -1741,7 +1752,7 @@ static void do_BACKAT()
 
 /*	Set paper colour acording to the lookup table given in the graphics editors */
 #ifndef DISABLE_PAPER
-static void do_PAPER()		// colour
+void do_PAPER()		// colour
 {
 	gfxSetPaperCol(getValueOrIndirection());
 }
@@ -1751,7 +1762,7 @@ static void do_PAPER()		// colour
 
 /*	Set text colour acording to the lookup table given in the graphics editors */
 #ifndef DISABLE_INK
-static void do_INK()		// colour
+void do_INK()		// colour
 {
 	gfxSetInkCol(getValueOrIndirection());
 }
@@ -1765,7 +1776,7 @@ static void do_INK()		// colour
 			   unless you use the GFX condact to change it. But Screen 5/6/7 are 
 			   paletted modes and must use the current Picture palette. */
 #ifndef DISABLE_BORDER
-static void do_BORDER()	// colour
+void do_BORDER()	// colour
 {
 	gfxSetBorderCol(getValueOrIndirection());
 }
@@ -1776,7 +1787,7 @@ static void do_BORDER()	// colour
 /*	Sets current print position to given point if in current window. If not then 
 	print position becomes top left of window. */
 #ifndef DISABLE_PRINTAT
-static void do_PRINTAT()	// line col
+void do_PRINTAT()	// line col
 {
 	cw->cursorY = getValueOrIndirection();
 	cw->cursorX = *pPROC++;
@@ -1787,7 +1798,7 @@ static void do_PRINTAT()	// line col
 
 /*	Sets current print position to given column on current line. */
 #ifndef DISABLE_TAB
-static void do_TAB()		// col
+void do_TAB()		// col
 {
 	cw->cursorX = getValueOrIndirection();
 }
@@ -1798,7 +1809,7 @@ static void do_TAB()		// col
 /*	Will simply print a space to the current output stream. Shorter than MES 
 	Space! */
 #ifndef DISABLE_SPACE
-static void do_SPACE()
+void do_SPACE()
 {
 	printChar(' ');
 }
@@ -1818,7 +1829,7 @@ void do_NEWLINE()
 
 /*	Prints Message mesno. */
 #ifndef DISABLE_MES
-static void do_MES()		// mesno
+void do_MES()		// mesno
 {
 	printUserMsg(getValueOrIndirection());
 }
@@ -1828,7 +1839,7 @@ static void do_MES()		// mesno
 
 /*	Prints Message mesno., then carries out a NEWLINE action. */
 #ifndef DISABLE_MESSAGE
-static void do_MESSAGE()	// mesno
+void do_MESSAGE()	// mesno
 {
 	do_MES();
 	do_NEWLINE();
@@ -1839,7 +1850,7 @@ static void do_MESSAGE()	// mesno
 
 /*	Prints System Message sysno. */
 #ifndef DISABLE_SYSMESS
-static void do_SYSMESS()	// sysno
+void do_SYSMESS()	// sysno
 {
 	printSystemMsg(getValueOrIndirection());
 }
@@ -1849,7 +1860,7 @@ static void do_SYSMESS()	// sysno
 
 /*	Prints the text for location locno. without a NEWLINE. */
 #ifndef DISABLE_DESC
-static void do_DESC()		// locno
+void do_DESC()		// locno
 {
 	printLocationMsg(getValueOrIndirection());
 }
@@ -1860,7 +1871,7 @@ static void do_DESC()		// locno
 /*	The decimal contents of Flag flagno. are displayed without leading or 
 	trailing spaces. */
 #ifndef DISABLE_PRINT
-static void do_PRINT()		// flagno
+void do_PRINT()		// flagno
 {
 	printBase10(flags[getValueOrIndirection()]);
 }
@@ -1870,7 +1881,7 @@ static void do_PRINT()		// flagno
 
 /*	Will print the contents of flagno and flagno+1 as a two byte number. */
 #ifndef DISABLE_DPRINT
-static void do_DPRINT()	// flagno
+void do_DPRINT()	// flagno
 {
 	uint8_t f = getValueOrIndirection();
 	printBase10((((uint16_t)flags[f+1])<<8) | flags[f]);
@@ -1908,7 +1919,7 @@ static void _internal_listat(uint8_t loc, bool listobj) {
 }
 #endif
 #ifndef DISABLE_LISTOBJ
-static void do_LISTOBJ()
+void do_LISTOBJ()
 {
 	_internal_listat(flags[fPlayer], true);
 	if (flags[fOFlags] & F53_LISTED) {
@@ -1923,7 +1934,7 @@ static void do_LISTOBJ()
 	is printed - note that you will usually have to precede this action with a 
 	message along the lines of "In the bag is:" etc. */
 #ifndef DISABLE_LISTAT
-static void do_LISTAT()	// locno+
+void do_LISTAT()	// locno+
 {
 	_internal_listat(getValueOrIndirection(), false);
 	if (flags[fOFlags] & F53_LISTED)
@@ -1943,10 +1954,10 @@ static void do_LISTAT()	// locno+
 	error.") is printed - this is not checked on 8 bit machines, the file name 
 	is MADE acceptable! */
 #ifndef DISABLE_SAVE
-static void do_SAVE()		// opt
+void do_SAVE()		// opt
 {
 	//TODO SAVE get the filename from the player
-	uint16_t fh = fcreate(SAVEGAME, O_WRONLY, ATTR_ARCHIVE);
+	FILEH fh = fcreate(SAVEGAME, O_WRONLY, ATTR_ARCHIVE);
 	if (fh<0xff00) {
 		fwrite((char*)flags, 256, fh);
 		fwrite((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
@@ -1964,7 +1975,7 @@ static void do_SAVE()		// opt
 	next action is carried out only if the load is successful. Otherwise a system 
 	clear, GOTO 0, RESTART is carried out. */
 #ifndef DISABLE_LOAD
-static void do_LOAD()		// opt
+void do_LOAD()		// opt
 {
 	//TODO LOAD get the filename from the player
 	uint16_t fh = fopen(SAVEGAME, O_RDONLY);
@@ -1989,7 +2000,7 @@ static void do_LOAD()		// opt
 	which should be made clear to the player. The next action is always carried 
 	out. */
 #ifndef DISABLE_RAMSAVE
-static void do_RAMSAVE()
+void do_RAMSAVE()
 {
 	memcpy(ramsave, flags, 256);
 	for (int i=0; i<256; i++)
@@ -2010,7 +2021,7 @@ static void do_RAMSAVE()
 	should normally always be followed by a RESTART or describe in order that 
 	the game state is restored to an identical position. */
 #ifndef DISABLE_RAMLOAD
-static void do_RAMLOAD()	// flagno
+void do_RAMLOAD()	// flagno
 {
 	uint8_t flagno = getValueOrIndirection();
 
@@ -2027,7 +2038,7 @@ static void do_RAMLOAD()	// flagno
 /*	SM16 ("Press any key to continue") is printed and the keyboard is scanned until 
 	a key is pressed or until the timeout duration has elapsed if enabled. */
 #ifndef DISABLE_ANYKEY
-static void do_ANYKEY()
+void do_ANYKEY()
 {
 	printSystemMsg(16);
 	waitForTimeout(TIME_ANYKEY);
@@ -2041,7 +2052,7 @@ static void do_ANYKEY()
 /*	Pauses for value/50 secs. However, if value is zero then the pause is for 
 	256/50 secs. */
 #ifndef DISABLE_PAUSE
-static void do_PAUSE()		// value
+void do_PAUSE()		// value
 {
 	uint16_t value = getValueOrIndirection();
 	if (!value) value = 256;
@@ -2062,7 +2073,7 @@ static void do_PAUSE()		// value
 		1 - Parse any string (phrase enclosed in quotes [""]) that was contained 
 		    in the last LS extracted. */
 #ifndef DISABLE_PARSE
-static void do_PARSE()
+void do_PARSE()
 {
 	if (getValueOrIndirection()==0) {	// PARSE 0
 		checkEntry = !getLogicalSentence();
@@ -2082,7 +2093,7 @@ static void do_PARSE()
 		GET SWORD AND KILL ORC WITH IT
 	as attacking the ORC without the sword may be dangerous! */
 #ifndef DISABLE_NEWTEXT
-static void do_NEWTEXT()
+void do_NEWTEXT()
 {
 	clearLogicalSentences();
 }
@@ -2098,7 +2109,7 @@ static void do_NEWTEXT()
 	will switch the LS into a standard format for several different entries. 
 	Allowing only one to deal with the actual actions. */
 #ifndef DISABLE_SYNONYM
-static void do_SYNONYM()	// verb noun
+void do_SYNONYM()	// verb noun
 {
 	uint8_t value = getValueOrIndirection();
 	if (value!=NULLWORD) flags[fVerb] = value;
@@ -2117,7 +2128,7 @@ static void do_SYNONYM()	// verb noun
 	the calling PROCESS action. A sub-process can call (nest) further process' to 
 	a depth of 10 at which point a run time error will be generated. */
 #ifndef DISABLE_PROCESS
-static void do_PROCESS()	// procno
+void do_PROCESS()	// procno
 {
 	pushPROC(getValueOrIndirection());
 }
@@ -2128,7 +2139,7 @@ static void do_PROCESS()	// procno
 /*	Will restart the currently executing table, allowing...
 	TODO:incomplete descripcion in documentation */
 #ifndef DISABLE_REDO
-static void do_REDO()
+void do_REDO()
 {
 	currProc->entry = currProc->entryIni;
 	currProc->condactIni = getPROCEntryCondacts();
@@ -2182,7 +2193,7 @@ static void _internal_doall() {
 	pPROC = currProc->condactDOALL;
 	currProc->entry = currProc->entryDOALL;
 }
-static void do_DOALL() {	// locno+
+void do_DOALL() {	// locno+
 
 	if (currProc->condactDOALL) errorCode(4);
 	currProc->condactDOALL = ++pPROC;
@@ -2200,7 +2211,7 @@ static void _internal_doall() {}
 	current entry in a table back or fore. 0 means next entry (so is meaningless).
 	-1 means restart current entry (Dangerous). */
 #ifndef DISABLE_SKIP
-static void do_SKIP()		// distance
+void do_SKIP()		// distance
 {
 	stepPROCEntryCondacts(getValueOrIndirection());
 }
@@ -2211,7 +2222,7 @@ static void do_SKIP()		// distance
 /*	Will cancel any DOALL loop, any sub-process calls and make a jump
 	to execute process 0 again from the start.*/
 #ifndef DISABLE_RESTART
-static void do_RESTART()
+void do_RESTART()
 {
 	while (popPROC());	// popPROC() cancel the current DOALL
 	pushPROC(0);
@@ -2233,7 +2244,7 @@ static void _internal_exit()
 }
 #endif
 #ifndef DISABLE_END
-static void do_END()
+void do_END()
 {
 	printSystemMsg(13);
 	do_NEWLINE();
@@ -2260,7 +2271,7 @@ static void do_END()
 	be added to PC as part of the HYPERCARD work. So if you intend using it as a
 	reset ensure you use your PART number as the non zero value! */
 #ifndef DISABLE_EXIT
-static void do_EXIT()		// value
+void do_EXIT()		// value
 {
 	if (!getValueOrIndirection()) {
 		_internal_exit();
@@ -2281,7 +2292,7 @@ static void do_EXIT()		// value
 	A return will thus be made to the previous calling process table, or to the 
 	start point of any active DOALL loop. */
 #ifndef DISABLE_DONE
-static void do_DONE()
+void do_DONE()
 {
 	if (currProc->condactDOALL) {
 		_internal_doall();
@@ -2301,7 +2312,7 @@ static void do_DONE()
 	"I can't" messages if needed. i.e. if no other action is carried out and no 
 	entry is present in the connections section for the current Verb. */
 #ifndef DISABLE_NOTDONE
-static void do_NOTDONE()
+void do_NOTDONE()
 {
 	if (currProc->condactDOALL) {
 		_internal_doall();
@@ -2316,7 +2327,7 @@ static void do_NOTDONE()
 
 /*	SM15 ("OK") is printed and action DONE is performed. */
 #ifndef DISABLE_OK
-static void do_OK() {
+void do_OK() {
 	printSystemMsg(15);
 	do_DONE();
 }
@@ -2329,7 +2340,7 @@ static void do_OK() {
 /*	Calls external routine with parameter value. The address is set by linking 
 	the #extern pre-compiler command */
 #ifndef DISABLE_EXTERN
-static void do_EXTERN()	// value routine
+void do_EXTERN()	// value routine
 {
 	//Emulating MALUVA EXTERN: https://github.com/Utodev/MALUVA
 	uint16_t value = (uint16_t)getValueOrIndirection();
@@ -2369,7 +2380,7 @@ static void do_EXTERN()	// value routine
 /*	Allows 'address' in memory (or in the database segment for 16bit) to be 
 	executed. See the extern secion for more details. */
 #ifndef DISABLE_CALL
-static void do_CALL()		// address(dword)
+void do_CALL()		// address(dword)
 {
 	//TODO: CALL not implemented yet
 	do_NOT_USED();
@@ -2384,7 +2395,7 @@ static void do_CALL()		// address(dword)
 	changed with #sfx or through linking - see the machine details and extern 
 	section for specifics. */
 #ifndef DISABLE_SFX
-static void do_SFX()		// value1 value2
+void do_SFX()		// value1 value2
 {
 	uint16_t value = (uint16_t)getValueOrIndirection();
 	uint8_t  reg = *pPROC++;
@@ -2429,7 +2440,7 @@ static void do_SFX()		// value1 value2
 	ST (and MSX2) the top 3 and Amiga the top 4! This system allows the same 
 	numbers to represent the same colours in each machine. */
 #ifndef DISABLE_GFX
-static void do_GFX()		// pa routine
+void do_GFX()		// pa routine
 {
 	//TODO GFX not fully implemented
 	uint16_t value = (uint16_t)getValueOrIndirection();
@@ -2456,7 +2467,7 @@ static void _internal_picture(uint8_t newPic) {
 }
 #endif
 #ifndef DISABLE_PICTURE
-static void do_PICTURE()	// picno
+void do_PICTURE()	// picno
 {
 	_internal_picture(getValueOrIndirection());
 }
@@ -2480,7 +2491,7 @@ static void _internal_display(uint8_t value) {
 }
 #endif
 #ifndef DISABLE_DISPLAY
-static void do_DISPLAY()	// value
+void do_DISPLAY()	// value
 {
 	_internal_display(getValueOrIndirection());
 }
@@ -2493,7 +2504,7 @@ static void do_DISPLAY()	// value
 /*	This action in preparation for the hypercard system implements skeleton 
 	mouse handler on the IBM. */
 #ifndef DISABLE_MOUSE
-static void do_MOUSE() {	// option
+void do_MOUSE() {	// option
 	//TODO: MOUSE not implemented yet
 	do_NOT_USED();
 }
@@ -2531,7 +2542,7 @@ static void do_MOUSE() {	// option
 	#8   216 218 220 222 224 226 228 230 232 234 236 238
 */
 #ifndef DISABLE_BEEP
-static void do_BEEP()		// length tone
+void do_BEEP()		// length tone
 {
 	sfxTone(getValueOrIndirection(), *pPROC++);
 }
@@ -2541,7 +2552,7 @@ static void do_BEEP()		// length tone
 // Unused Condact (check daad_defines.h)
 // =============================================================================
 
-static void do_NOT_USED()
+void do_NOT_USED()
 {
 	errorCode(5);
 }
