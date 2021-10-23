@@ -718,23 +718,23 @@ void printMsg(char *p, bool print)
  */
 void printOutMsg(char *str)
 {
-	char *p = str, *aux = NULL, c;
+	char *pointer = str, *aux = NULL, c;
 
-	while ((c = *p)) {
+	while ((c = *pointer)) {
 		if (c==' ' || !aux) {
 			// Check if next word can be printed in current line
-			aux = p+1;
+			aux = pointer + 1;
 			while (*aux && *aux!=' ' && *aux!='\n' && *aux!='\r') {
 				aux++;
 			}
-			if (cw->cursorX+(aux-(p+1)) >= cw->winW) {
+			if (cw->cursorX + (aux - (pointer + 1)) >= cw->winW) {
 				if (c==' ') c = '\r'; else do_NEWLINE();
 			}
 		}
-		if (doingPrompt || p==str || !(c==' ' && cw->cursorX==0)) {	// If not a SPACE in column 0 then print char
+		if (doingPrompt || pointer==str || !(c==' ' && cw->cursorX==0)) {	// If not a SPACE in column 0 then print char
 			printChar(c);
 		}
-		p++;
+		pointer++;
 	}
 }
 
@@ -800,7 +800,7 @@ void printChar(int ch) __z88dk_fastcall
  */
 void checkPrintedLines()
 {
-	char *oldTmpMsg;
+	static char *oldTmpMsg;
 
 	if (checkPrintedLines_inUse ||
 		cw->mode & MODE_DISABLEMORE || 

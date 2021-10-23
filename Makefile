@@ -28,7 +28,8 @@ LIB_GUARD=@mkdir -p $(LIBDIR)
 EMUSCRIPTS = -script ./emulation/boot.tcl -script ./emulation/info_daad.tcl
 
 LIBS := dos.lib vdp.lib utils.lib
-REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel daad.rel daad_condacts.rel \
+REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel daad.rel \
+								daad_global_vars.rel daad_condacts.rel \
 								daad_platform_msx2.rel) $(addprefix $(LIBDIR), $(LIBS))
 
 PROGRAMS = msx2daad.com

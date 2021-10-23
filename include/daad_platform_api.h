@@ -14,6 +14,7 @@
 #define  __DAAD_PLATFORM_API_H__
 
 #include <stdint.h>
+#include <stdbool.h>
 #if defined(MSX2)
 	#include "daad_platform_msx2.h"
 #elif defined(CPM)
@@ -45,6 +46,8 @@ uint16_t checkKeyboardBuffer();
 void     clearKeyboardBuffer();
 uint8_t  getKeyInBuffer();
 void     waitingForInput();
+inline void *safeMemoryAllocate();
+inline void safeMemoryDeallocate(void*);
 
 
 // Filesystem

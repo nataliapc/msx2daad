@@ -158,6 +158,8 @@
 // ========================================================
 // MSX/MSX2 system constants
 
+#define FILEH			uint16_t
+
 // RAM Addresses
 #define PAGE0 			((void*)0x0000)
 #define PAGE1 			((void*)0x4000)
