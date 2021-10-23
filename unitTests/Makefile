@@ -1,4 +1,4 @@
-.PHONY: clean test release
+.PHONY: clean test legacy
 
 AS = sdasz80
 AR = sdar
@@ -65,3 +65,7 @@ test: all
 #		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 		openmsx -machine msx2plus -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 	; fi'
+
+legacy:
+	cd legacy ; ./compile.sh
+	cd legacy ; dosbox run.bat
