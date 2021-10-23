@@ -701,7 +701,7 @@
 		global $magic;
 		global $lastPalette;
 		$id = 1;
-		$tmp = "_0000000.tmp";
+		$tmp = tempnam(sys_get_temp_dir(), 'imgwiz');
 
 		// Bytes each Row in screen modes
 		$width = array(0,0,0,0,0,128,128,256,256,'A'=>256,'C'=>256);
@@ -807,7 +807,8 @@
 	function compress($tmp, $in, $pos, $sizeIn, $comp, $transparent=-1)
 	{
 		$data = substr($in, $pos, $sizeIn);
-		@unlink($tmp.'.'.$comp[COMP_EXT]);
+		$filename = $tmp.'.'.$comp[COMP_EXT];
+		@unlink($filename);
 		if ($comp[COMP_APP]=="raw") {
 			file_put_contents($tmp.".".$comp[COMP_EXT], $data);
 		} else
@@ -817,7 +818,7 @@
 			file_put_contents($tmp, $data);
 			exec($comp[COMP_APP]." $tmp", $out);
 		}
-		return filesize($tmp.'.'.$comp[COMP_EXT]);
+		return filesize($filename);
 	}
 
 	//=================================================================================
