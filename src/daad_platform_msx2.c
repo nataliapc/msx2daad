@@ -444,6 +444,7 @@ void printXMES(uint16_t address) __z88dk_fastcall
 
 uint8_t getColor(uint8_t col)
 {
+	col;
 	#if SCREEN == 6
 		col %= 4;
 		return col | (col << 2) | (col << 4) | (col << 6);
@@ -655,6 +656,7 @@ inline void gfxScrollUp()
  */
 inline void gfxSetPaperCol(uint8_t col)
 {
+	col;
 	#if SCREEN < 12
 		COLOR_PAPER = getColor(col);
 	#endif
@@ -670,6 +672,7 @@ inline void gfxSetPaperCol(uint8_t col)
  */
 inline void gfxSetInkCol(uint8_t col)
 {
+	col;
 	#if SCREEN < 12
 		COLOR_INK = getColor(col);
 	#endif
