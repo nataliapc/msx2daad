@@ -717,9 +717,10 @@
 		$transparent = getTransparentColorByte($transparent, $scr);
 
 		// Read file
-		if ($in===NULL)
+		if ($in===NULL) {
 			$in = @file_get_contents($file);
 			$in = substr($in, 7);
+		}
 		if ($in===FALSE) {
 			echo "File not found...\n";
 			exit;

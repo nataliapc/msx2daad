@@ -941,6 +941,7 @@ void do_PUTO()		// locno+
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = getValueOrIndirection();
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
+	checkEntry = true;
 }
 #endif
 
@@ -963,22 +964,17 @@ void do_PUTO()		// locno+
 #if !defined(DISABLE_PUTIN) || !defined(DISABLE_AUTOP)
 static void _internal_putin(uint8_t objno, uint8_t locno)
 {
-	Object *obj = objects + objno;
+	static Object *obj;
+	obj = objects + objno;
 	referencedObject(objno);					// TODO: check if must be referenced
 	if (obj->location==LOC_WORN) {
 		printSystemMsg(24);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location==flags[fPlayer]) {
 		printSystemMsg(49);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location!=flags[fPlayer] && obj->location!=LOC_CARRIED) {
 		printSystemMsg(28);
-		do_NEWTEXT();
-		do_DONE();
 	} else {
 		obj->location = locno;
 		if (flags[fNOCarr]) flags[fNOCarr]--;
@@ -987,13 +983,19 @@ static void _internal_putin(uint8_t objno, uint8_t locno)
 		printObjectMsgModif(flags[fO2Num], '_');
 		do_SPACE();
 		printSystemMsg(51);
+		checkEntry = true;
+		return;
 	}
+	do_NEWTEXT();
+	do_DONE();
 }
 #endif
 #ifndef DISABLE_PUTIN
 void do_PUTIN()		// objno locno
 {
-	_internal_putin(getValueOrIndirection(), *pPROC++);
+	static uint8_t objno;
+	objno = getValueOrIndirection();
+	_internal_putin(objno, *pPROC++);
 }
 #endif
 
@@ -1031,8 +1033,6 @@ static void _internal_takeout(uint8_t objno, uint8_t locno)
 	referencedObject(objno);					// TODO: check if must be referenced
 	if (obj->location==LOC_WORN || obj->location==LOC_CARRIED) {
 		printSystemMsg(25);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location==flags[fPlayer]) {
 		printSystemMsg(45);
@@ -1040,40 +1040,38 @@ static void _internal_takeout(uint8_t objno, uint8_t locno)
 		printObjectMsg(locno);
 		do_SPACE();
 		printSystemMsg(51);
-		do_NEWTEXT();
-		do_DONE();
 	} else
-	if (obj->location!=flags[fPlayer] || obj->location!=locno) {
+	if (obj->location!=flags[fPlayer] && obj->location!=locno) {
 		printSystemMsg(52);
 		do_SPACE();
 		printObjectMsg(locno);
 		do_SPACE();
 		printSystemMsg(51);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (obj->location!=LOC_WORN && obj->location!=LOC_CARRIED && 
 		getObjectWeight(NULLWORD, true)+getObjectWeight(objno, false) > flags[fStrength]) {
 		printSystemMsg(43);
-		do_NEWTEXT();
-		do_DONE();
 	} else
 	if (flags[fNOCarr] >= flags[fMaxCarr]) {
 		printSystemMsg(27);
-		do_NEWTEXT();
-		do_DONE();
 		currProc->condactDOALL = NULL;
 	} else {
 		printSystemMsg(36);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
+		checkEntry = true;
+		return;
 	}
+	do_NEWTEXT();
+	do_DONE();
 }
 #endif
 #ifndef DISABLE_TAKEOUT
 void do_TAKEOUT()	// objno locno
 {
-	_internal_takeout(getValueOrIndirection(), *pPROC++);
+	static uint8_t objno;
+	objno = getValueOrIndirection();
+	_internal_takeout(objno, *pPROC++);
 }
 #endif
 
@@ -1091,8 +1089,9 @@ void do_DROPALL()
 	do {
 		if (objects[i].location==LOC_CARRIED || objects[i].location==LOC_WORN)
 			objects[i].location = flags[fPlayer];
-	} while(i++ < sizeof(objects));
+	} while(i++ < ((DDB_Header*)ddb)->numObjDsc);
 	flags[fNOCarr] = 0;
+	checkEntry = true;
 }
 #endif
 
@@ -1308,6 +1307,7 @@ void do_COPYOO()	// objno1 objno2
 	uint8_t objno2 = *pPROC++;
 	objects[objno2].location = objects[objno1].location;
 	referencedObject(objno2);
+	checkEntry = true;
 }
 #endif
 

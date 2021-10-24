@@ -87,14 +87,14 @@ void errorCode(uint8_t code) {}
 void printChar(int c) __z88dk_fastcall {}
 //void checkPrintedLines(); {}
 void getSystemMsg(uint8_t num) __z88dk_fastcall {}
-void printSystemMsg(uint8_t num) __z88dk_fastcall { fake_lastSysMesPrinted = num; }
+void printSystemMsg(uint8_t num) __z88dk_fastcall { if (num!=51) fake_lastSysMesPrinted = num; }
 void printUserMsg(uint8_t num) __z88dk_fastcall {}
 void printLocationMsg(uint8_t num) __z88dk_fastcall {}
 void printObjectMsg(uint8_t num) __z88dk_fastcall {}
 void printObjectMsgModif(uint8_t num, char modif) {}
 uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location) {}
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn) { if (objno==NULLWORD) return 0; else return objects[objno].attribs.mask.weight; }
-void referencedObject(uint8_t objno) __z88dk_fastcall {}
+void referencedObject(uint8_t objno) __z88dk_fastcall { flags[fCONum] = objno; }
 
 //void transcript_flush();
 //void transcript_char(char c) __z88dk_fastcall;
@@ -1716,7 +1716,7 @@ void test_ISDONE_success()
 	//BDD then fails
 	ASSERT(checkEntry, ERROR);
 	//SUCCEED();
-	TODO("Simulate DONE");
+	TODO("Mock DONE");
 }
 
 void test_ISDONE_fails()
@@ -1733,7 +1733,7 @@ void test_ISDONE_fails()
 	//BDD then succes
 	ASSERT(!checkEntry, ERROR);
 	//SUCCEED();
-	TODO("Simulate NOTDONE");
+	TODO("Mock NOTDONE");
 }
 
 // =============================================================================
@@ -1919,7 +1919,7 @@ void test_QUIT_success()
 	//BDD then success
 	// ASSERT(!checkEntry, ERROR);
 	//SUCCEED();
-	TODO("Simulate user input");
+	TODO("Mock user input");
 }
 
 // =============================================================================
@@ -2387,8 +2387,8 @@ void test_CREATE_indirection()
 	flags[fNOCarr] = 1;
 	objects[1].location = LOC_NOTCREATED;
 
-	//BDD when checking CREATE 1
-	const char proc[] = { _CREATE, 1, 255 };
+	//BDD when checking CREATE @150
+	const char proc[] = { _CREATE|IND, 150, 255 };
 	do_action(proc, do_CREATE);
 
 	//BDD then success
@@ -2451,8 +2451,8 @@ void test_DESTROY_indirection()
 	flags[fNOCarr] = 1;
 	objects[1].location = LOC_NOTCREATED;
 
-	//BDD when checking CREATE 1
-	const char proc[] = { _DESTROY, 1, 255 };
+	//BDD when checking CREATE @150
+	const char proc[] = { _DESTROY|IND, 150, 255 };
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
@@ -2465,44 +2465,519 @@ void test_DESTROY_indirection()
 // =============================================================================
 // Tests SWAP
 
+void test_SWAP_success()
+{
+	beforeEach();
+
+	//BDD given an object 1 at loc1, and object 2 carried
+	flags[fNOCarr] = 1;
+	objects[1].location = 1;
+	objects[2].location = LOC_CARRIED;
+
+	//BDD when checking SWAP 1 2
+	const char proc[] = { _SWAP, 1, 2, 255 };
+	do_action(proc, do_SWAP);
+
+	//BDD then success
+	ASSERT(objects[1].location == LOC_CARRIED, "Object1 not swapped");
+	ASSERT(objects[2].location == 1, "Object2 not swapped");
+	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
+	ASSERT(flags[fCONum] == 2, "Current object is not object2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_SWAP_indirection()
+{
+	beforeEach();
+
+	//BDD given an object 1 at loc1, object 2 carried, and flag 150 with value 1
+	flags[150] = 1;
+	flags[fNOCarr] = 1;
+	objects[1].location = 1;
+	objects[2].location = 2;
+
+	//BDD when checking SWAP @150 2
+	const char proc[] = { _SWAP|IND, 150, 2, 255 };
+	do_action(proc, do_SWAP);
+
+	//BDD then success
+	ASSERT(objects[1].location == 2, "Object1 not swapped");
+	ASSERT(objects[2].location == 1, "Object2 not swapped");
+	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
+	ASSERT(flags[fCONum] == 2, "Current object is not object2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
 // =============================================================================
 // Tests PLACE
+
+void test_PLACE_success()
+{
+	beforeEach();
+
+	//BDD given an object 1 at loc 1
+	flags[fNOCarr] = 0;
+	objects[1].location = 1;
+
+	//BDD when checking PLACE 1 2
+	const char proc[] = { _PLACE, 1, LOC_CARRIED, 255 };
+	do_action(proc, do_PLACE);
+
+	//BDD then success
+	ASSERT(objects[1].location == LOC_CARRIED, "Object1 not carried");
+	ASSERT(flags[fNOCarr] == 1, "Carried objects number is not 1");
+	ASSERT(flags[fCONum] == 1, "Current object is not object1");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PLACE_indirection()
+{
+	beforeEach();
+
+	//BDD given a carried object 1, and flag 150 with value 1
+	flags[150] = 1;
+	flags[fNOCarr] = 1;
+	objects[1].location = LOC_CARRIED;
+
+	//BDD when checking PLACE @150 1
+	const char proc[] = { _PLACE|IND, 150, 1, 255 };
+	do_action(proc, do_PLACE);
+
+	//BDD then success
+	ASSERT(objects[1].location == 1, "Object1 not placed at 1");
+	ASSERT(flags[fNOCarr] == 0, "Carried objects number not changed");
+	ASSERT(flags[fCONum] == 1, "Current object is not object1");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
 // Tests PUTO
 
+void test_PUTO_success()
+{
+	beforeEach();
+
+	//BDD given an object 1 referenced
+	flags[fNOCarr] = 0;
+	flags[fCONum] = 1;
+	flags[fCOLoc] = 1;
+	objects[1].location = 1;
+
+	//BDD when checking PUTO LOC_CARRIED
+	const char proc[] = { _PUTO, LOC_CARRIED, 255 };
+	do_action(proc, do_PUTO);
+
+	//BDD then success
+	ASSERT(objects[1].location == LOC_CARRIED, "Object1 not carried");
+	ASSERT(flags[fNOCarr] == 1, "Carried objects number is not 1");
+	ASSERT(flags[fCONum] == 1, "Current object is not object1");
+	ASSERT(flags[fCOLoc] == 1, "Flag fCOLoc has changed");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PUTO_indirection()
+{
+	beforeEach();
+
+	//BDD given a carried object 1, and flag 150 with value 2
+	flags[150] = 2;
+	flags[fNOCarr] = 1;
+	flags[fCOLoc] = LOC_CARRIED;
+	objects[1].location = LOC_CARRIED;
+
+	//BDD when checking PUTO @150
+	const char proc[] = { _PUTO|IND, 150, 1, 255 };
+	do_action(proc, do_PUTO);
+
+	//BDD then success
+	ASSERT(objects[1].location == 2, "Object1 not placed at 2");
+	ASSERT(flags[fNOCarr] == 0, "Carried objects number not changed");
+	ASSERT(flags[fCONum] == 1, "Current object is not object1");
+	ASSERT(flags[fCOLoc] == LOC_CARRIED, "Flag fCOLoc has changed");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
 // =============================================================================
 // Tests PUTIN
+
+void test_PUTIN_worn()
+{
+	beforeEach();
+
+	//BDD given a worn object 1
+	objects[1].location = LOC_WORN;
+
+	//BDD when checking PUTIN 1 2
+	const char proc[] = { _PUTIN, 1, 2, 255 };
+	do_action(proc, do_PUTIN);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 24, "SystemMessage 24 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PUTIN_here()
+{
+	beforeEach();
+
+	//BDD given an object 1 here
+	flags[fPlayer] = 1;
+	objects[1].location = 1;
+
+	//BDD when checking PUTIN 1 2
+	const char proc[] = { _PUTIN, 1, 2, 255 };
+	do_action(proc, do_PUTIN);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 49, "SystemMessage 49 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PUTIN_notHere()
+{
+	beforeEach();
+
+	//BDD given an object 1 here
+	flags[fPlayer] = 1;
+	objects[1].location = 2;
+
+	//BDD when checking PUTIN 1 2
+	const char proc[] = { _PUTIN, 1, 2, 255 };
+	do_action(proc, do_PUTIN);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 28, "SystemMessage 28 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PUTIN_success()
+{
+	beforeEach();
+
+	//BDD given a carried object 1
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 1;
+	objects[1].location = LOC_CARRIED;
+
+	//BDD when checking PUTIN 1 2
+	const char proc[] = { _PUTIN, 1, 2, 255 };
+	do_action(proc, do_PUTIN);
+
+	//BDD then fails
+	ASSERT(objects[1].location == 2, "Object don't changed location");
+	ASSERT(flags[fNOCarr] == 0, "Object count number not decreased");
+	ASSERT(fake_lastSysMesPrinted == 44, "SystemMessage 44 not printed");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
 // Tests TAKEOUT
 
+void test_TAKEOUT_carried()
+{
+	beforeEach();
+
+	//BDD given a carried object 1
+	objects[1].location = LOC_CARRIED;
+
+	//BDD when checking TAKEOUT 1 3
+	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 25, "SystemMessage 25 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAKEOUT_worn()
+{
+	beforeEach();
+
+	//BDD given a worn object 1
+	objects[1].location = LOC_WORN;
+
+	//BDD when checking TAKEOUT 1 3
+	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 25, "SystemMessage 25 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAKEOUT_here()
+{
+	beforeEach();
+
+	//BDD given an object 1 that is here
+	flags[fPlayer] = 1;
+	objects[1].location = 1;
+
+	//BDD when checking TAKEOUT 1 3
+	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 45, "SystemMessage 45 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAKEOUT_notHere()
+{
+	beforeEach();
+
+	//BDD given an object 1 that is here, and not at loc 3
+	flags[fPlayer] = 1;
+	objects[1].location = 2;
+
+	//BDD when checking TAKEOUT 1 3
+	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 52, "SystemMessage 52 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAKEOUT_maxWeight()
+{
+	beforeEach();
+
+	//BDD given an object 1 at loc 3, and total weight of carried/worn objects + object 1 exceeds the maximum
+	flags[fPlayer] = 1;
+	flags[fStrength] = 1;
+	objects[1].location = 3;
+	objects[1].attribs.mask.weight = 7;
+
+	//BDD when checking TAKEOUT 1 3
+	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 43, "SystemMessage 43 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAKEOUT_maxObjs()
+{
+	beforeEach();
+
+	//BDD given an object 1 at loc 3, and total num of carried objects + object 1 exceeds the maximum
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 2;
+	flags[fMaxCarr] = 2;
+	objects[1].location = 3;
+
+	//BDD when checking TAKEOUT 1 3
+	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(fake_lastSysMesPrinted == 27, "SystemMessage 27 not printed");
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAKEOUT_success()
+{
+	beforeEach();
+
+	//BDD given an object 1 at loc 3, and total num of carried objects + object 1 exceeds the maximum
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 0;
+	flags[fMaxCarr] = 1;
+	objects[1].location = 3;
+
+	//BDD when checking TAKEOUT 1 3
+	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(objects[1].location == LOC_CARRIED, "Object not carried");
+	ASSERT(flags[fNOCarr] == 1, "Objects counter number not increased");
+	ASSERT(fake_lastSysMesPrinted == 36, "SystemMessage 36 not printed");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
 // =============================================================================
 // Tests DROPALL
+
+void test_DROPALL_success()
+{
+	beforeEach();
+
+	//BDD given 3 objects carried or worn
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 3;
+	objects[1].location = LOC_CARRIED;
+	objects[2].location = LOC_CARRIED;
+	objects[3].location = LOC_WORN;
+
+	//BDD when checking DROPALL
+	const char proc[] = { _DROPALL, 255 };
+	do_action(proc, do_DROPALL);
+
+	//BDD then success
+	ASSERT(objects[1].location == 1, "Object1 not here");
+	ASSERT(objects[2].location == 1, "Object2 not here");
+	ASSERT(objects[3].location == 1, "Object3 not here");
+	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
 // Tests AUTOG
 
+void test_AUTOG_carried()
+{
+	beforeEach();
+
+	//BDD given a carried object 1
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 1;
+	objects[1].location = LOC_CARRIED;
+
+	//BDD when checking AUTOG 1
+	const char proc[] = { _AUTOG, 1, 255 };
+	do_action(proc, do_AUTOG);
+
+	//BDD then fails
+//	ASSERT(objects[3].location == 1, "Object3 not here");
+//	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+//	ASSERT(checkEntry, ERROR);
+//	SUCCEED();
+	TODO("Must mock the noun/adjective table");
+}
+
+void test_AUTOG_worn()
+{
+	beforeEach();
+
+	//BDD given a carried object 1
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 1;
+	objects[1].location = LOC_WORN;
+
+	//BDD when checking AUTOG 1
+	const char proc[] = { _AUTOG, 1, 255 };
+	do_action(proc, do_AUTOG);
+
+	//BDD then fails
+//	ASSERT(objects[3].location == 1, "Object3 not here");
+//	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+//	ASSERT(checkEntry, ERROR);
+//	SUCCEED();
+	TODO("Must mock the noun/adjective table");
+}
+
+void test_AUTOG_success()
+{
+	beforeEach();
+
+	//BDD given a carried object 1
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 1;
+	objects[1].location = 1;
+
+	//BDD when checking AUTOG 1
+	const char proc[] = { _AUTOG, 1, 255 };
+	do_action(proc, do_AUTOG);
+
+	//BDD then fails
+//	ASSERT(objects[3].location == 1, "Object3 not here");
+//	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+//	ASSERT(checkEntry, ERROR);
+//	SUCCEED();
+	TODO("Must mock the noun/adjective table");
+}
+
 // =============================================================================
 // Tests AUTOD
+
+void test_AUTOD_success()
+{
+	TODO("Must mock the noun/adjective table");
+}
 
 // =============================================================================
 // Tests AUTOW
 
+void test_AUTOW_success()
+{
+	TODO("Must mock the noun/adjective table");
+}
+
 // =============================================================================
 // Tests AUTOR
+
+void test_AUTOR_success()
+{
+	TODO("Must mock the noun/adjective table");
+}
 
 // =============================================================================
 // Tests AUTOP
 
+void test_AUTOP_success()
+{
+	TODO("Must mock the noun/adjective table");
+}
+
 // =============================================================================
 // Tests AUTOT
+
+void test_AUTOT_success()
+{
+	TODO("Must mock the noun/adjective table");
+}
 
 // =============================================================================
 // Tests COPYOO
 
+void test_COPYOO_success()
+{
+	beforeEach();
+
+	//BDD given am object 1 at loc 2, and an object 2 at loc 4
+	objects[1].location = 2;
+	objects[2].location = 4;
+
+	//BDD when checking COPYOO 1 2
+	const char proc[] = { _COPYOO, 1, 2, 255 };
+	do_action(proc, do_COPYOO);
+
+	//BDD then fails
+	ASSERT(objects[1].location == 2, "Object1 changed");
+	ASSERT(objects[2].location == 2, "Object1 not changed");
+	ASSERT(flags[fCONum] == 2, "Current object not object2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
 // =============================================================================
 // Tests RESET
+
+void test_RESET_success()
+{
+	TODO("Must mock initObject()");
+}
 
 // =============================================================================
 // Actions for object in flags manipulation [5 condacts]
@@ -2633,8 +3108,24 @@ int main(char** argv, int argc)
 	test_GET_carried(); test_GET_worn(); test_GET_notHere(); test_GET_maxWeight(); test_GET_maxObjs(); test_GET_success();
 	test_DROP_success(); test_DROP_worn(); test_DROP_isHere(); test_DROP_notHere();
 	test_WEAR_isHere(); test_WEAR_worn(); test_WEAR_notCarried(); test_WEAR_notWareable(); test_WEAR_success();
-	test_REMOVE_carried(); test_REMOVE_isHere(); test_REMOVE_notHere(); test_REMOVE_notWareable(); test_REMOVE_maxObjs(); test_REMOVE_success();
+	test_REMOVE_carried(); test_REMOVE_isHere(); test_REMOVE_notHere(); test_REMOVE_notWareable(); test_REMOVE_maxObjs();
+		test_REMOVE_success();
 	test_CREATE_success(); test_CREATE_carried(); test_CREATE_indirection();
 	test_DESTROY_success(); test_DESTROY_carried(); test_DESTROY_indirection();
+	test_SWAP_success(); test_SWAP_indirection();
+	test_PLACE_success(); test_PLACE_indirection();
+	test_PUTO_success(); test_PUTO_indirection();
+	test_PUTIN_worn(); test_PUTIN_here(); test_PUTIN_notHere(); test_PUTIN_success();
+	test_TAKEOUT_carried(); test_TAKEOUT_worn(); test_TAKEOUT_here(); test_TAKEOUT_notHere(); test_TAKEOUT_maxWeight();
+		test_TAKEOUT_maxObjs(); test_TAKEOUT_success();
+	test_DROPALL_success();
+	test_AUTOG_carried(); test_AUTOG_worn(); test_AUTOG_success();
+	test_AUTOD_success();
+	test_AUTOW_success();
+	test_AUTOR_success();
+	test_AUTOP_success();
+	test_AUTOT_success();
+	test_COPYOO_success();
+	test_RESET_success();
 
 }
