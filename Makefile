@@ -5,16 +5,29 @@ AR = sdar
 CC = sdcc
 HEX2BIN = hex2bin
 
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	COL_RED = \e[1;31m
+	COL_YELLOW = \e[1;33m
+	COL_BLUE = \e[1;34m
+	COL_GRAY = \e[1;30m
+	COL_WHITE = \e[1;37m
+	COL_RESET = \e[0m
+endif
+
 ifndef VERSION
-	VERSION := 1.4
+	VERSION := 1.5rc1
 endif
 ifndef CXXFLAGS
 	CXXFLAGS := -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSXDOS1 -DMSX2
 endif
 LDFLAGS := -rc
-OPFLAGS := --opt-code-size --max-allocs-per-node 2000000
+OPFLAGS := --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
 CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
+
+MAKEFLAGS = --no-print-directory
+FULLOPT :=  --max-allocs-per-node 20000
 
 SRCDIR = src/
 SRCLIB = $(SRCDIR)libs/
@@ -39,43 +52,43 @@ all: $(PROGRAMS) bin/testdaad
 
 $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
-	@echo "#### ASM $@"
+	@echo "$(COL_BLUE)#### ASM $@$(COL_RESET)"
 	@$(DIR_GUARD)
 	@$(AS) -o $@ $^
 
 $(OBJDIR)%.rel: $(SRCDIR)%.c
-	@echo "#### CC $@"
+	@echo "$(COL_BLUE)#### CC $@$(COL_RESET)"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
 
 $(OBJDIR)%.c.rel: $(SRCLIB)%.c
-	@echo "#### CC $@"
+	@echo "$(COL_BLUE)#### CC $@$(COL_RESET)"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
 
 $(OBJDIR)%.s.rel: $(SRCLIB)%.s
-	@echo "#### ASM $@"
+	@echo "$(COL_BLUE)#### ASM $@$(COL_RESET)"
 	@$(DIR_GUARD)
 	@$(AS) -o $@ $^
 
 $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos_*))
-	@echo "######## Compiling $@"
+	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
 	@$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)vdp.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)vdp_*))
-	@echo "######## Compiling $@"
+	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
 	@$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)utils_*))
-	@echo "######## Compiling $@"
+	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
 	@$(AR) $(LDFLAGS) $@ $^
 
 
 msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
-	@echo "######## Compiling $@"
+	@echo "$(COL_YELLOW)######## Compiling $@$(COL_RESET)"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^)
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
@@ -91,35 +104,35 @@ clean:
 
 
 EN_SC5:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=5 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=5 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC6:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=6 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=6 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC7:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=7 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=7 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC8:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC10:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=10 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=10 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC12:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=12 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=12 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC5:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=5 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=5 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC6:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=6 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=6 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC7:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=7 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=7 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC8:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com"  _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com"  _package_single
 ES_SC10:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=10 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=10 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC12:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=12 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=12 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC8_TR:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DTRANSCRIPT -DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DTRANSCRIPT -DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION $(FULLOPT))" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC8_TR:
-	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DTRANSCRIPT -DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DTRANSCRIPT -DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 _package_single: msx2daad.com
-	@echo "####################### $(OUTFILE)"
+	@echo "$(COL_YELLOW)####################### $(OUTFILE)$(COL_RESET)"
 	@mkdir -p $(PKGDIR)
 	$(MAKE) clean
 	$(MAKE) msx2daad.com -j
@@ -141,7 +154,7 @@ test: all
 #		openmsx -machine Philips_NMS_8245 -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 #		openmsx -machine turbor -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 #		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
-		openmsx -machine msx2plus -ext ram1mb -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
+		openmsx -machine msx2plus -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 	; fi'
 
 

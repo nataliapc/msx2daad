@@ -186,10 +186,11 @@
 		$compress = "";
 		$transparent = -1;
 		if ($argc>4) {
-			if (is_numeric($argv[4]))
+			if (is_numeric($argv[4])) {
 				$transparent = intval($argv[4]);
-			else
+			} else {
 				$compress = strtoupper($argv[4]);
+			}
 		}
 		foreach ($compressors as $comp) {
 			if ($comp[COMP_NAME]==$compress) {
@@ -240,10 +241,11 @@
 				echo "ERROR: All files must be images and with same screen mode!\n\n";
 				exit;
 			}
-			if ($i==3)
+			if ($i==3) {
 				$magic = substr($in, 0, 4);
-			else
+			} else {
 				$in = substr($in, 4);
+			}
 			$out .= $in;
 		} while (++$i<$argc);
 		echo "### Saving file $argv[2]\n\n";
@@ -330,8 +332,8 @@
 			 "               Compression is forced to RLE.\n".
 			 " <target_loc>  Target location number to redirect to.\n".
 			 "                 ex: a 12 redirects to image 012.IMx\n".
-			 "\n";
-			 "Example: $appname c image.sc8 96 rle\n";
+			 "\n".
+			 "Example: $appname c image.sc8 96 rle\n".
 			 "\n";
 		exit(1);
 	}
@@ -433,8 +435,9 @@
 			$pos += $size;
 			$id++;
 		}
-		if ($removeId>=$id)
+		if ($removeId>=$id) {
 			echo "!!!WARNING: CHUNK $id NOT FOUND!!!\n";
+		}
 		if ($type != CHUNK_REDIRECT && $removeId===FALSE) {
 			$compSize = $totalRaw==0 ? 0 : $totalComp/$totalRaw*100;
 			echo "### Original size:   $totalRaw bytes\n";
@@ -450,8 +453,8 @@
 		$out = "";
 		if ($pal===NULL) {
 			$filePalette = substr($file, 0, strlen($file)-3)."PL".$scr;
-			if (!file_exists($filePalette)) $filePalette = substr($file, 0, strlen($file)-3)."PAL";
-			if (!file_exists($filePalette)) $filePalette = "";
+			if (!file_exists($filePalette)) { $filePalette = substr($file, 0, strlen($file)-3)."PAL"; }
+			if (!file_exists($filePalette)) { $filePalette = ""; }
 			if (!file_exists($filePalette)) {
 				if ($scr=="5" || $scr=="6") {
 					if (strlen($fileIn) >= 0x7680+32) {
@@ -470,13 +473,14 @@
 		if ($pal!==NULL || $filePalette!="") {	// Add palette chunk
 			echo "### Adding image palette from file '$filePalette'\n".
 			     "    #CHUNK  1 RGB333 Palette 32 bytes\n";
-			if ($pal===NULL)
+			if ($pal===NULL) {
 				$pal = file_get_contents($filePalette);
-
-			if (strlen($pal)==89)
+			}
+			if (strlen($pal)==89) {
 				$pal = convertPalette89($pal);
-			elseif (strlen($pal)!=32)
+			} elseif (strlen($pal)!=32) {
 				die("\nERROR: Unknown Palette format!\n\n");
+			}
 
 			if ($paper!==NULL) {
 				$aux0 = $pal[0];
@@ -516,8 +520,8 @@
 	function checkPalettedColors($in, $scr)
 	{
 		$bpp = 4;					//Bits per pixel
-		if ($scr==6) $bpp = 2;
-		if ($scr==8) $bpp = 8;
+		if ($scr==6) { $bpp = 2; }
+		if ($scr==8) { $bpp = 8; }
 		$ppb = 8/$bpp;				//Pixels x Byte
 		$mask = pow(2, $bpp)-1;
 
@@ -589,7 +593,9 @@
 	function firstUnusedColor($colors)
 	{
 		for ($i=1; $i<count($colors)-1; $i++) {
-			if ($colors[$i]==0) return $i;
+			if ($colors[$i]==0) {
+				return $i;
+			}
 		}
 		return FALSE;
 	}
@@ -597,9 +603,16 @@
 	//=================================================================================
 	function getTransparentColorByte($transparent, $scr)
 	{
-		if ($transparent<0) return $transparent;
-		if ($scr==5 || $scr==7) $transparent = $transparent&0x0f | (($transparent&0x0f)<<4);
-		if ($scr==6) { $transparent = $transparent&0x03; $transparent = $transparent | ($transparent<<2) | ($transparent<<4) | ($transparent<<6); }
+		if ($transparent<0) {
+			return $transparent;
+		}
+		if ($scr==5 || $scr==7) {
+			$transparent = $transparent&0x0f | (($transparent&0x0f)<<4);
+		}
+		if ($scr==6) {
+			$transparent = $transparent&0x03;
+			$transparent = $transparent | ($transparent<<2) | ($transparent<<4) | ($transparent<<6);
+		}
 		if ($scr=='C') {
 			echo "SCREEN 12 images can't support transparency at this time...\n";
 			exit;
