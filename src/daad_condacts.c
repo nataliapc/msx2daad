@@ -2025,7 +2025,7 @@ void do_RAMLOAD()	// flagno
 {
 	uint8_t flagno = getValueOrIndirection();
 
-	memcpy(flags, ramsave, flagno);
+	memcpy(flags, ramsave, flagno+1);
 	for (int i=0; i<256; i++)
 		objects[i].location = *(ramsave+256+i);
 }
