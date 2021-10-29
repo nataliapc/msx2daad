@@ -3344,15 +3344,15 @@ void test_COPYFO_success()
 	beforeEach();
 
 	//BDD given a worn object 1, and an empty flag 200
-	flags[200] = 0;
-	objects[1].location = LOC_WORN;
+	flags[200] = LOC_WORN;
+	objects[1].location = LOC_NOTCREATED;
 
 	//BDD when checking COPYFO 200 1
 	static const char proc[] = { _COPYFO, 200, 1, 255 };
 	do_action(proc, do_COPYFO);
 
 	//BDD then success
-	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT(objects[1].location == LOC_WORN, "Flag 200 don't have the object location");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3363,15 +3363,15 @@ void test_COPYFO_indirection()
 
 	//BDD given a worn object 1, a flag 75 with value 1, and an empty flag 200
 	flags[75] = 200;
-	flags[200] = 0;
-	objects[1].location = LOC_WORN;
+	flags[200] = LOC_WORN;
+	objects[1].location = LOC_NOTCREATED;
 
 	//BDD when checking COPYFO @75 1
 	static const char proc[] = { _COPYFO|IND, 75, 1, 255 };
 	do_action(proc, do_COPYFO);
 
 	//BDD then success
-	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT(objects[1].location == LOC_WORN, "Flag 200 don't have the object location");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }

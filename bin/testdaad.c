@@ -185,6 +185,7 @@ void parent(int toChild[2], int toParent[2], int pid)
 
 		if (*output) {
 			while (*checkText=='#') {
+				printf("%lu: %s\n", line, checkText);
 				checkText = nextSentence(checkText);
 			}
 			if (*checkText=='@') {

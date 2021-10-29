@@ -1283,8 +1283,10 @@ void do_AUTOT()		// locno
 #ifndef DISABLE_COPYOO
 void do_COPYOO()	// objno1 objno2
 {
-	uint8_t objno1 = getValueOrIndirection();
-	uint8_t objno2 = *pPROC++;
+	static uint8_t objno1;
+	static uint8_t objno2;
+	objno1 = getValueOrIndirection();
+	objno2 = *pPROC++;
 	objects[objno2].location = objects[objno1].location;
 	referencedObject(objno2);
 }
@@ -1311,7 +1313,8 @@ void do_RESET() {
 #ifndef DISABLE_COPYOF
 void do_COPYOF()	// objno flagno
 {
-	Object *obj = objects + getValueOrIndirection();
+	static Object *obj;
+	obj = objects + getValueOrIndirection();
 	flags[*pPROC++] = obj->location;
 }
 #endif
@@ -1325,8 +1328,10 @@ void do_COPYOF()	// objno flagno
 #ifndef DISABLE_COPYFO
 void do_COPYFO()	// flagno objno
 {
-	//TODO runtime error when flag value is 255
-	flags[getValueOrIndirection()] = (objects + *pPROC++)->location;
+	static uint8_t flagValue;
+	flagValue = flags[getValueOrIndirection()];
+	(objects + *pPROC++)->location = flagValue;
+	if (flagValue == 255) errorCode(2);
 }
 #endif
 
@@ -1342,7 +1347,8 @@ void do_COPYFO()	// flagno objno
 #ifndef DISABLE_WHATO
 void do_WHATO()
 {
-	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
+	static uint8_t objno;
+	objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno==NULLWORD) objno = getObjectId(flags[fNoun1], flags[fAdject1], LOC_HERE);
 	referencedObject(objno);
 }
@@ -1596,7 +1602,7 @@ void do_MODE() {	// option
 #ifndef DISABLE_INPUT
 void do_INPUT() {	// stream option
 	//TODO: INPUT not implemented yet
-	do_NOT_USED();
+	flags[fInStream] = getValueOrIndirection();
 }
 #endif
 
