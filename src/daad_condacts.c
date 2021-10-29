@@ -11,22 +11,15 @@
 #include "daad.h"
 #include "daad_condacts.h"
 
-
-#define pPROC 		currProc->condact
-
+#define pPROC 		(currProc->condact)
+#define checkEntry  (currProc->continueEntry)
 
 extern PROCstack procStack[NUM_PROCS];	// Stack of calls using PROCESS condact.
 extern PROCstack *currProc;				// Pointer to current active condact.
 
 extern bool indirection;				// True if the current condact use indirection for the first argument.
-extern bool checkEntry;					// Boolean to check if a Process entry must continue or a condition fails.
-extern bool isDone, lastIsDone;			// Variables for ISDONE/ISNOTDONE condacts.
+extern bool isDone;						// Variable for ISDONE/ISNOTDONE condacts.
 extern bool lastPicShow;				// True if last location picture was drawed.
-
-#ifdef UNIT_TESTS
-	#undef pPROC
-	extern char *pPROC;
-#endif
 
 
 static const CONDACT_LIST condactList[] = {
@@ -119,7 +112,6 @@ void pushPROC(uint8_t proc) __z88dk_fastcall
 	currProc->entry = currProc->entryIni - 1;
 	currProc->condactDOALL = NULL;
 
-	lastIsDone = false;
 	isDone = false;
 	checkEntry = false;
 }
@@ -137,8 +129,6 @@ bool popPROC()
 //cputs("popPROC()\n");
 #endif
 	_popPROC();
-	lastIsDone = isDone;
-	isDone = false;
 	return (currProc >= procStack);	//Any PROCs in the stack?
 }
 
@@ -180,33 +170,37 @@ void processPROC()
 	static CondactStruct *currCondact;
 	static uint8_t temp;
 
-	//Clear ISDONE flags
-	checkEntry = isDone = lastIsDone = false;
+	//Initialize & Clear ISDONE flags
+	checkEntry = isDone = false;
 
 	for (;;) {
 		//Execute condacts until 0xff (entry end) is found
 		while (checkEntry && (temp=*pPROC)!=0xff) {
 			currCondact = (CondactStruct*)pPROC++;
 			indirection = currCondact->indirection;
-#ifdef VERBOSE
-cprintf("     [%p][%u] %s ",(char*)(pPROC-1)-ddb, *((uint8_t*)currCondact), CONDACTS[currCondact->condact].name);
-if (CONDACTS[currCondact->condact].args>=1) {
- if (indirection) cputs("@");
- cprintf("%u", *(pPROC));
-}
-if (CONDACTS[currCondact->condact].args>=2) cprintf(" %u", *(pPROC+1));
-/*********************************/cprintf(" [isDone:%d last:%d]",isDone,lastIsDone);
-cputs("\n");
-#endif
+//#ifdef VERBOSE
+//cprintf("     [%u][%u] %s ",(char*)(pPROC-1)-ddb, *((uint8_t*)currCondact), CONDACTS[currCondact->condact].name);
+//if (CONDACTS[currCondact->condact].args>=1) {
+// if (indirection) cprintf("@");
+// cprintf("%u", *(pPROC));
+//}
+//if (CONDACTS[currCondact->condact].args>=2) cprintf(" %u", *(pPROC+1));
+///*********************************/cprintf(" [isDone:%d last:%d]",isDone,lastIsDone);
+//cputs("\n");
+//#endif
 			condactList[currCondact->condact].function();
 			isDone |= condactList[currCondact->condact].flag;
 		}
+
+		//Search the first entry that complain VERB + NOUN
 		do {
 			currProc->entry++;
 			if (currProc->entry->verb==0) {
+				//Entry end
 				_popPROC();
 				break;
 			} else {
+				//Next entry
 				currProc->condactIni = getPROCEntryCondacts();
 				currProc->condact = currProc->condactIni;
 			}
@@ -215,11 +209,9 @@ cputs("\n");
 //#endif
 		} while (!((currProc->entry->verb==NULLWORD || currProc->entry->verb==flags[fVerb]) &&
 				 (currProc->entry->noun==NULLWORD || currProc->entry->noun==flags[fNoun1])));
-#ifdef VERBOSE
-cputs("  ======================> VERB+NOUN OK\n");
-#endif
-		lastIsDone = isDone;	//Fixed issue#13 ????
-		isDone = false;
+//#ifdef VERBOSE
+//cputs("  ======================> VERB+NOUN OK\n");
+//#endif
 		checkEntry = true;
 	}
 }
@@ -568,7 +560,7 @@ void do_CHANCE()	// percent
 #ifndef DISABLE_ISDONE
 void do_ISDONE()
 {
-	checkEntry = lastIsDone;
+	checkEntry = isDone;
 }
 #endif
 
@@ -579,7 +571,7 @@ void do_ISDONE()
 #ifndef DISABLE_ISNDONE
 void do_ISNDONE()
 {
-	checkEntry = !lastIsDone;
+	checkEntry = !isDone;
 }
 #endif
 
@@ -697,7 +689,6 @@ static void _internal_get(uint8_t objno)
 		printSystemMsg(36);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
-		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -734,7 +725,6 @@ static void _internal_drop(uint8_t objno)
 		printSystemMsg(39);
 		obj->location = flags[fPlayer];
 		if (flags[fNOCarr]) flags[fNOCarr]--;
-		checkEntry = true;
 		return;
 	} else
 	if (obj->location==LOC_WORN) {
@@ -794,7 +784,6 @@ static void _internal_wear(uint8_t objno)
 		printSystemMsg(37);
 		obj->location = LOC_WORN;
 		if (flags[fNOCarr]) flags[fNOCarr]--;
-		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -846,7 +835,6 @@ static void _internal_remove(uint8_t objno)
 		printSystemMsg(38);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
-		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -872,7 +860,6 @@ void do_CREATE()	// objno
 	referencedObject(objno);
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = flags[fPlayer];
-	checkEntry = true;
 }
 #endif
 
@@ -888,7 +875,6 @@ void do_DESTROY()	// objno
 	referencedObject(objno);
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = LOC_NOTCREATED;
-	checkEntry = true;
 }
 #endif
 
@@ -906,7 +892,6 @@ void do_SWAP()		// objno1 objno2
 	obj1->location = obj2->location;
 	obj2->location = aux;
 	referencedObject(objno2);
-	checkEntry = true;
 }
 #endif
 
@@ -924,7 +909,6 @@ void do_PLACE()		// objno locno+
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = *pPROC++;
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
-	checkEntry = true;
 }
 #endif
 
@@ -941,7 +925,6 @@ void do_PUTO()		// locno+
 	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
 	obj->location = getValueOrIndirection();
 	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
-	checkEntry = true;
 }
 #endif
 
@@ -983,7 +966,6 @@ static void _internal_putin(uint8_t objno, uint8_t locno)
 		printObjectMsgModif(flags[fO2Num], '_');
 		do_SPACE();
 		printSystemMsg(51);
-		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -1059,7 +1041,6 @@ static void _internal_takeout(uint8_t objno, uint8_t locno)
 		printSystemMsg(36);
 		obj->location = LOC_CARRIED;
 		flags[fNOCarr]++;
-		checkEntry = true;
 		return;
 	}
 	do_NEWTEXT();
@@ -1091,7 +1072,6 @@ void do_DROPALL()
 			objects[i].location = flags[fPlayer];
 	} while(i++ < ((DDB_Header*)ddb)->numObjDsc);
 	flags[fNOCarr] = 0;
-	checkEntry = true;
 }
 #endif
 
@@ -1307,7 +1287,6 @@ void do_COPYOO()	// objno1 objno2
 	uint8_t objno2 = *pPROC++;
 	objects[objno2].location = objects[objno1].location;
 	referencedObject(objno2);
-	checkEntry = true;
 }
 #endif
 
@@ -1346,6 +1325,7 @@ void do_COPYOF()	// objno flagno
 #ifndef DISABLE_COPYFO
 void do_COPYFO()	// flagno objno
 {
+	//TODO runtime error when flag value is 255
 	flags[getValueOrIndirection()] = (objects + *pPROC++)->location;
 }
 #endif
@@ -2073,13 +2053,14 @@ void do_PAUSE()		// value
 		1 - Parse any string (phrase enclosed in quotes [""]) that was contained 
 		    in the last LS extracted. */
 #ifndef DISABLE_PARSE
-void do_PARSE()
+void do_PARSE()		// n
 {
 	if (getValueOrIndirection()==0) {	// PARSE 0
 		checkEntry = !getLogicalSentence();
 	} else {							// PARSE 1
 		checkEntry = !useLiteralSentence();
 	}
+	isDone = false;
 }
 #endif
 
@@ -2194,7 +2175,6 @@ static void _internal_doall() {
 	currProc->entry = currProc->entryDOALL;
 }
 void do_DOALL() {	// locno+
-
 	if (currProc->condactDOALL) errorCode(4);
 	currProc->condactDOALL = ++pPROC;
 	currProc->entryDOALL = currProc->entry;
@@ -2286,6 +2266,7 @@ void do_EXIT()		// value
 
 // =============================================================================
 // Actions for exit tables [3 condacts]
+// =============================================================================
 
 /*	This action jumps to the end of the process table and flags to DAAD that an 
 	action has been carried out. i.e. no more condacts or entries are considered. 
@@ -2498,7 +2479,7 @@ void do_DISPLAY()	// value
 #endif
 
 // =============================================================================
-// Actions miscellaneous [1 condacts]
+// Actions miscellaneous [2 condacts]
 // =============================================================================
 
 /*	This action in preparation for the hypercard system implements skeleton 

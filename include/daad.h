@@ -126,6 +126,7 @@ typedef struct {
 	char      *condact;			// Current condact in current entry
 	PROCentry *entryDOALL;		// Entry where is located the DOALL
 	char      *condactDOALL;	// Next condact to the DOALL (NULL if not in a loop)
+	bool       continueEntry;	// Boolean to check if a Process entry must continue or a condition fails.
 } PROCstack;
 
 // Condact struct
