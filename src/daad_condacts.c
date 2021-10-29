@@ -620,9 +620,9 @@ void do_HASNAT()	// value
 #ifndef DISABLE_INKEY
 void do_INKEY()
 {
-	if (checkKeyboardBuffer()) {
+	checkEntry = checkKeyboardBuffer();
+	if (checkEntry) {
 		flags[fKey1] = getKeyInBuffer();
-		checkEntry = true;
 	}
 }
 #endif
