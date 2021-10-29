@@ -9,7 +9,8 @@
 #ifndef __DAAD_CONDACTS_H__
 #define __DAAD_CONDACTS_H__
 
-#define NUM_PROCS	10
+#define NUM_PROCS		10
+#define NO_LASTPICTURE	256
 
 // Condact functions definitions
 void do_AT();

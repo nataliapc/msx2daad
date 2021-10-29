@@ -1655,7 +1655,7 @@ void do_WINAT()		// line col
 	cw->winX = *pPROC++;
 	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
-	cw->lastPicLocation = 256;
+	cw->lastPicLocation = NO_LASTPICTURE;
 	lastPicShow = false;
 	printedLines = 0;
 }
@@ -1672,7 +1672,7 @@ void do_WINSIZE()	// height width
 	cw->winW = *pPROC++;
 	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
-	cw->lastPicLocation = 256;
+	cw->lastPicLocation = NO_LASTPICTURE;
 	lastPicShow = false;
 	printedLines = 0;
 }
@@ -1697,7 +1697,7 @@ void do_CLS()
 {
 	gfxClearWindow();
 	cw->cursorX = cw->cursorY = 0;
-	cw->lastPicLocation = 256;
+	cw->lastPicLocation = NO_LASTPICTURE;
 	lastPicShow = false;
 	printedLines = 0;
 }

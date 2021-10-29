@@ -812,7 +812,7 @@ inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blu
  * @param location	DAAD location number.
  * @return			none.
  */
-bool gfxPicturePrepare(uint8_t location) __z88dk_fastcall
+bool gfxPicturePrepare(uint8_t location)
 {
 	char *pic = FILE_IMG;
 	

@@ -74,7 +74,7 @@ inline void gfxPutChWindow(uint8_t c);
 static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy);
 inline void gfxPutInputEcho(char c, bool keepPos);
 inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
-bool gfxPicturePrepare(uint8_t location) __z88dk_fastcall;
+bool gfxPicturePrepare(uint8_t location);
 inline bool gfxPictureShow();
 inline void gfxRoutines(uint8_t routine, uint8_t value);
 
