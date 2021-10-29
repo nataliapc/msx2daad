@@ -13,7 +13,7 @@ void child(int toChild[2], int toParent[2]);
 char   *checkText;
 size_t line = 1;
 int    fdIn, fdOut;
-char   output[768], sentence[256];
+char   output[3000], sentence[256];
 
 int main(int argc, char **argv)
 {
@@ -185,6 +185,12 @@ void parent(int toChild[2], int toParent[2], int pid)
 
 		if (*output) {
 			while (*checkText=='#') {
+				checkText = nextSentence(checkText);
+			}
+			if (*checkText=='@') {
+				unsigned long wait = atol(checkText+1);
+				printf("%lu: Waiting %lu msec\n", line, wait);
+				usleep(wait * 1000L);
 				checkText = nextSentence(checkText);
 			}
 			if (*checkText=='<') {

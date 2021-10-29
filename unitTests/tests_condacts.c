@@ -6,8 +6,13 @@
 #include "daad_platform_api.h"
 #include "daad_condacts.h"
 
+#define pPROC 		currProc->condact
+#define checkEntry  currProc->continueEntry
 
 #define IND		128
+
+
+const char ERROR[] = "Error with checkEntry";
 
 uint8_t fake_keyPressed;
 int16_t fake_lastSysMesPrinted;
@@ -19,8 +24,8 @@ PROCstack procStack[NUM_PROCS];		// Stack of calls using PROCESS condact.
 PROCstack *currProc;				// Pointer to current active condact.
 
 bool indirection;					// True if the current condact use indirection for the first argument.
-bool checkEntry;					// Boolean to check if a Process entry must continue or a condition fails.
-bool isDone, lastIsDone;			// Variables for ISDONE/ISNDONE condacts.
+//bool checkEntry;					// Boolean to check if a Process entry must continue or a condition fails.
+bool isDone;						// Variables for ISDONE/ISNDONE condacts.
 bool lastPicShow;					// True if last location picture was drawed.
 
 
@@ -29,8 +34,6 @@ DDB_Header *hdr;						// Struct pointer to DDB Header
 Object     *objects;					// Memory allocation for objects data
 uint8_t     flags[256];					// DAAD flags (256 bytes)
 char       *ramsave;					// Memory to store ram save (RAMSAVE)
-
-char *pPROC;
 
 //static const uint8_t nullObjFake[] = { 0, 0, 0, 0, 0, 0 };
 //static const Object  *nullObject;
@@ -94,7 +97,7 @@ void printObjectMsg(uint8_t num) __z88dk_fastcall {}
 void printObjectMsgModif(uint8_t num, char modif) {}
 uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location) {}
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn) { if (objno==NULLWORD) return 0; else return objects[objno].attribs.mask.weight; }
-void referencedObject(uint8_t objno) __z88dk_fastcall { flags[fCONum] = objno; }
+void referencedObject(uint8_t objno) __z88dk_fastcall { flags[fCONum] = objno; flags[fCOLoc] = objects[objno].location; }
 
 //void transcript_flush();
 //void transcript_char(char c) __z88dk_fastcall;
@@ -149,40 +152,46 @@ inline void gfxSetBorderCol(uint8_t col) {}
 //static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy);
 //inline void gfxPutInputEcho(char c, bool keepPos);
 //inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
-bool gfxPicturePrepare(uint8_t location) __z88dk_fastcall {}
+bool gfxPicturePrepare(uint8_t location) {}
 inline bool gfxPictureShow() {}
 inline void gfxRoutines(uint8_t routine, uint8_t value) {}
 
 // SFX functions
-//void sfxInit();
+void sfxInit() {}
 void sfxWriteRegister(uint8_t reg, uint8_t value) {}
 void sfxTone(uint8_t value1, uint8_t value2) {}
 
 
 
 
-#define ERROR 			"ERROR"
-
-void beforeAll()
+static void beforeAll()
 {
-	objects = NULL;
+	sfxInit();
+	objects = malloc(sizeof(Object) * 10);
+	windows = malloc(sizeof(Window) * WINDOWS_NUM);
+	currProc = malloc(sizeof(PROCstack));
+
 }
 
-void beforeEach()
+static void beforeEach()
 {
 	initFlags();
 	initializePROC();
 	pushPROC(0);
 	
-	checkEntry = isDone = lastIsDone = false;
+	checkEntry = true;
+	isDone = false;
 
-	if (objects == NULL) objects = malloc(sizeof(Object) * 10);
 	memset(objects, 0, sizeof(Object) * 10);
+	memset(windows, 0, sizeof(Window) * WINDOWS_NUM);
+
+	cw = windows;
+
 	fake_keyPressed = 0;
 	fake_lastSysMesPrinted = -1;
 }
 
-void do_action(char *pProc, void (* const function)())
+static void do_action(char *pProc, void (* const function)())
 {
 	pPROC = pProc + 1;
 	indirection = *pProc & IND;
@@ -195,7 +204,8 @@ void do_action(char *pProc, void (* const function)())
 // =============================================================================
 
 // =============================================================================
-// Tests AT
+// Tests AT <locno>
+/*	Succeeds if the current location is the same as locno. */
 
 void test_AT_success()
 {
@@ -205,7 +215,7 @@ void test_AT_success()
 	flags[fPlayer] = 5;
 
 	//BDD when check it with AT 5
-	const char proc[] = { _AT, 5, 255 };
+	static const char proc[] = { _AT, 5, 255 };
 	do_action(proc, do_AT);
 
 	//BDD then success
@@ -221,7 +231,7 @@ void test_AT_fails()
 	flags[fPlayer] = 21;
 
 	//BDD when check it with AT 5
-	const char proc[] = { _AT, 5, 255 };
+	static const char proc[] = { _AT, 5, 255 };
 	do_action(proc, do_AT);
 	
 	//BDD then fails
@@ -237,8 +247,8 @@ void test_AT_indirection()
 	flags[fPlayer] = 5;
 	flags[150] = 5;
 
-	//BDD when check it with AT [150]
-	const char proc[] = { _AT|IND, 150, 255 };
+	//BDD when check it with AT @150
+	static const char proc[] = { _AT|IND, 150, 255 };
 	do_action(proc, do_AT);
 	
 	//BDD then success
@@ -247,7 +257,8 @@ void test_AT_indirection()
 }
 
 // =============================================================================
-// Tests NOTAT
+// Tests NOTAT <locno>
+/*	Succeeds if the current location is different to locno. */
 
 void test_NOTAT_success()
 {
@@ -289,8 +300,8 @@ void test_NOTAT_indirection()
 	flags[fPlayer] = 5;
 	flags[150] = 11;
 
-	//BDD when check it with NOTAT [150]
-	const char proc[] = { _NOTAT|IND, 150, 255 };
+	//BDD when check it with NOTAT @150
+	static const char proc[] = { _NOTAT|IND, 150, 255 };
 	do_action(proc, do_NOTAT);
 	
 	//BDD then success
@@ -299,7 +310,8 @@ void test_NOTAT_indirection()
 }
 
 // =============================================================================
-// Tests ATGT
+// Tests ATGT <locno>
+/*	Succeeds if the current location is greater than locno. */
 
 void test_ATGT_success()
 {
@@ -309,7 +321,7 @@ void test_ATGT_success()
 	flags[fPlayer] = 5;
 
 	//BDD when check it with ATGT 2
-	const char proc[] = { _ATGT, 2, 255 };
+	static const char proc[] = { _ATGT, 2, 255 };
 	do_action(proc, do_ATGT);
 
 	//BDD then success
@@ -325,7 +337,7 @@ void test_ATGT_fails()
 	flags[fPlayer] = 5;
 
 	//BDD when check it with ATGT 5
-	const char proc[] = { _ATGT, 5, 255 };
+	static const char proc[] = { _ATGT, 5, 255 };
 	do_action(proc, do_ATGT);
 	
 	//BDD then fails
@@ -341,8 +353,8 @@ void test_ATGT_indirection()
 	flags[fPlayer] = 5;
 	flags[150] = 2;
 
-	//BDD when check it with ATGT [150]
-	const char proc[] = { _ATGT|IND, 150, 255 };
+	//BDD when check it with ATGT @150
+	static const char proc[] = { _ATGT|IND, 150, 255 };
 	do_action(proc, do_ATGT);
 	
 	//BDD then success
@@ -351,7 +363,8 @@ void test_ATGT_indirection()
 }
 
 // =============================================================================
-// Tests ATLT
+// Tests ATLT <locno>
+/*	Succeeds if the current location is less than locno. */
 
 void test_ATLT_success()
 {
@@ -361,7 +374,7 @@ void test_ATLT_success()
 	flags[fPlayer] = 5;
 
 	//BDD when check it with ATLT 12
-	const char proc[] = { _ATLT, 12, 255 };
+	static const char proc[] = { _ATLT, 12, 255 };
 	do_action(proc, do_ATLT);
 
 	//BDD then success
@@ -377,7 +390,7 @@ void test_ATLT_fails()
 	flags[fPlayer] = 5;
 
 	//BDD when check it with ATLT 2
-	const char proc[] = { _ATLT, 2, 255 };
+	static const char proc[] = { _ATLT, 2, 255 };
 	do_action(proc, do_ATLT);
 	
 	//BDD then fails
@@ -393,8 +406,8 @@ void test_ATLT_indirection()
 	flags[fPlayer] = 5;
 	flags[150] = 12;
 
-	//BDD when check it with ATLT [150]
-	const char proc[] = { _ATLT|IND, 150, 255 };
+	//BDD when check it with ATLT @150
+	static const char proc[] = { _ATLT|IND, 150, 255 };
 	do_action(proc, do_ATLT);
 	
 	//BDD then success
@@ -407,7 +420,9 @@ void test_ATLT_indirection()
 // =============================================================================
 
 // =============================================================================
-// Tests PRESENT
+// Tests PRESENT <objno>
+/*	Succeeds if Object objno. is carried (254), worn (253) or at the current 
+	location [fPlayer]. */
 
 void test_PRESENT_success()
 {
@@ -418,7 +433,7 @@ void test_PRESENT_success()
 	objects[1].location = 5;
 
 	//BDD when checking PRESENT 1
-	const char proc[] = { _PRESENT, 1, 255 };
+	static const char proc[] = { _PRESENT, 1, 255 };
 	do_action(proc, do_PRESENT);
 
 	//BDD then success
@@ -435,7 +450,7 @@ void test_PRESENT_fails()
 	objects[1].location = 2;
 
 	//BDD when checking PRESENT 1
-	const char proc[] = { _PRESENT, 1, 255 };
+	static const char proc[] = { _PRESENT, 1, 255 };
 	do_action(proc, do_PRESENT);
 	
 	//BDD then fails
@@ -452,8 +467,8 @@ void test_PRESENT_indirection()
 	flags[150] = 1;
 	objects[1].location = LOC_HERE;
 
-	//BDD when checking PRESENT [150]
-	const char proc[] = { _PRESENT|IND, 150, 255 };
+	//BDD when checking PRESENT @150
+	static const char proc[] = { _PRESENT|IND, 150, 255 };
 	do_action(proc, do_PRESENT);
 	
 	//BDD then success
@@ -462,7 +477,9 @@ void test_PRESENT_indirection()
 }
 
 // =============================================================================
-// Tests ABSENT
+// Tests ABSENT <objno>
+/*	Succeeds if Object objno. is not carried (254), not worn (253) and not at 
+	the current location [fPlayer]. */
 
 void test_ABSENT_success()
 {
@@ -473,7 +490,7 @@ void test_ABSENT_success()
 	objects[1].location = 2;
 
 	//BDD when checking ABSENT 1
-	const char proc[] = { _ABSENT, 1, 255 };
+	static const char proc[] = { _ABSENT, 1, 255 };
 	do_action(proc, do_ABSENT);
 	
 	//BDD then success
@@ -490,7 +507,7 @@ void test_ABSENT_fails()
 	objects[1].location = 5;
 
 	//BDD when checking ABSENT 1
-	const char proc[] = { _ABSENT, 1, 255 };
+	static const char proc[] = { _ABSENT, 1, 255 };
 	do_action(proc, do_ABSENT);
 
 	//BDD then fails
@@ -507,8 +524,8 @@ void test_ABSENT_indirection()
 	flags[150] = 1;
 	objects[1].location = 2;
 
-	//BDD when checking ABSENT [150]
-	const char proc[] = { _ABSENT|IND, 150, 255 };
+	//BDD when checking ABSENT @150
+	static const char proc[] = { _ABSENT|IND, 150, 255 };
 	do_action(proc, do_ABSENT);
 	
 	//BDD then success
@@ -517,7 +534,8 @@ void test_ABSENT_indirection()
 }
 
 // =============================================================================
-// Tests WORN
+// Tests WORN <objno>
+/*	Succeeds if object objno. is worn. */
 
 void test_WORN_success()
 {
@@ -528,7 +546,7 @@ void test_WORN_success()
 	objects[1].location = LOC_WORN;
 
 	//BDD when checking WORN 1
-	const char proc[] = { _WORN, 1, 255 };
+	static const char proc[] = { _WORN, 1, 255 };
 	do_action(proc, do_WORN);
 
 	//BDD then success
@@ -545,7 +563,7 @@ void test_WORN_fails()
 	objects[1].location = 5;
 
 	//BDD when checking WORN 1
-	const char proc[] = { _WORN, 1, 255 };
+	static const char proc[] = { _WORN, 1, 255 };
 	do_action(proc, do_WORN);
 	
 	//BDD then fails
@@ -562,8 +580,8 @@ void test_WORN_indirection()
 	flags[150] = 1;
 	objects[1].location = LOC_WORN;
 
-	//BDD when checking WORN [150]
-	const char proc[] = { _WORN|IND, 150, 255 };
+	//BDD when checking WORN @150
+	static const char proc[] = { _WORN|IND, 150, 255 };
 	do_action(proc, do_WORN);
 	
 	//BDD then success
@@ -572,7 +590,8 @@ void test_WORN_indirection()
 }
 
 // =============================================================================
-// Tests NOTWORN
+// Tests NOTWORN <objno>
+/*	Succeeds if Object objno. is not worn. */
 
 void test_NOTWORN_success()
 {
@@ -583,7 +602,7 @@ void test_NOTWORN_success()
 	objects[1].location = 2;
 
 	//BDD when checking NOTWORN 1
-	const char proc[] = { _NOTWORN, 1, 255 };
+	static const char proc[] = { _NOTWORN, 1, 255 };
 	do_action(proc, do_NOTWORN);
 	
 	//BDD then success
@@ -600,7 +619,7 @@ void test_NOTWORN_fails()
 	objects[1].location = LOC_WORN;
 
 	//BDD when checking NOTWORN 1
-	const char proc[] = { _NOTWORN, 1, 255 };
+	static const char proc[] = { _NOTWORN, 1, 255 };
 	do_action(proc, do_NOTWORN);
 
 	//BDD then fails
@@ -617,8 +636,8 @@ void test_NOTWORN_indirection()
 	flags[150] = 1;
 	objects[1].location = 2;
 
-	//BDD when checking NOTWORN [150]
-	const char proc[] = { _NOTWORN|IND, 150, 255 };
+	//BDD when checking NOTWORN @150
+	static const char proc[] = { _NOTWORN|IND, 150, 255 };
 	do_action(proc, do_NOTWORN);
 	
 	//BDD then success
@@ -627,7 +646,8 @@ void test_NOTWORN_indirection()
 }
 
 // =============================================================================
-// Tests CARRIED
+// Tests CARRIED <objno>
+/*	Succeeds if Object objno. is carried. */
 
 void test_CARRIED_success()
 {
@@ -638,7 +658,7 @@ void test_CARRIED_success()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking CARRIED 1
-	const char proc[] = { _CARRIED, 1, 255 };
+	static const char proc[] = { _CARRIED, 1, 255 };
 	do_action(proc, do_CARRIED);
 
 	//BDD then success
@@ -655,7 +675,7 @@ void test_CARRIED_fails()
 	objects[1].location = 5;
 
 	//BDD when checking CARRIED 1
-	const char proc[] = { _CARRIED, 1, 255 };
+	static const char proc[] = { _CARRIED, 1, 255 };
 	do_action(proc, do_CARRIED);
 	
 	//BDD then fails
@@ -672,8 +692,8 @@ void test_CARRIED_indirection()
 	flags[150] = 1;
 	objects[1].location = LOC_CARRIED;
 
-	//BDD when checking CARRIED [150]
-	const char proc[] = { _CARRIED|IND, 150, 255 };
+	//BDD when checking CARRIED @150
+	static const char proc[] = { _CARRIED|IND, 150, 255 };
 	do_action(proc, do_CARRIED);
 	
 	//BDD then success
@@ -682,7 +702,8 @@ void test_CARRIED_indirection()
 }
 
 // =============================================================================
-// Tests NOTCARR
+// Tests NOTCARR <objno>
+/*	Succeeds if Object objno. is not carried. */
 
 void test_NOTCARR_success()
 {
@@ -693,7 +714,7 @@ void test_NOTCARR_success()
 	objects[1].location = 2;
 
 	//BDD when checking NOTCARR 1
-	const char proc[] = { _NOTCARR, 1, 255 };
+	static const char proc[] = { _NOTCARR, 1, 255 };
 	do_action(proc, do_NOTCARR);
 	
 	//BDD then success
@@ -710,7 +731,7 @@ void test_NOTCARR_fails()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking NOTCARR 1
-	const char proc[] = { _NOTCARR, 1, 255 };
+	static const char proc[] = { _NOTCARR, 1, 255 };
 	do_action(proc, do_NOTCARR);
 
 	//BDD then fails
@@ -727,8 +748,8 @@ void test_NOTCARR_indirection()
 	flags[150] = 1;
 	objects[1].location = 2;
 
-	//BDD when checking NOTCARR [150]
-	const char proc[] = { _NOTCARR|IND, 150, 255 };
+	//BDD when checking NOTCARR @150
+	static const char proc[] = { _NOTCARR|IND, 150, 255 };
 	do_action(proc, do_NOTCARR);
 	
 	//BDD then success
@@ -737,7 +758,8 @@ void test_NOTCARR_indirection()
 }
 
 // =============================================================================
-// Tests ISAT
+// Tests ISAT <objno> <locno+>
+/*	Succeeds if Object objno. is at Location locno. */
 
 void test_ISAT_success()
 {
@@ -747,7 +769,7 @@ void test_ISAT_success()
 	objects[1].location = 5;
 
 	//BDD when checking ISAT 1 5
-	const char proc[] = { _ISAT, 1, 5, 255 };
+	static const char proc[] = { _ISAT, 1, 5, 255 };
 	do_action(proc, do_ISAT);
 
 	//BDD then success
@@ -763,7 +785,7 @@ void test_ISAT_fails()
 	objects[1].location = 5;
 
 	//BDD when checking ISAT 1 6
-	const char proc[] = { _ISAT, 1, 6, 255 };
+	static const char proc[] = { _ISAT, 1, 6, 255 };
 	do_action(proc, do_ISAT);
 	
 	//BDD then fails
@@ -780,8 +802,8 @@ void test_ISAT_indirection()
 	flags[150] = 1;
 	objects[1].location = 5;
 
-	//BDD when checking ISAT [150] HERE
-	const char proc[] = { _ISAT|IND, 150, LOC_HERE, 255 };
+	//BDD when checking ISAT @150 HERE
+	static const char proc[] = { _ISAT|IND, 150, LOC_HERE, 255 };
 	do_action(proc, do_ISAT);
 	
 	//BDD then success
@@ -790,7 +812,8 @@ void test_ISAT_indirection()
 }
 
 // =============================================================================
-// Tests ISNOTAT
+// Tests ISNOTAT <objno> <locno+>
+/*	Succeeds if Object objno. is not at Location locno. */
 
 void test_ISNOTAT_success()
 {
@@ -800,7 +823,7 @@ void test_ISNOTAT_success()
 	objects[1].location = 2;
 
 	//BDD when checking ISNOTAT 1 5
-	const char proc[] = { _ISNOTAT, 1, 5, 255 };
+	static const char proc[] = { _ISNOTAT, 1, 5, 255 };
 	do_action(proc, do_ISNOTAT);
 	
 	//BDD then success
@@ -816,7 +839,7 @@ void test_ISNOTAT_fails()
 	objects[1].location = 5;
 
 	//BDD when checking ISNOTAT 1 5
-	const char proc[] = { _ISNOTAT, 1, 5, 255 };
+	static const char proc[] = { _ISNOTAT, 1, 5, 255 };
 	do_action(proc, do_ISNOTAT);
 
 	//BDD then fails
@@ -833,8 +856,8 @@ void test_ISNOTAT_indirection()
 	flags[150] = 1;
 	objects[1].location = 2;
 
-	//BDD when checking ISNOTAT [150] HERE
-	const char proc[] = { _ISNOTAT|IND, 150, LOC_HERE, 255 };
+	//BDD when checking ISNOTAT @150 HERE
+	static const char proc[] = { _ISNOTAT|IND, 150, LOC_HERE, 255 };
 	do_action(proc, do_ISNOTAT);
 	
 	//BDD then success
@@ -847,7 +870,8 @@ void test_ISNOTAT_indirection()
 // =============================================================================
 
 // =============================================================================
-// Tests ZERO
+// Tests ZERO <flagno>
+/*	Succeeds if Flag flagno. is set to zero. */
 
 void test_ZERO_success()
 {
@@ -857,7 +881,7 @@ void test_ZERO_success()
 	flags[150] = 0;
 
 	//BDD when checking ZERO 150
-	const char proc[] = { _ZERO, 150, 255 };
+	static const char proc[] = { _ZERO, 150, 255 };
 	do_action(proc, do_ZERO);
 
 	//BDD then success
@@ -873,7 +897,7 @@ void test_ZERO_fails()
 	flags[150] = 25;
 
 	//BDD when checking ZERO 150
-	const char proc[] = { _ZERO, 150, 255 };
+	static const char proc[] = { _ZERO, 150, 255 };
 	do_action(proc, do_ZERO);
 	
 	//BDD then fails
@@ -889,8 +913,8 @@ void test_ZERO_indirection()
 	flags[150] = 1;
 	flags[1] = 5;
 
-	//BDD when checking ZERO [150]
-	const char proc[] = { _ZERO|IND, 150, 255 };
+	//BDD when checking ZERO @150
+	static const char proc[] = { _ZERO|IND, 150, 255 };
 	do_action(proc, do_ZERO);
 	
 	//BDD then fails
@@ -899,7 +923,8 @@ void test_ZERO_indirection()
 }
 
 // =============================================================================
-// Tests NOTZERO
+// Tests NOTZERO <flagno>
+/*	Succeeds if Flag flagno. is not set to zero. */
 
 void test_NOTZERO_success()
 {
@@ -909,7 +934,7 @@ void test_NOTZERO_success()
 	flags[150] = 25;
 
 	//BDD when checking NOTZERO 150
-	const char proc[] = { _NOTZERO, 150, 255 };
+	static const char proc[] = { _NOTZERO, 150, 255 };
 	do_action(proc, do_NOTZERO);
 	
 	//BDD then success
@@ -925,7 +950,7 @@ void test_NOTZERO_fails()
 	flags[150] = 0;
 
 	//BDD when checking NOTZERO 150
-	const char proc[] = { _NOTZERO, 150, 255 };
+	static const char proc[] = { _NOTZERO, 150, 255 };
 	do_action(proc, do_NOTZERO);
 
 	//BDD then fails
@@ -941,8 +966,8 @@ void test_NOTZERO_indirection()
 	flags[150] = 1;
 	flags[1] = 25;
 
-	//BDD when checking NOTZERO [150]
-	const char proc[] = { _NOTZERO|IND, 150, 255 };
+	//BDD when checking NOTZERO @150
+	static const char proc[] = { _NOTZERO|IND, 150, 255 };
 	do_action(proc, do_NOTZERO);
 	
 	//BDD then success
@@ -951,7 +976,8 @@ void test_NOTZERO_indirection()
 }
 
 // =============================================================================
-// Tests EQ
+// Tests EQ <flagno> <value>
+/*	Succeeds if Flag flagno. is equal to value. */
 
 void test_EQ_success()
 {
@@ -961,7 +987,7 @@ void test_EQ_success()
 	flags[150] = 25;
 
 	//BDD when checking EQ 150 25
-	const char proc[] = { _EQ, 150, 25, 255 };
+	static const char proc[] = { _EQ, 150, 25, 255 };
 	do_action(proc, do_EQ);
 
 	//BDD then success
@@ -977,7 +1003,7 @@ void test_EQ_fails()
 	flags[150] = 25;
 
 	//BDD when checking EQ 150 0
-	const char proc[] = { _EQ, 150, 0, 255 };
+	static const char proc[] = { _EQ, 150, 0, 255 };
 	do_action(proc, do_EQ);
 	
 	//BDD then fails
@@ -993,8 +1019,8 @@ void test_EQ_indirection()
 	flags[150] = 1;
 	flags[1] = 25;
 
-	//BDD when checking EQ [150] 25
-	const char proc[] = { _EQ|IND, 150, 25, 255 };
+	//BDD when checking EQ @150 25
+	static const char proc[] = { _EQ|IND, 150, 25, 255 };
 	do_action(proc, do_EQ);
 	
 	//BDD then success
@@ -1003,7 +1029,8 @@ void test_EQ_indirection()
 }
 
 // =============================================================================
-// Tests NOTEQ
+// Tests NOTEQ <flagno> <value>
+/*	Succeeds if Flag flagno. is not equal to value. */
 
 void test_NOTEQ_success()
 {
@@ -1013,7 +1040,7 @@ void test_NOTEQ_success()
 	flags[150] = 25;
 
 	//BDD when checking NOTEQ 150 0
-	const char proc[] = { _NOTEQ, 150, 0, 255 };
+	static const char proc[] = { _NOTEQ, 150, 0, 255 };
 	do_action(proc, do_NOTEQ);
 	
 	//BDD then success
@@ -1029,7 +1056,7 @@ void test_NOTEQ_fails()
 	flags[150] = 25;
 
 	//BDD when checking NOTEQ 150 25
-	const char proc[] = { _NOTEQ, 150, 25, 255 };
+	static const char proc[] = { _NOTEQ, 150, 25, 255 };
 	do_action(proc, do_NOTEQ);
 
 	//BDD then fails
@@ -1045,8 +1072,8 @@ void test_NOTEQ_indirection()
 	flags[150] = 1;
 	flags[1] = 25;
 
-	//BDD when checking NOTEQ [150] 5
-	const char proc[] = { _NOTEQ|IND, 150, 5, 255 };
+	//BDD when checking NOTEQ @150 5
+	static const char proc[] = { _NOTEQ|IND, 150, 5, 255 };
 	do_action(proc, do_NOTEQ);
 	
 	//BDD then success
@@ -1055,7 +1082,8 @@ void test_NOTEQ_indirection()
 }
 
 // =============================================================================
-// Tests GT
+// Tests GT <flagno> <value>
+/*	Succeeds if Flag flagno. is greater than value. */
 
 void test_GT_success()
 {
@@ -1065,7 +1093,7 @@ void test_GT_success()
 	flags[150] = 50;
 
 	//BDD when checking GT 150 25
-	const char proc[] = { _GT, 150, 25, 255 };
+	static const char proc[] = { _GT, 150, 25, 255 };
 	do_action(proc, do_GT);
 
 	//BDD then success
@@ -1081,7 +1109,7 @@ void test_GT_fails()
 	flags[150] = 25;
 
 	//BDD when checking GT 150 50
-	const char proc[] = { _GT, 150, 50, 255 };
+	static const char proc[] = { _GT, 150, 50, 255 };
 	do_action(proc, do_GT);
 	
 	//BDD then fails
@@ -1097,8 +1125,8 @@ void test_GT_indirection()
 	flags[150] = 1;
 	flags[1] = 50;
 
-	//BDD when checking GT [150] 25
-	const char proc[] = { _GT|IND, 150, 25, 255 };
+	//BDD when checking GT @150 25
+	static const char proc[] = { _GT|IND, 150, 25, 255 };
 	do_action(proc, do_GT);
 	
 	//BDD then success
@@ -1107,7 +1135,8 @@ void test_GT_indirection()
 }
 
 // =============================================================================
-// Tests LT
+// Tests LT <flagno> <value>
+/*	Succeeds if Flag flagno. is set to less than value. */
 
 void test_LT_success()
 {
@@ -1117,7 +1146,7 @@ void test_LT_success()
 	flags[150] = 25;
 
 	//BDD when checking LT 150 50
-	const char proc[] = { _LT, 150, 50, 255 };
+	static const char proc[] = { _LT, 150, 50, 255 };
 	do_action(proc, do_LT);
 
 	//BDD then success
@@ -1133,7 +1162,7 @@ void test_LT_fails()
 	flags[150] = 50;
 
 	//BDD when checking LT 150 25
-	const char proc[] = { _LT, 150, 25, 255 };
+	static const char proc[] = { _LT, 150, 25, 255 };
 	do_action(proc, do_LT);
 	
 	//BDD then fails
@@ -1149,8 +1178,8 @@ void test_LT_indirection()
 	flags[150] = 1;
 	flags[1] = 25;
 
-	//BDD when checking LT [150] 50
-	const char proc[] = { _LT|IND, 150, 50, 255 };
+	//BDD when checking LT @150 50
+	static const char proc[] = { _LT|IND, 150, 50, 255 };
 	do_action(proc, do_LT);
 	
 	//BDD then success
@@ -1159,7 +1188,8 @@ void test_LT_indirection()
 }
 
 // =============================================================================
-// Tests SAME
+// Tests SAME <flagno1> <flagno2>
+/*	Succeeds if Flag flagno 1 has the same value as Flag flagno 2. */
 
 void test_SAME_success()
 {
@@ -1170,7 +1200,7 @@ void test_SAME_success()
 	flags[151] = 25;
 
 	//BDD when checking SAME 150 151
-	const char proc[] = { _SAME, 150, 151, 255 };
+	static const char proc[] = { _SAME, 150, 151, 255 };
 	do_action(proc, do_SAME);
 
 	//BDD then success
@@ -1187,7 +1217,7 @@ void test_SAME_fails()
 	flags[151] = 50;
 
 	//BDD when checking SAME 150 151
-	const char proc[] = { _SAME, 150, 151, 255 };
+	static const char proc[] = { _SAME, 150, 151, 255 };
 	do_action(proc, do_SAME);
 	
 	//BDD then fails
@@ -1204,8 +1234,8 @@ void test_SAME_indirection()
 	flags[1] = 25;
 	flags[151] = 25;
 
-	//BDD when checking SAME [150] 151
-	const char proc[] = { _SAME|IND, 150, 151, 255 };
+	//BDD when checking SAME @150 151
+	static const char proc[] = { _SAME|IND, 150, 151, 255 };
 	do_action(proc, do_SAME);
 	
 	//BDD then success
@@ -1214,7 +1244,8 @@ void test_SAME_indirection()
 }
 
 // =============================================================================
-// Tests NOTSAME
+// Tests NOTSAME <flagno1> <flagno2>
+/*	Succeeds if Flag flagno 1 does not have the same value as Flag flagno 2 . */
 
 void test_NOTSAME_success()
 {
@@ -1225,7 +1256,7 @@ void test_NOTSAME_success()
 	flags[151] = 50;
 
 	//BDD when checking NOTSAME 150 151
-	const char proc[] = { _NOTSAME, 150, 151, 255 };
+	static const char proc[] = { _NOTSAME, 150, 151, 255 };
 	do_action(proc, do_NOTSAME);
 	
 	//BDD then success
@@ -1242,7 +1273,7 @@ void test_NOTSAME_fails()
 	flags[151] = 25;
 
 	//BDD when checking NOTSAME 150 151
-	const char proc[] = { _NOTSAME, 150, 151, 255 };
+	static const char proc[] = { _NOTSAME, 150, 151, 255 };
 	do_action(proc, do_NOTSAME);
 
 	//BDD then fails
@@ -1259,8 +1290,8 @@ void test_NOTSAME_indirection()
 	flags[1] = 25;
 	flags[151] = 50;
 
-	//BDD when checking NOTSAME [150] 151
-	const char proc[] = { _NOTSAME|IND, 150, 5, 255 };
+	//BDD when checking NOTSAME @150 151
+	static const char proc[] = { _NOTSAME|IND, 150, 5, 255 };
 	do_action(proc, do_NOTSAME);
 	
 	//BDD then success
@@ -1269,7 +1300,8 @@ void test_NOTSAME_indirection()
 }
 
 // =============================================================================
-// Tests BIGGER
+// Tests BIGGER <flagno1> <flagno2>
+/*	Will be true if flagno 1 is larger than flagno 2 */
 
 void test_BIGGER_success()
 {
@@ -1280,7 +1312,7 @@ void test_BIGGER_success()
 	flags[151] = 25;
 
 	//BDD when checking BIGGER 150 151
-	const char proc[] = { _BIGGER, 150, 151, 255 };
+	static const char proc[] = { _BIGGER, 150, 151, 255 };
 	do_action(proc, do_BIGGER);
 
 	//BDD then success
@@ -1297,7 +1329,7 @@ void test_BIGGER_fails()
 	flags[151] = 50;
 
 	//BDD when checking BIGGER 150 151
-	const char proc[] = { _BIGGER, 150, 151, 255 };
+	static const char proc[] = { _BIGGER, 150, 151, 255 };
 	do_action(proc, do_BIGGER);
 	
 	//BDD then fails
@@ -1314,8 +1346,8 @@ void test_BIGGER_indirection()
 	flags[1] = 50;
 	flags[151] = 25;
 
-	//BDD when checking BIGGER [150] 151
-	const char proc[] = { _BIGGER|IND, 150, 151, 255 };
+	//BDD when checking BIGGER @150 151
+	static const char proc[] = { _BIGGER|IND, 150, 151, 255 };
 	do_action(proc, do_BIGGER);
 	
 	//BDD then success
@@ -1324,7 +1356,8 @@ void test_BIGGER_indirection()
 }
 
 // =============================================================================
-// Tests SMALLER
+// Tests SMALLER <flagno1> <flagno2>
+/*	Will be true if flagno 1 is smaller than flagno 2 */
 
 void test_SMALLER_success()
 {
@@ -1335,7 +1368,7 @@ void test_SMALLER_success()
 	flags[151] = 50;
 
 	//BDD when checking SMALLER 150 151
-	const char proc[] = { _SMALLER, 150, 151, 255 };
+	static const char proc[] = { _SMALLER, 150, 151, 255 };
 	do_action(proc, do_SMALLER);
 
 	//BDD then success
@@ -1352,7 +1385,7 @@ void test_SMALLER_fails()
 	flags[151] = 25;
 
 	//BDD when checking SMALLER 150 151
-	const char proc[] = { _SMALLER, 150, 151, 255 };
+	static const char proc[] = { _SMALLER, 150, 151, 255 };
 	do_action(proc, do_SMALLER);
 	
 	//BDD then fails
@@ -1369,8 +1402,8 @@ void test_SMALLER_indirection()
 	flags[1] = 25;
 	flags[151] = 50;
 
-	//BDD when checking SMALLER [150] 151
-	const char proc[] = { _SMALLER|IND, 150, 151, 255 };
+	//BDD when checking SMALLER @150 151
+	static const char proc[] = { _SMALLER|IND, 150, 151, 255 };
 	do_action(proc, do_SMALLER);
 	
 	//BDD then success
@@ -1383,7 +1416,8 @@ void test_SMALLER_indirection()
 // =============================================================================
 
 // =============================================================================
-// Tests ADJECT1
+// Tests ADJECT1 <word>
+/*	Succeeds if the first noun's adjective in the current LS is word. */
 
 void test_ADJECT1_success()
 {
@@ -1393,7 +1427,7 @@ void test_ADJECT1_success()
 	flags[fAdject1] = 1;
 
 	//BDD when checking ADJECT1 1
-	const char proc[] = { _ADJECT1, 1, 255 };
+	static const char proc[] = { _ADJECT1, 1, 255 };
 	do_action(proc, do_ADJECT1);
 
 	//BDD then success
@@ -1409,7 +1443,7 @@ void test_ADJECT1_fails()
 	flags[fAdject1] = 1;
 
 	//BDD when checking ADJECT1 2
-	const char proc[] = { _ADJECT1, 2, 255 };
+	static const char proc[] = { _ADJECT1, 2, 255 };
 	do_action(proc, do_ADJECT1);
 	
 	//BDD then fails
@@ -1425,8 +1459,8 @@ void test_ADJECT1_indirection()
 	flags[fAdject1] = 1;
 	flags[150] = 1;
 
-	//BDD when checking ADJECT1 [150]
-	const char proc[] = { _ADJECT1|IND, 150, 255 };
+	//BDD when checking ADJECT1 @150
+	static const char proc[] = { _ADJECT1|IND, 150, 255 };
 	do_action(proc, do_ADJECT1);
 	
 	//BDD then success
@@ -1435,7 +1469,8 @@ void test_ADJECT1_indirection()
 }
 
 // =============================================================================
-// Tests ADVERB
+// Tests ADVERB <word>
+/*	Succeeds if the adverb in the current LS is word. */
 
 void test_ADVERB_success()
 {
@@ -1445,7 +1480,7 @@ void test_ADVERB_success()
 	flags[fAdverb] = 1;
 
 	//BDD when checking ADVERB 1
-	const char proc[] = { _ADVERB, 1, 255 };
+	static const char proc[] = { _ADVERB, 1, 255 };
 	do_action(proc, do_ADVERB);
 
 	//BDD then success
@@ -1461,7 +1496,7 @@ void test_ADVERB_fails()
 	flags[fAdverb] = 1;
 
 	//BDD when checking ADVERB 2
-	const char proc[] = { _ADVERB, 2, 255 };
+	static const char proc[] = { _ADVERB, 2, 255 };
 	do_action(proc, do_ADVERB);
 	
 	//BDD then fails
@@ -1477,8 +1512,8 @@ void test_ADVERB_indirection()
 	flags[fAdverb] = 1;
 	flags[150] = 1;
 
-	//BDD when checking ADVERB [150]
-	const char proc[] = { _ADVERB|IND, 150, 255 };
+	//BDD when checking ADVERB @150
+	static const char proc[] = { _ADVERB|IND, 150, 255 };
 	do_action(proc, do_ADVERB);
 	
 	//BDD then success
@@ -1487,7 +1522,8 @@ void test_ADVERB_indirection()
 }
 
 // =============================================================================
-// Tests PREP
+// Tests PREP <word>
+/*	Succeeds if the preposition in the current LS is word. */
 
 void test_PREP_success()
 {
@@ -1497,7 +1533,7 @@ void test_PREP_success()
 	flags[fPrep] = 1;
 
 	//BDD when checking PREP 1
-	const char proc[] = { _PREP, 1, 255 };
+	static const char proc[] = { _PREP, 1, 255 };
 	do_action(proc, do_PREP);
 
 	//BDD then success
@@ -1513,7 +1549,7 @@ void test_PREP_fails()
 	flags[fPrep] = 1;
 
 	//BDD when checking PREP 2
-	const char proc[] = { _PREP, 2, 255 };
+	static const char proc[] = { _PREP, 2, 255 };
 	do_action(proc, do_PREP);
 	
 	//BDD then fails
@@ -1529,8 +1565,8 @@ void test_PREP_indirection()
 	flags[fPrep] = 1;
 	flags[150] = 1;
 
-	//BDD when checking PREP [150]
-	const char proc[] = { _PREP|IND, 150, 255 };
+	//BDD when checking PREP @150
+	static const char proc[] = { _PREP|IND, 150, 255 };
 	do_action(proc, do_PREP);
 	
 	//BDD then success
@@ -1539,7 +1575,8 @@ void test_PREP_indirection()
 }
 
 // =============================================================================
-// Tests NOUN2
+// Tests NOUN2 <word>
+/*	Succeeds if the second noun in the current LS is word. */
 
 void test_NOUN2_success()
 {
@@ -1549,7 +1586,7 @@ void test_NOUN2_success()
 	flags[fNoun2] = 1;
 
 	//BDD when checking NOUN2 1
-	const char proc[] = { _NOUN2, 1, 255 };
+	static const char proc[] = { _NOUN2, 1, 255 };
 	do_action(proc, do_NOUN2);
 
 	//BDD then success
@@ -1565,7 +1602,7 @@ void test_NOUN2_fails()
 	flags[fNoun2] = 1;
 
 	//BDD when checking NOUN2 2
-	const char proc[] = { _NOUN2, 2, 255 };
+	static const char proc[] = { _NOUN2, 2, 255 };
 	do_action(proc, do_NOUN2);
 	
 	//BDD then fails
@@ -1581,8 +1618,8 @@ void test_NOUN2_indirection()
 	flags[fNoun2] = 1;
 	flags[150] = 1;
 
-	//BDD when checking NOUN2 [150]
-	const char proc[] = { _NOUN2|IND, 150, 255 };
+	//BDD when checking NOUN2 @150
+	static const char proc[] = { _NOUN2|IND, 150, 255 };
 	do_action(proc, do_NOUN2);
 	
 	//BDD then success
@@ -1591,7 +1628,8 @@ void test_NOUN2_indirection()
 }
 
 // =============================================================================
-// Tests ADJECT2
+// Tests ADJECT2 <word>
+/*	Succeeds if the second noun's adjective in the current LS is word. */
 
 void test_ADJECT2_success()
 {
@@ -1601,7 +1639,7 @@ void test_ADJECT2_success()
 	flags[fAdject2] = 1;
 
 	//BDD when checking ADJECT2 1
-	const char proc[] = { _ADJECT2, 1, 255 };
+	static const char proc[] = { _ADJECT2, 1, 255 };
 	do_action(proc, do_ADJECT2);
 
 	//BDD then success
@@ -1617,7 +1655,7 @@ void test_ADJECT2_fails()
 	flags[fAdject2] = 1;
 
 	//BDD when checking ADJECT2 2
-	const char proc[] = { _ADJECT2, 2, 255 };
+	static const char proc[] = { _ADJECT2, 2, 255 };
 	do_action(proc, do_ADJECT2);
 	
 	//BDD then fails
@@ -1633,8 +1671,8 @@ void test_ADJECT2_indirection()
 	flags[fAdject2] = 1;
 	flags[150] = 1;
 
-	//BDD when checking ADJECT2 [150]
-	const char proc[] = { _ADJECT2|IND, 150, 255 };
+	//BDD when checking ADJECT2 @150
+	static const char proc[] = { _ADJECT2|IND, 150, 255 };
 	do_action(proc, do_ADJECT2);
 	
 	//BDD then success
@@ -1647,7 +1685,11 @@ void test_ADJECT2_indirection()
 // =============================================================================
 
 // =============================================================================
-// Tests CHANCE
+// Tests CHANCE <percent>
+/*	Succeeds if percent is less than or equal to a random number in the range 
+	1-100 (inclusive). Thus a CHANCE 50 condition would allow PAW to look at the 
+	next CondAct only if the random number generated was between 1 and 50, a 50% 
+	chance of success. */
 
 void test_CHANCE_0_fails()
 {
@@ -1656,7 +1698,7 @@ void test_CHANCE_0_fails()
 	//BDD given none
 
 	//BDD when checking CHANCE 0
-	const char proc[] = { _CHANCE, 0, 255 };
+	static const char proc[] = { _CHANCE, 0, 255 };
 	do_action(proc, do_CHANCE);
 
 	//BDD then fails
@@ -1671,7 +1713,7 @@ void test_CHANCE_255_success()
 	//BDD given none
 
 	//BDD when checking CHANCE 255
-	const char proc[] = { _CHANCE, 255, 255 };
+	static const char proc[] = { _CHANCE, 255, 255 };
 	do_action(proc, do_CHANCE);
 	
 	//BDD then succes
@@ -1686,8 +1728,8 @@ void test_CHANCE_indirection()
 	//BDD given flag 150 with value 255
 	flags[150] = 255;
 
-	//BDD when checking CHANCE [150]
-	const char proc[] = { _CHANCE|IND, 150, 255 };
+	//BDD when checking CHANCE @150
+	static const char proc[] = { _CHANCE|IND, 150, 255 };
 	do_action(proc, do_CHANCE);
 	
 	//BDD then succes
@@ -1701,16 +1743,22 @@ void test_CHANCE_indirection()
 
 // =============================================================================
 // Tests ISDONE
+/*	Succeeds if the last table ended by exiting after executing at least one 
+	Action. This is useful to test for a single succeed/fail boolean value from 
+	a Sub-Process. A DONE action will cause the 'done' condition, as will any 
+	condact causing exit, or falling off the end of the table - assuming at 
+	least one CondAct (other than NOTDONE) was done.
+	See also ISNDONE and NOTDONE actions. */
 
 void test_ISDONE_success()
 {
 	beforeEach();
 
 	//BDD given last table executed at least one action
-	lastIsDone = 1;
+	isDone = 1;
 
 	//BDD when checking ISDONE
-	const char proc[] = { _ISDONE, 255 };
+	static const char proc[] = { _ISDONE, 255 };
 	do_action(proc, do_ISDONE);
 
 	//BDD then fails
@@ -1724,10 +1772,10 @@ void test_ISDONE_fails()
 	beforeEach();
 	
 	//BDD given last table not executed at least one action
-	lastIsDone = 0;
+	isDone = 0;
 
 	//BDD when checking ISDONE
-	const char proc[] = { _ISDONE, 255 };
+	static const char proc[] = { _ISDONE, 255 };
 	do_action(proc, do_ISDONE);
 	
 	//BDD then succes
@@ -1738,16 +1786,18 @@ void test_ISDONE_fails()
 
 // =============================================================================
 // Tests ISNDONE
+/*	Succeeds if the last table ended without doing anything or with a NOTDONE 
+	action. */
 
 void test_ISNDONE_success()		//TODO improve this test
 {
 	beforeEach();
 
 	//BDD given last table not executed at least one action
-	lastIsDone = 0;
+	isDone = 0;
 
 	//BDD when checking ISNDONE
-	const char proc[] = { _ISNDONE, 255 };
+	static const char proc[] = { _ISNDONE, 255 };
 	do_action(proc, do_ISNDONE);
 
 	//BDD then fails
@@ -1760,10 +1810,10 @@ void test_ISNDONE_fails()		//TODO improve this test
 	beforeEach();
 	
 	//BDD given last table executed at least one action
-	lastIsDone = 1;
+	isDone = 1;
 
 	//BDD when checking ISNDONE
-	const char proc[] = { _ISNDONE, 255 };
+	static const char proc[] = { _ISNDONE, 255 };
 	do_action(proc, do_ISNDONE);
 	
 	//BDD then succes
@@ -1776,7 +1826,10 @@ void test_ISNDONE_fails()		//TODO improve this test
 // =============================================================================
 
 // =============================================================================
-// Tests HASAT
+// Tests HASAT <value>
+/*	Checks the attribute specified by value. 0-15 are the object attributes for 
+	the current object. There are also several attribute numbers specified as 
+	symbols in SYMBOLS.SCE which check certain parts of the DAAD system flags */
 
 void test_HASAT_success()
 {
@@ -1786,7 +1839,7 @@ void test_HASAT_success()
 	flags[fCOAtt] = 0b00000100;
 
 	//BDD when checking HASAT 10
-	const char proc[] = { _HASAT, 10, 255 };
+	static const char proc[] = { _HASAT, 10, 255 };
 	do_action(proc, do_HASAT);
 
 	//BDD then fails
@@ -1802,7 +1855,7 @@ void test_HASAT_fails()
 	flags[fCOAtt + 1] = 0b11011111;
 
 	//BDD when checking HASAT 5
-	const char proc[] = { _HASAT, 5, 255 };
+	static const char proc[] = { _HASAT, 5, 255 };
 	do_action(proc, do_HASAT);
 
 	//BDD then fails
@@ -1818,8 +1871,8 @@ void test_HASAT_indirection()
 	flags[fCOAtt] = 0b00000100;
 	flags[150] = 10;
 
-	//BDD when checking HASAT [150]
-	const char proc[] = { _HASAT|IND, 150, 255 };
+	//BDD when checking HASAT @150
+	static const char proc[] = { _HASAT|IND, 150, 255 };
 	do_action(proc, do_HASAT);
 
 	//BDD then fails
@@ -1828,7 +1881,8 @@ void test_HASAT_indirection()
 }
 
 // =============================================================================
-// Tests HASNAT
+// Tests HASNAT <value>
+/*	Inverse of HASAT */
 
 void test_HASNAT_success()
 {
@@ -1838,7 +1892,7 @@ void test_HASNAT_success()
 	flags[fCOAtt + 1] = 0b11011111;
 
 	//BDD when checking HASNAT 5
-	const char proc[] = { _HASNAT, 5, 255 };
+	static const char proc[] = { _HASNAT, 5, 255 };
 	do_action(proc, do_HASNAT);
 
 	//BDD then fails
@@ -1854,7 +1908,7 @@ void test_HASNAT_fails()
 	flags[fCOAtt] = 0b00000100;
 
 	//BDD when checking HASNAT 10
-	const char proc[] = { _HASNAT, 10, 255 };
+	static const char proc[] = { _HASNAT, 10, 255 };
 	do_action(proc, do_HASNAT);
 
 	//BDD then fails
@@ -1870,8 +1924,8 @@ void test_HASNAT_indirection()
 	flags[fCOAtt] = 0b11111011;
 	flags[150] = 10;
 
-	//BDD when checking HASNAT [150]
-	const char proc[] = { _HASNAT|IND, 150, 255 };
+	//BDD when checking HASNAT @150
+	static const char proc[] = { _HASNAT|IND, 150, 255 };
 	do_action(proc, do_HASNAT);
 
 	//BDD then fails
@@ -1885,6 +1939,10 @@ void test_HASNAT_indirection()
 
 // =============================================================================
 // Tests INKEY
+/*	Is a condition which will be satisfied if the player is pressing a key. 
+	In 16Bit machines Flags Key1 and Key2 (60 & 61) will be a standard IBM ASCII 
+	code pair.
+	On 8 bit only Key1 will be valid, and the code will be machine specific. */
 
 void test_INKEY_success()
 {
@@ -1894,7 +1952,7 @@ void test_INKEY_success()
 	fake_keyPressed = 'A';
 
 	//BDD when checking INKEY
-	const char proc[] = { _INKEY, 255 };
+	static const char proc[] = { _INKEY, 255 };
 	do_action(proc, do_INKEY);
 
 	//BDD then success
@@ -1904,6 +1962,9 @@ void test_INKEY_success()
 
 // =============================================================================
 // Tests QUIT
+/*	SM12 ("Are you sure?") is printed and called. Will succeed if the player replies
+	starts with the first letter of SM30 ("Y") to then the remainder of the entry is 
+	discarded is carried out. */
 
 void test_QUIT_success()
 {
@@ -1913,7 +1974,7 @@ void test_QUIT_success()
 	fake_keyPressed = 'Y';
 
 	//BDD when checking QUIT
-	// const char proc[] = { _QUIT, 255 };
+	// static const char proc[] = { _QUIT, 255 };
 	// do_action(proc, do_QUIT);
 
 	//BDD then success
@@ -1927,7 +1988,25 @@ void test_QUIT_success()
 // =============================================================================
 
 // =============================================================================
-// Tests GET
+// Tests GET <objno>
+/*	If Object objno. is worn or carried, SM25 ("I already have the _.") is printed 
+	and actions NEWTEXT & DONE are performed.
+	
+	If Object objno. is not at the current location, SM26 ("There isn't one of 
+	those here.") is printed and actions NEWTEXT & DONE are performed.
+
+	If the total weight of the objects carried and worn by the player plus 
+	Object objno. would exceed the maximum conveyable weight (Flag 52) then SM43 
+	("The _ weighs too much for me.") is printed and actions NEWTEXT & DONE are 
+	performed.
+
+	If the maximum number of objects is being carried (Flag 1 is greater than, 
+	or the same as, Flag 37), SM27 ("I can't carry any more things.") is printed 
+	and actions NEWTEXT & DONE are performed. In addition any current DOALL loop 
+	is cancelled.
+
+	Otherwise the position of Object objno. is changed to carried, Flag 1 is 
+	incremented and SM36 ("I now have the _.") is printed. */
 
 void test_GET_carried()
 {
@@ -1937,7 +2016,7 @@ void test_GET_carried()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking GET 1
-	const char proc[] = { _GET, 1, 255 };
+	static const char proc[] = { _GET, 1, 255 };
 	do_action(proc, do_GET);
 
 	//BDD then fails
@@ -1954,7 +2033,7 @@ void test_GET_worn()
 	objects[1].location = LOC_WORN;
 
 	//BDD when checking GET 1
-	const char proc[] = { _GET, 1, 255 };
+	static const char proc[] = { _GET, 1, 255 };
 	do_action(proc, do_GET);
 
 	//BDD then fails
@@ -1972,7 +2051,7 @@ void test_GET_notHere()
 	objects[1].location = 2;
 
 	//BDD when checking GET 1
-	const char proc[] = { _GET, 1, 255 };
+	static const char proc[] = { _GET, 1, 255 };
 	do_action(proc, do_GET);
 
 	//BDD then fails
@@ -1992,7 +2071,7 @@ void test_GET_maxWeight()
 	objects[1].attribs.mask.weight = 50;
 
 	//BDD when checking GET 1
-	const char proc[] = { _GET, 1, 255 };
+	static const char proc[] = { _GET, 1, 255 };
 	do_action(proc, do_GET);
 
 	//BDD then fails
@@ -2012,7 +2091,7 @@ void test_GET_maxObjs()
 	objects[1].location = 1;
 
 	//BDD when checking GET 1
-	const char proc[] = { _GET, 1, 255 };
+	static const char proc[] = { _GET, 1, 255 };
 	do_action(proc, do_GET);
 
 	//BDD then fails
@@ -2031,7 +2110,7 @@ void test_GET_success()
 	objects[1].location = 1;
 
 	//BDD when checking GET 1
-	const char proc[] = { _GET, 1, 255 };
+	static const char proc[] = { _GET, 1, 255 };
 	do_action(proc, do_GET);
 
 	//BDD then success
@@ -2042,7 +2121,19 @@ void test_GET_success()
 }
 
 // =============================================================================
-// Tests DROP
+// Tests DROP <objno>
+/*	If Object objno. is worn then SM24 ("I can't. I'm wearing the _.") is 
+	printed and actions NEWTEXT & DONE are performed.
+
+	If Object objno. is at the current location (but neither worn nor carried), 
+	SM49 ("I don't have the _.") is printed and actions NEWTEXT & DONE are 
+	performed.
+
+	If Object objno. is not at the current location then SM28 ("I don't have one 
+	of those.") is printed and actions NEWTEXT & DONE are performed.
+
+	Otherwise the position of Object objno. is changed to the current location, 
+	Flag 1 is decremented and SM39 ("I've dropped the _.") is printed. */
 
 void test_DROP_success()
 {
@@ -2055,7 +2146,7 @@ void test_DROP_success()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking DROP 1
-	const char proc[] = { _DROP, 1, 255 };
+	static const char proc[] = { _DROP, 1, 255 };
 	do_action(proc, do_DROP);
 
 	//BDD then success
@@ -2074,7 +2165,7 @@ void test_DROP_worn()
 	objects[1].location = LOC_WORN;
 
 	//BDD when checking DROP 1
-	const char proc[] = { _DROP, 1, 255 };
+	static const char proc[] = { _DROP, 1, 255 };
 	do_action(proc, do_DROP);
 
 	//BDD then fails
@@ -2092,7 +2183,7 @@ void test_DROP_isHere()
 	objects[1].location = 1;
 
 	//BDD when checking DROP 1
-	const char proc[] = { _DROP, 1, 255 };
+	static const char proc[] = { _DROP, 1, 255 };
 	do_action(proc, do_DROP);
 
 	//BDD then fails
@@ -2110,7 +2201,7 @@ void test_DROP_notHere()
 	objects[1].location = 2;
 
 	//BDD when checking DROP 1
-	const char proc[] = { _DROP, 1, 255 };
+	static const char proc[] = { _DROP, 1, 255 };
 	do_action(proc, do_DROP);
 
 	//BDD then fails
@@ -2121,7 +2212,23 @@ void test_DROP_notHere()
 
 
 // =============================================================================
-// Tests WEAR
+// Tests WEAR <objno>
+/*	If Object objno. is at the current location (but not carried or worn) SM49 
+	("I don't have the _.") is printed and actions NEWTEXT & DONE are 
+	performed.
+
+	If Object objno. is worn, SM29 ("I'm already wearing the _.") is printed 
+	and actions NEWTEXT & DONE are performed.
+
+	If Object objno. is not carried, SM28 ("I don't have one of those.") is 
+	printed and actions NEWTEXT & DONE are performed.
+
+	If Object objno. is not wearable (as specified in the object definition 
+	section) then SM40 ("I can't wear the _.") is printed and actions NEWTEXT & 
+	DONE are performed.
+
+	Otherwise the position of Object objno. is changed to worn, Flag 1 is 
+	decremented and SM37 ("I'm now wearing the _.") is printed. */
 
 void test_WEAR_isHere()
 {
@@ -2133,7 +2240,7 @@ void test_WEAR_isHere()
 	objects[1].attribs.mask.isWareable = 1;
 
 	//BDD when checking WEAR 1
-	const char proc[] = { _WEAR, 1, 255 };
+	static const char proc[] = { _WEAR, 1, 255 };
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
@@ -2151,7 +2258,7 @@ void test_WEAR_worn()
 	objects[1].attribs.mask.isWareable = 1;
 
 	//BDD when checking WEAR 1
-	const char proc[] = { _WEAR, 1, 255 };
+	static const char proc[] = { _WEAR, 1, 255 };
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
@@ -2170,7 +2277,7 @@ void test_WEAR_notCarried()
 	objects[1].attribs.mask.isWareable = 1;
 
 	//BDD when checking WEAR 1
-	const char proc[] = { _WEAR, 1, 255 };
+	static const char proc[] = { _WEAR, 1, 255 };
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
@@ -2188,7 +2295,7 @@ void test_WEAR_notWareable()
 	objects[1].attribs.mask.isWareable = 0;
 
 	//BDD when checking WEAR 1
-	const char proc[] = { _WEAR, 1, 255 };
+	static const char proc[] = { _WEAR, 1, 255 };
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
@@ -2207,7 +2314,7 @@ void test_WEAR_success()
 	objects[1].attribs.mask.isWareable = 1;
 
 	//BDD when checking WEAR 1
-	const char proc[] = { _WEAR, 1, 255 };
+	static const char proc[] = { _WEAR, 1, 255 };
 	do_action(proc, do_WEAR);
 
 	//BDD then success
@@ -2219,7 +2326,23 @@ void test_WEAR_success()
 }
 
 // =============================================================================
-// Tests REMOVE
+// Tests REMOVE <objno>
+/*	If Object objno. is carried or at the current location (but not worn) then 
+	SM50 ("I'm not wearing the _.") is printed and actions NEWTEXT & DONE are 
+	performed.
+
+	If Object objno. is not at the current location, SM23 ("I'm not wearing one 
+	of those.") is printed and actions NEWTEXT & DONE are performed.
+
+	If Object objno. is not wearable (and thus removable) then SM41 ("I can't 
+	remove the _.") is printed and actions NEWTEXT & DONE are performed.
+
+	If the maximum number of objects is being carried (Flag 1 is greater than, 
+	or the same as, Flag 37), SM42 ("I can't remove the _. My hands are full.") 
+	is printed and actions NEWTEXT & DONE are performed.
+
+	Otherwise the position of Object objno. is changed to carried. Flag 1 is 
+	incremented and SM38 ("I've removed the _.") printed. */
 
 void test_REMOVE_carried()
 {
@@ -2229,7 +2352,7 @@ void test_REMOVE_carried()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking REMOVE 1
-	const char proc[] = { _REMOVE, 1, 255 };
+	static const char proc[] = { _REMOVE, 1, 255 };
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
@@ -2247,7 +2370,7 @@ void test_REMOVE_isHere()
 	objects[1].location = 1;
 
 	//BDD when checking REMOVE 1
-	const char proc[] = { _REMOVE, 1, 255 };
+	static const char proc[] = { _REMOVE, 1, 255 };
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
@@ -2265,7 +2388,7 @@ void test_REMOVE_notHere()
 	objects[1].location = LOC_NOTCREATED - 1;
 
 	//BDD when checking REMOVE 1
-	const char proc[] = { _REMOVE, 1, 255 };
+	static const char proc[] = { _REMOVE, 1, 255 };
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
@@ -2284,7 +2407,7 @@ void test_REMOVE_notWareable()
 	objects[1].attribs.mask.isWareable = 0;
 
 	//BDD when checking REMOVE 1
-	const char proc[] = { _REMOVE, 1, 255 };
+	static const char proc[] = { _REMOVE, 1, 255 };
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
@@ -2304,7 +2427,7 @@ void test_REMOVE_maxObjs()
 	objects[1].attribs.mask.isWareable = 1;
 
 	//BDD when checking REMOVE 1
-	const char proc[] = { _REMOVE, 1, 255 };
+	static const char proc[] = { _REMOVE, 1, 255 };
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
@@ -2324,7 +2447,7 @@ void test_REMOVE_success()
 	objects[1].attribs.mask.isWareable = 1;
 
 	//BDD when checking REMOVE 1
-	const char proc[] = { _REMOVE, 1, 255 };
+	static const char proc[] = { _REMOVE, 1, 255 };
 	do_action(proc, do_REMOVE);
 
 	//BDD then success
@@ -2335,7 +2458,9 @@ void test_REMOVE_success()
 
 
 // =============================================================================
-// Tests CREATE
+// Tests CREATE <objno>
+/*	The position of Object objno. is changed to the current location and Flag 1
+	is decremented if the object was carried. */
 
 void test_CREATE_success()
 {
@@ -2347,7 +2472,7 @@ void test_CREATE_success()
 	objects[1].location = LOC_NOTCREATED;
 
 	//BDD when checking CREATE 1
-	const char proc[] = { _CREATE, 1, 255 };
+	static const char proc[] = { _CREATE, 1, 255 };
 	do_action(proc, do_CREATE);
 
 	//BDD then success
@@ -2367,7 +2492,7 @@ void test_CREATE_carried()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking CREATE 1
-	const char proc[] = { _CREATE, 1, 255 };
+	static const char proc[] = { _CREATE, 1, 255 };
 	do_action(proc, do_CREATE);
 
 	//BDD then success
@@ -2388,7 +2513,7 @@ void test_CREATE_indirection()
 	objects[1].location = LOC_NOTCREATED;
 
 	//BDD when checking CREATE @150
-	const char proc[] = { _CREATE|IND, 150, 255 };
+	static const char proc[] = { _CREATE|IND, 150, 255 };
 	do_action(proc, do_CREATE);
 
 	//BDD then success
@@ -2399,7 +2524,9 @@ void test_CREATE_indirection()
 }
 
 // =============================================================================
-// Tests DESTROY
+// Tests DESTROY <objno>
+/*	The position of Object objno. is changed to not-created and Flag 1 is 
+	decremented if the object was carried. */
 
 void test_DESTROY_success()
 {
@@ -2411,7 +2538,7 @@ void test_DESTROY_success()
 	objects[1].location = 1;
 
 	//BDD when checking DESTROY 1
-	const char proc[] = { _DESTROY, 1, 255 };
+	static const char proc[] = { _DESTROY, 1, 255 };
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
@@ -2431,7 +2558,7 @@ void test_DESTROY_carried()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking DESTROY 1
-	const char proc[] = { _DESTROY, 1, 255 };
+	static const char proc[] = { _DESTROY, 1, 255 };
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
@@ -2452,7 +2579,7 @@ void test_DESTROY_indirection()
 	objects[1].location = LOC_NOTCREATED;
 
 	//BDD when checking CREATE @150
-	const char proc[] = { _DESTROY|IND, 150, 255 };
+	static const char proc[] = { _DESTROY|IND, 150, 255 };
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
@@ -2463,7 +2590,9 @@ void test_DESTROY_indirection()
 }
 
 // =============================================================================
-// Tests SWAP
+// Tests SWAP <objno1> <objno2>
+/*	The positions of the two objects are exchanged. Flag 1 is not adjusted. The 
+	currently referenced object is set to be Object objno 2. */
 
 void test_SWAP_success()
 {
@@ -2475,7 +2604,7 @@ void test_SWAP_success()
 	objects[2].location = LOC_CARRIED;
 
 	//BDD when checking SWAP 1 2
-	const char proc[] = { _SWAP, 1, 2, 255 };
+	static const char proc[] = { _SWAP, 1, 2, 255 };
 	do_action(proc, do_SWAP);
 
 	//BDD then success
@@ -2498,7 +2627,7 @@ void test_SWAP_indirection()
 	objects[2].location = 2;
 
 	//BDD when checking SWAP @150 2
-	const char proc[] = { _SWAP|IND, 150, 2, 255 };
+	static const char proc[] = { _SWAP|IND, 150, 2, 255 };
 	do_action(proc, do_SWAP);
 
 	//BDD then success
@@ -2511,7 +2640,10 @@ void test_SWAP_indirection()
 }
 
 // =============================================================================
-// Tests PLACE
+// Tests PLACE <objno> <locno+>
+/*	The position of Object objno. is changed to Location locno. Flag 1 is 
+	decremented if the object was carried. It is incremented if the object is 
+	placed at location 254 (carried). */
 
 void test_PLACE_success()
 {
@@ -2522,7 +2654,7 @@ void test_PLACE_success()
 	objects[1].location = 1;
 
 	//BDD when checking PLACE 1 2
-	const char proc[] = { _PLACE, 1, LOC_CARRIED, 255 };
+	static const char proc[] = { _PLACE, 1, LOC_CARRIED, 255 };
 	do_action(proc, do_PLACE);
 
 	//BDD then success
@@ -2543,7 +2675,7 @@ void test_PLACE_indirection()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking PLACE @150 1
-	const char proc[] = { _PLACE|IND, 150, 1, 255 };
+	static const char proc[] = { _PLACE|IND, 150, 1, 255 };
 	do_action(proc, do_PLACE);
 
 	//BDD then success
@@ -2555,7 +2687,11 @@ void test_PLACE_indirection()
 }
 
 // =============================================================================
-// Tests PUTO
+// Tests PUTO <locno+>
+/*	The position of the currently referenced object (i.e. that object whose 
+	number is given in flag 51), is changed to be Location locno. Flag 54 
+	remains its old location. Flag 1 is decremented if the object was carried. 
+	It is incremented if the object is placed at location 254 (carried). */
 
 void test_PUTO_success()
 {
@@ -2568,7 +2704,7 @@ void test_PUTO_success()
 	objects[1].location = 1;
 
 	//BDD when checking PUTO LOC_CARRIED
-	const char proc[] = { _PUTO, LOC_CARRIED, 255 };
+	static const char proc[] = { _PUTO, LOC_CARRIED, 255 };
 	do_action(proc, do_PUTO);
 
 	//BDD then success
@@ -2591,7 +2727,7 @@ void test_PUTO_indirection()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking PUTO @150
-	const char proc[] = { _PUTO|IND, 150, 1, 255 };
+	static const char proc[] = { _PUTO|IND, 150, 1, 255 };
 	do_action(proc, do_PUTO);
 
 	//BDD then success
@@ -2604,7 +2740,21 @@ void test_PUTO_indirection()
 }
 
 // =============================================================================
-// Tests PUTIN
+// Tests PUTIN <objno> <locno>
+/*	If Object objno. is worn then SM24 ("I can't. I'm wearing the _.") is 
+	printed and actions NEWTEXT & DONE are performed.
+
+	If Object objno. is at the current location (but neither worn nor carried), 
+	SM49 ("I don't have the _.") is printed and actions NEWTEXT & DONE are 
+	performed.
+
+	If Object objno. is not at the current location, but not carried, then SM28 
+	("I don't have one of those.") is printed and actions NEWTEXT & DONE are 
+	performed.
+
+	Otherwise the position of Object objno. is changed to Location locno. 
+	Flag 1 is decremented and SM44 ("The _ is in the"), a description of Object 
+	locno. and SM51 (".") is printed. */
 
 void test_PUTIN_worn()
 {
@@ -2614,7 +2764,7 @@ void test_PUTIN_worn()
 	objects[1].location = LOC_WORN;
 
 	//BDD when checking PUTIN 1 2
-	const char proc[] = { _PUTIN, 1, 2, 255 };
+	static const char proc[] = { _PUTIN, 1, 2, 255 };
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
@@ -2632,7 +2782,7 @@ void test_PUTIN_here()
 	objects[1].location = 1;
 
 	//BDD when checking PUTIN 1 2
-	const char proc[] = { _PUTIN, 1, 2, 255 };
+	static const char proc[] = { _PUTIN, 1, 2, 255 };
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
@@ -2650,7 +2800,7 @@ void test_PUTIN_notHere()
 	objects[1].location = 2;
 
 	//BDD when checking PUTIN 1 2
-	const char proc[] = { _PUTIN, 1, 2, 255 };
+	static const char proc[] = { _PUTIN, 1, 2, 255 };
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
@@ -2669,7 +2819,29 @@ void test_PUTIN_success()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking PUTIN 1 2
-	const char proc[] = { _PUTIN, 1, 2, 255 };
+	static const char proc[] = { _PUTIN, 1, 2, 255 };
+	do_action(proc, do_PUTIN);
+
+	//BDD then fails
+	ASSERT(objects[1].location == 2, "Object don't changed location");
+	ASSERT(flags[fNOCarr] == 0, "Object count number not decreased");
+	ASSERT(fake_lastSysMesPrinted == 44, "SystemMessage 44 not printed");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PUTIN_indirection()
+{
+	beforeEach();
+
+	//BDD given flag 75 with value 1, and a carried object 1
+	flags[75] = 1;
+	flags[fPlayer] = 1;
+	flags[fNOCarr] = 1;
+	objects[1].location = LOC_CARRIED;
+
+	//BDD when checking PUTIN @75 2
+	static const char proc[] = { _PUTIN|IND, 75, 2, 255 };
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
@@ -2681,7 +2853,32 @@ void test_PUTIN_success()
 }
 
 // =============================================================================
-// Tests TAKEOUT
+// Tests TAKEOUT <objno> <locno>
+/*	If Object objno. is worn or carried, SM25 ("I already have the _.") is printed 
+	and actions NEWTEXT & DONE are performed.
+
+	If Object objno. is at the current location, SM45 ("The _ isn't in the"), a 
+	description of Object locno. and SM51 (".") is printed and actions NEWTEXT & 
+	DONE are performed.
+
+	If Object objno. is not at the current location and not at Location locno. 
+	then SM52 ("There isn't one of those in the"), a description of Object locno. 
+	and SM51 (".") is printed and actions NEWTEXT & DONE are performed.
+
+	If Object locno. is not carried or worn, and the total weight of the objects 
+	carried and worn by the player plus Object objno. would exceed the maximum 
+	conveyable weight (Flag 52) then SM43 ("The _ weighs too much for me.") is 
+	printed and actions NEWTEXT & DONE are performed.
+
+	If the maximum number of objects is being carried (Flag 1 is greater than, 
+	or the same as, Flag 37), SM27 ("I can't carry any more things.") is printed 
+	and actions NEWTEXT & DONE are performed. In addition any current DOALL loop 
+	is cancelled. 
+
+	Otherwise the position of Object objno. is changed to carried, Flag 1 is 
+	incremented and SM36 ("I now have the _.") is printed.Note: No check is made, 
+	by either PUTIN or TAKEOUT, that Object locno. is actually present. This must 
+	be carried out by you if required. */
 
 void test_TAKEOUT_carried()
 {
@@ -2691,7 +2888,7 @@ void test_TAKEOUT_carried()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking TAKEOUT 1 3
-	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
@@ -2708,7 +2905,7 @@ void test_TAKEOUT_worn()
 	objects[1].location = LOC_WORN;
 
 	//BDD when checking TAKEOUT 1 3
-	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
@@ -2726,7 +2923,7 @@ void test_TAKEOUT_here()
 	objects[1].location = 1;
 
 	//BDD when checking TAKEOUT 1 3
-	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
@@ -2744,7 +2941,7 @@ void test_TAKEOUT_notHere()
 	objects[1].location = 2;
 
 	//BDD when checking TAKEOUT 1 3
-	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
@@ -2764,7 +2961,7 @@ void test_TAKEOUT_maxWeight()
 	objects[1].attribs.mask.weight = 7;
 
 	//BDD when checking TAKEOUT 1 3
-	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
@@ -2784,7 +2981,7 @@ void test_TAKEOUT_maxObjs()
 	objects[1].location = 3;
 
 	//BDD when checking TAKEOUT 1 3
-	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
@@ -2797,14 +2994,37 @@ void test_TAKEOUT_success()
 {
 	beforeEach();
 
-	//BDD given an object 1 at loc 3, and total num of carried objects + object 1 exceeds the maximum
+	//BDD given an object 1 at loc 3, and total num of carried objects + object 1 no exceeds the maximum
 	flags[fPlayer] = 1;
 	flags[fNOCarr] = 0;
 	flags[fMaxCarr] = 1;
 	objects[1].location = 3;
 
 	//BDD when checking TAKEOUT 1 3
-	const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
+	do_action(proc, do_TAKEOUT);
+
+	//BDD then fails
+	ASSERT(objects[1].location == LOC_CARRIED, "Object not carried");
+	ASSERT(flags[fNOCarr] == 1, "Objects counter number not increased");
+	ASSERT(fake_lastSysMesPrinted == 36, "SystemMessage 36 not printed");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAKEOUT_indirection()
+{
+	beforeEach();
+
+	//BDD given flag 75 with value 1, an object 1 at loc 3, and total num of carried objects + object 1 no exceeds the maximum
+	flags[75] = 1;
+	flags[fPlayer] = 2;
+	flags[fNOCarr] = 0;
+	flags[fMaxCarr] = 1;
+	objects[1].location = 3;
+
+	//BDD when checking TAKEOUT @75 3
+	static const char proc[] = { _TAKEOUT|IND, 75, 3, 255 };
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
@@ -2816,7 +3036,12 @@ void test_TAKEOUT_success()
 }
 
 // =============================================================================
-// Tests DROPALL
+// Tests DROPALL 
+/*	All objects which are carried or worn are created at the current location (i.e. 
+	all objects are dropped) and Flag 1 is set to 0. This is included for 
+	compatibility with older writing systems.
+	Note that a DOALL 254 will carry out a true DROP ALL, taking care of any special 
+	actions included. */
 
 void test_DROPALL_success()
 {
@@ -2830,7 +3055,7 @@ void test_DROPALL_success()
 	objects[3].location = LOC_WORN;
 
 	//BDD when checking DROPALL
-	const char proc[] = { _DROPALL, 255 };
+	static const char proc[] = { _DROPALL, 255 };
 	do_action(proc, do_DROPALL);
 
 	//BDD then success
@@ -2844,6 +3069,15 @@ void test_DROPALL_success()
 
 // =============================================================================
 // Tests AUTOG
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; here, carried, 
+	worn. i.e. The player is more likely to be trying to GET an object that is 
+	at the current location than one that is carried or worn. If an object is 
+	found its number is passed to the GET action. Otherwise if there is an 
+	object in existence anywhere in the game or if Noun1 was not in the 
+	vocabulary then SM26 ("There isn't one of those here.") is printed. Else 
+	SM8 ("I can't do that.") is printed (i.e. It is not a valid object but does 
+	exist in the game). Either way actions NEWTEXT & DONE are performed */
 
 void test_AUTOG_carried()
 {
@@ -2855,7 +3089,7 @@ void test_AUTOG_carried()
 	objects[1].location = LOC_CARRIED;
 
 	//BDD when checking AUTOG 1
-	const char proc[] = { _AUTOG, 1, 255 };
+	static const char proc[] = { _AUTOG, 1, 255 };
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
@@ -2876,7 +3110,7 @@ void test_AUTOG_worn()
 	objects[1].location = LOC_WORN;
 
 	//BDD when checking AUTOG 1
-	const char proc[] = { _AUTOG, 1, 255 };
+	static const char proc[] = { _AUTOG, 1, 255 };
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
@@ -2897,7 +3131,7 @@ void test_AUTOG_success()
 	objects[1].location = 1;
 
 	//BDD when checking AUTOG 1
-	const char proc[] = { _AUTOG, 1, 255 };
+	static const char proc[] = { _AUTOG, 1, 255 };
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
@@ -2910,6 +3144,15 @@ void test_AUTOG_success()
 
 // =============================================================================
 // Tests AUTOD
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; carried, worn, 
+	here. i.e. The player is more likely to be trying to DROP a carried object 
+	than one that is worn or here. If an object is found its number is passed 
+	to the DROP action. Otherwise if there is an object in existence anywhere 
+	in the game or if Noun1 was not in the vocabulary then SM28 ("I don't have
+	one of those.") is printed. Else SM8 ("I can't do that.") is printed (i.e. 
+	It is not a valid object but does exist in the game). Either way actions 
+	NEWTEXT & DONE are performed */
 
 void test_AUTOD_success()
 {
@@ -2918,6 +3161,15 @@ void test_AUTOD_success()
 
 // =============================================================================
 // Tests AUTOW
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; carried, worn, 
+	here. i.e. The player is more likely to be trying to WEAR a carried object 
+	than one that is worn or here. If an object is found its number is passed 
+	to the WEAR action. Otherwise if there is an object in existence anywhere 
+	in the game or if Noun1 was not in the vocabulary then SM28 ("I don't have
+	one of those.") is printed. Else SM8 ("I can't do that.") is printed (i.e. 
+	It is not a valid object but does exist in the game). Either way actions 
+	NEWTEXT & DONE are performed */
 
 void test_AUTOW_success()
 {
@@ -2926,6 +3178,15 @@ void test_AUTOW_success()
 
 // =============================================================================
 // Tests AUTOR
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; worn, carried, 
+	here. i.e. The player is more likely to be trying to REMOVE a worn object 
+	than one that is carried or here. If an object is found its number is passed 
+	to the REMOVE action. Otherwise if there is an object in existence anywhere 
+	in the game or if Noun1 was not in the vocabulary then SM23 ("I'm not 
+	wearing one of those.") is printed. Else SM8 ("I can't do that.") is printed 
+	(i.e. It is not a valid object but does exist in the game). Either way 
+	actions NEWTEXT & DONE are performed */
 
 void test_AUTOR_success()
 {
@@ -2934,6 +3195,15 @@ void test_AUTOR_success()
 
 // =============================================================================
 // Tests AUTOP
+/*	A search for the object number represented by Noun(Adjective)1 is made in the 
+	object definition section in order of location priority; carried, worn, here. 
+	i.e. The player is more likely to be trying to PUT a carried object inside 
+	another than one that is worn or here. If an object is found its number is 
+	passed to the PUTIN action. Otherwise if there is an object in existence
+	anywhere in the game or if Noun1 was not in the vocabulary then SM28 ("I don't 
+	have one of those.") is printed. Else SM8 ("I can't do that.") is printed 
+	(i.e. It is not a valid object but does exist in the game). Either way actions 
+	NEWTEXT & DONE are performed */
 
 void test_AUTOP_success()
 {
@@ -2942,6 +3212,16 @@ void test_AUTOP_success()
 
 // =============================================================================
 // Tests AUTOT
+/*	A search for the object number represented by Noun(Adjective)1 is made in the 
+	object definition section in order of location priority; in container, 
+	carried, worn, here. i.e. The player is more likely to be trying to get an 
+	object out of a container which is actually in there than one that is carried, 
+	worn or here. If an object is found its number is passed to the TAKEOUT action. 
+	Otherwise if there is an object in existence anywhere in the game or if Noun1 
+	was not in the vocabulary then SM52 ("There isn't one of those in the"), a 
+	description of Object locno. and SM51 (".") is printed. Else SM8 ("I can't do 
+	that.") is printed (i.e. It is not a valid object but does exist in the game).
+	Either way actions NEWTEXT & DONE are performed */
 
 void test_AUTOT_success()
 {
@@ -2949,18 +3229,41 @@ void test_AUTOT_success()
 }
 
 // =============================================================================
-// Tests COPYOO
+// Tests COPYOO <objno1> <objno2>
+/*	The position of Object objno2 is set to be the same as the position of 
+	Object Objno1. The currently referenced object is set to be Object objno2 */
 
 void test_COPYOO_success()
 {
 	beforeEach();
 
-	//BDD given am object 1 at loc 2, and an object 2 at loc 4
+	//BDD given an object 1 at loc 2, and an object 2 at loc 4
 	objects[1].location = 2;
 	objects[2].location = 4;
 
 	//BDD when checking COPYOO 1 2
-	const char proc[] = { _COPYOO, 1, 2, 255 };
+	static const char proc[] = { _COPYOO, 1, 2, 255 };
+	do_action(proc, do_COPYOO);
+
+	//BDD then fails
+	ASSERT(objects[1].location == 2, "Object1 changed");
+	ASSERT(objects[2].location == 2, "Object1 not changed");
+	ASSERT(flags[fCONum] == 2, "Current object not object2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_COPYOO_indirection()
+{
+	beforeEach();
+
+	//BDD given floag 75 with value 1, an object 1 at loc 2, and an object 2 at loc 4
+	flags[75] = 1;
+	objects[1].location = 2;
+	objects[2].location = 4;
+
+	//BDD when checking COPYOO @75 2
+	static const char proc[] = { _COPYOO|IND, 75, 2, 255 };
 	do_action(proc, do_COPYOO);
 
 	//BDD then fails
@@ -2973,6 +3276,10 @@ void test_COPYOO_success()
 
 // =============================================================================
 // Tests RESET
+/*	This Action bears no resemblance to the one with the same name in PAW. It has 
+	the pure function of placing all objects at the position given in the Object 
+	start table. It also sets the relevant flags dealing with no of objects 
+	carried etc. */
 
 void test_RESET_success()
 {
@@ -2984,79 +3291,1812 @@ void test_RESET_success()
 // =============================================================================
 
 // =============================================================================
-// Tests COPYOF
+// Tests COPYOF <objno> <flagno>
+/*	The position of Object objno. is copied into Flag flagno. This could be used 
+	to examine the location of an object in a comparison with another flag value. */
+
+void test_COPYOF_success()
+{
+	beforeEach();
+
+	//BDD given a worn object 1, and an empty flag 200
+	flags[200] = 0;
+	objects[1].location = LOC_WORN;
+
+	//BDD when checking COPYOF 1 200
+	static const char proc[] = { _COPYOF, 1, 200, 255 };
+	do_action(proc, do_COPYOF);
+
+	//BDD then success
+	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_COPYOF_indirection()
+{
+	beforeEach();
+
+	//BDD given a worn object 1, a flag 75 with value 1, and an empty flag 200
+	flags[75] = 1;
+	flags[200] = 0;
+	objects[1].location = LOC_WORN;
+
+	//BDD when checking COPYOF @75 200
+	static const char proc[] = { _COPYOF|IND, 75, 200, 255 };
+	do_action(proc, do_COPYOF);
+
+	//BDD then success
+	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests COPYFO
+// Tests COPYFO <flagno> <objno>
+/*	The position of Object objno. is set to be the contents of Flag flagno. An 
+	attempt to copy from a flag containing 255 will result in a run time error. 
+	Setting an object to an invalid location will still be accepted as it 
+	presents no danger to the operation of PAW. */
+
+void test_COPYFO_success()
+{
+	beforeEach();
+
+	//BDD given a worn object 1, and an empty flag 200
+	flags[200] = 0;
+	objects[1].location = LOC_WORN;
+
+	//BDD when checking COPYFO 200 1
+	static const char proc[] = { _COPYFO, 200, 1, 255 };
+	do_action(proc, do_COPYFO);
+
+	//BDD then success
+	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_COPYFO_indirection()
+{
+	beforeEach();
+
+	//BDD given a worn object 1, a flag 75 with value 1, and an empty flag 200
+	flags[75] = 200;
+	flags[200] = 0;
+	objects[1].location = LOC_WORN;
+
+	//BDD when checking COPYFO @75 1
+	static const char proc[] = { _COPYFO|IND, 75, 1, 255 };
+	do_action(proc, do_COPYFO);
+
+	//BDD then success
+	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
 // Tests WHATO
+/*	A search for the object number represented by Noun(Adjective)1 is made in 
+	the object definition section in order of location priority; carried, worn, 
+	here. This is because it is assumed any use of WHATO will be related to 
+	carried objects rather than any that are worn or here. If an object is found 
+	its number is placedin flag 51, along with the standard current object 
+	parameters in flags 54-57. This allows you to create other auto actions (the
+	tutorial gives an example of this for dropping objects in the tree). */
+
+void test_WHATO_success()
+{
+	TODO("Must mock the noun/adjective table");
+}
 
 // =============================================================================
-// Tests SETCO
+// Tests SETCO <objno>
+/*	Sets the currently referenced object to objno. */
+
+void test_SETCO_success()
+{
+	beforeEach();
+
+	//BDD given an object 1 at loc 2
+	objects[1].location = 2;
+
+	//BDD when checking SETCO 1
+	static const char proc[] = { _SETCO, 1, 255 };
+	do_action(proc, do_SETCO);
+
+	//BDD then success
+	ASSERT(flags[fCONum] == 1, "Current object is not object 1");
+	ASSERT(flags[fCOLoc] == 2, "Current object location is not 2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_SETCO_indirection()
+{
+	beforeEach();
+
+	//BDD given flag 75 with value 1, and object 1 at loc 2
+	flags[75] = 1;
+	objects[1].location = 2;
+
+	//BDD when checking SETCO @75
+	static const char proc[] = { _SETCO|IND, 75, 255 };
+	do_action(proc, do_SETCO);
+
+	//BDD then success
+	ASSERT(flags[fCONum] == 1, "Current object is not object 1");
+	ASSERT(flags[fCOLoc] == 2, "Current object location is not 2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests WEIGH
+// Tests WEIGH <objno> <flagno>
+/*	The true weight of Object objno. is calculated (i.e. if it is a container, 
+	any objects inside have their weight added - don't forget that nested 
+	containers stop adding their contents after ten levels) and the value is 
+	placed in Flag flagno. This will have a maximum value of 255 which will not 
+	be exceeded. If Object objno. is a container of zero weight, Flag flagno 
+	will be cleared as objects in zero weight containers, also weigh zero! */
+
+void test_WEIGH_success()
+{
+	TODO("Must mock better getObjectWeight()");
+}
+
+void test_WEIGH_indirection()
+{
+	TODO("Must mock better getObjectWeight()");
+}
 
 // =============================================================================
 // Actions to manipulate flags [11 condacts]
 // =============================================================================
 
 // =============================================================================
-// Tests SET
+// Tests SET <flagno>
+/*	Flag flagno. is set to 255. */
+
+void test_SET_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 1
+	flags[100] = 1;
+
+	//BDD when checking SET 100
+	static const char proc[] = { _SET, 100, 255 };
+	do_action(proc, do_SET);
+
+	//BDD then success
+	ASSERT(flags[100] == 255, "Flag 100 is not 255");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_SET_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, and flag 100 with value 1
+	flags[75] = 100;
+	flags[100] = 1;
+
+	//BDD when checking SET @75
+	static const char proc[] = { _SET|IND, 75, 255 };
+	do_action(proc, do_SET);
+
+	//BDD then success
+	ASSERT(flags[75] == 100, "Flag 75 have changed");
+	ASSERT(flags[100] == 255, "Flag 100 is not 255");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests CLEAR
+// Tests CLEAR <flagno>
+/*	Flag flagno. is cleared to 0. */
+
+void test_CLEAR_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 100
+	flags[100] = 100;
+
+	//BDD when checking CLEAR 100
+	static const char proc[] = { _CLEAR, 100, 255 };
+	do_action(proc, do_CLEAR);
+
+	//BDD then success
+	ASSERT(flags[100] == 0, "Flag 100 is not 0");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_CLEAR_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, flag 100 with value 150
+	flags[75] = 100;
+	flags[100] = 150;
+
+	//BDD when checking CLEAR @75
+	static const char proc[] = { _CLEAR|IND, 75, 255 };
+	do_action(proc, do_CLEAR);
+
+	//BDD then success
+	ASSERT(flags[75] == 100, "Flag 75 have changed");
+	ASSERT(flags[100] == 0, "Flag 100 is not 0");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests LET
+// Tests LET <flagno> <value>
+/*	Flag flagno. is set to value. */
+
+void test_LET_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 1
+	flags[100] = 1;
+
+	//BDD when checking LET 100 50
+	static const char proc[] = { _LET, 100, 50, 255 };
+	do_action(proc, do_LET);
+
+	//BDD then success
+	ASSERT(flags[100] == 50, "Flag 100 is not 50");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_LET_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with valur 100, flag 100 with value 1
+	flags[75] = 100;
+	flags[100] = 1;
+
+	//BDD when checking LET @75 80
+	static const char proc[] = { _LET|IND, 75, 80, 255 };
+	do_action(proc, do_LET);
+
+	//BDD then success
+	ASSERT(flags[100] == 80, "Flag 100 is not 80");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests PLUS
+// Tests PLUS <flagno> <value>
+/*	Flag flagno. is increased by value. If the result exceeds 255 the flag is
+	set to 255. */
+
+void test_PLUS_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 10
+	flags[100] = 10;
+
+	//BDD when checking PLUS 100 50
+	static const char proc[] = { _PLUS, 100, 50, 255 };
+	do_action(proc, do_PLUS);
+
+	//BDD then success
+	ASSERT(flags[100] == 60, "Flag 100 is not 60");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PLUS_overflow()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 210
+	flags[100] = 210;
+
+	//BDD when checking PLUS 100 50
+	static const char proc[] = { _PLUS, 100, 50, 255 };
+	do_action(proc, do_PLUS);
+
+	//BDD then success
+	ASSERT(flags[100] == 255, "Flag 100 is not 255");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PLUS_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, flag 100 with value 10
+	flags[75] = 100;
+	flags[100] = 10;
+
+	//BDD when checking PLUS @75 80
+	static const char proc[] = { _PLUS|IND, 75, 80, 255 };
+	do_action(proc, do_PLUS);
+
+	//BDD then success
+	ASSERT(flags[100] == 90, "Flag 100 is not 90");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests MINUS
+// Tests MINUS <flagno> <value>
+/*	Flag flagno. is decreased by value. If the result is negative the flag is 
+	set to 0. */
+
+void test_MINUS_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 60
+	flags[100] = 60;
+
+	//BDD when checking MINUS 100 10
+	static const char proc[] = { _MINUS, 100, 10, 255 };
+	do_action(proc, do_MINUS);
+
+	//BDD then success
+	ASSERT(flags[100] == 50, "Flag 100 is not 50");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_MINUS_overflow()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 60
+	flags[100] = 60;
+
+	//BDD when checking MINUS 100 150
+	static const char proc[] = { _MINUS, 100, 150, 255 };
+	do_action(proc, do_MINUS);
+
+	//BDD then success
+	ASSERT(flags[100] == 0, "Flag 100 is not 0");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_MINUS_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, flag 100 with value 60
+	flags[75] = 100;
+	flags[100] = 60;
+
+	//BDD when checking MINUS @75 10
+	static const char proc[] = { _MINUS|IND, 75, 10, 255 };
+	do_action(proc, do_MINUS);
+
+	//BDD then success
+	ASSERT(flags[100] == 50, "Flag 100 is not 50");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests ADD
+// Tests ADD <flagno1> <flagno2>
+/*	Flag flagno 2 has the contents of Flag flagno 1 added to it. If the result 
+	exceeds 255 the flag is set to 255. */
+
+void test_ADD_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 10, and flag 150 with value 50
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking ADD 100 150
+	static const char proc[] = { _ADD, 100, 150, 255 };
+	do_action(proc, do_ADD);
+
+	//BDD then success
+	ASSERT(flags[150] == 60, "Flag 150 is not 60");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_ADD_overflow()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 10, and flag 150 with value 250
+	flags[100] = 10;
+	flags[150] = 250;
+
+	//BDD when checking ADD 100 150
+	static const char proc[] = { _ADD, 100, 150, 255 };
+	do_action(proc, do_ADD);
+
+	//BDD then success
+	ASSERT(flags[150] == 255, "Flag 150 is not 255");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_ADD_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
+	flags[75] = 100;
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking ADD @75 150
+	static const char proc[] = { _ADD|IND, 75, 150, 255 };
+	do_action(proc, do_ADD);
+
+	//BDD then success
+	ASSERT(flags[150] == 60, "Flag 150 is not 60");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests HASNAT
+// Tests SUB <flagno1> <flagno2>
+/*	Flag flagno 2 has the contents of Flag flagno 1 subtracted from it. If the
+	result is negative the flag is set to 0. */
+
+void test_SUB_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 10, and flag 150 with value 50
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking SUB 100 150
+	static const char proc[] = { _SUB, 100, 150, 255 };
+	do_action(proc, do_SUB);
+
+	//BDD then success
+	ASSERT(flags[150] == 40, "Flag 150 is not 40");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_SUB_overflow()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 50, and flag 150 with value 10
+	flags[100] = 50;
+	flags[150] = 10;
+
+	//BDD when checking SUB 100 150
+	static const char proc[] = { _SUB, 100, 150, 255 };
+	do_action(proc, do_SUB);
+
+	//BDD then success
+	ASSERT(flags[150] == 0, "Flag 150 is not 0");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_SUB_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
+	flags[75] = 100;
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking SUB @75 150
+	static const char proc[] = { _SUB|IND, 75, 150, 255 };
+	do_action(proc, do_SUB);
+
+	//BDD then success
+	ASSERT(flags[150] == 40, "Flag 150 is not 40");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests SUB
+// Tests COPYFF <flagno1> <flagno2>
+/*	The contents of Flag flagno 1 is copied to Flag flagno 2. */
+
+void test_COPYFF_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 10, and flag 150 with value 50
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking COPYFF 100 150
+	static const char proc[] = { _COPYFF, 100, 150, 255 };
+	do_action(proc, do_COPYFF);
+
+	//BDD then success
+	ASSERT(flags[150] == 10, "Flag 150 is not 10");
+	ASSERT(flags[100] == 10, "Flag 150 is not 10");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_COPYFF_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
+	flags[75] = 100;
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking COPYFF @75 150
+	static const char proc[] = { _COPYFF|IND, 75, 150, 255 };
+	do_action(proc, do_COPYFF);
+
+	//BDD then success
+	ASSERT(flags[150] == 10, "Flag 150 is not 10");
+	ASSERT(flags[100] == 10, "Flag 150 is not 10");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests COPYFF
+// Tests COPYBF <flagno1> <flagno2>
+/*	Same as COPYFF but the source and destination are reversed, so that 
+	indirection can be used. */
+
+void test_COPYBF_success()
+{
+	beforeEach();
+
+	//BDD given a flag 100 with value 10, and flag 150 with value 50
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking COPYBF 100 150
+	static const char proc[] = { _COPYBF, 100, 150, 255 };
+	do_action(proc, do_COPYBF);
+
+	//BDD then success
+	ASSERT(flags[150] == 50, "Flag 150 is not 50");
+	ASSERT(flags[100] == 50, "Flag 150 is not 50");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_COPYBF_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
+	flags[75] = 100;
+	flags[100] = 10;
+	flags[150] = 50;
+
+	//BDD when checking COPYBF @75 150
+	static const char proc[] = { _COPYBF|IND, 75, 150, 255 };
+	do_action(proc, do_COPYBF);
+
+	//BDD then success
+	ASSERT(flags[150] == 50, "Flag 150 is not 50");
+	ASSERT(flags[100] == 50, "Flag 150 is not 50");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests COPYBF
+// Tests RANDOM <flagno>
+/*	Flag flagno. is set to a number from the Pseudo-random sequence from 1 
+	to 100. */
+
+void test_RANDOM_success()
+{
+	beforeEach();
+
+	//BDD given a flag 150 with value 255
+	flags[150] = 255;
+
+	//BDD when checking RANDOM 150
+	static const char proc[] = { _RANDOM, 150, 255 };
+	do_action(proc, do_RANDOM);
+
+	//BDD then success
+	ASSERT(flags[150] >= 1, "Flag 150 is 0");
+	ASSERT(flags[150] <= 100, "Flag 150 is greater than 100");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_RANDOM_indirection()
+{
+	beforeEach();
+
+	//BDD given a flag 150 with value 255, and flag 75 with valur 150
+	flags[75] = 150;
+	flags[150] = 255;
+
+	//BDD when checking RANDOM @75
+	static const char proc[] = { _RANDOM|IND, 75, 255 };
+	do_action(proc, do_RANDOM);
+
+	//BDD then success
+	ASSERT(flags[150] >= 1, "Flag 150 is 0");
+	ASSERT(flags[150] <= 100, "Flag 150 is greater than 100");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
 // =============================================================================
-// Tests RANDOM
+// Tests MOVE <flagno>
+/*	This is a very powerful action designed to manipulate PSI's. It allows the
+	current LS Verb to be used to scan the connections section for the location 
+	given in Flag flagno. 
+	If the Verb is found then Flag flagno is changed to be the location number 
+	associated with it, and the next condact is considered.
+	If the verb is not found, or the original location number was invalid, then 
+	PAW considers the next entry in the table - if present. */
 
-// =============================================================================
-// Tests MOVE
+void test_MOVE_success()
+{
+	TODO("Must mock Verbs table and Connections table");
+}
+
+void test_MOVE_indirection()
+{
+	TODO("Must mock Verbs table and Connections table");
+}
 
 // =============================================================================
 // Actions to manipulate player flags [3 condacts]
 // =============================================================================
 
+// =============================================================================
+// Tests GOTO <locno>
+/*	Changes the current location to locno. This effectively sets flag 38 to the value
+	locno. */
 
+void test_GOTO_success()
+{
+	beforeEach();
 
+	//BDD given player at loc 5
+	flags[fPlayer] = 5;
 
+	//BDD when checking GOTO 1
+	static const char proc[] = { _GOTO, 1, 255 };
+	do_action(proc, do_GOTO);
 
+	//BDD then success
+	ASSERT(flags[fPlayer] == 1, "Player not moved");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
 
+void test_GOTO_indirection()
+{
+	beforeEach();
 
+	//BDD given player at loc 5, and flag 75 with value 1
+	flags[75] = 1;
+	flags[fPlayer] = 5;
 
+	//BDD when checking GOTO @75
+	static const char proc[] = { _GOTO|IND, 75, 255 };
+	do_action(proc, do_GOTO);
 
+	//BDD then success
+	ASSERT(flags[fPlayer] == 1, "Player not moved");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests WEIGHT <flagno>
+/*	Calculates the true weight of all objects carried and worn by the player 
+	(i.e. any containers will have the weight of their contents added up to a 
+	maximum of 255), this value is then placed in Flag flagno.
+	This would be useful to ensure the player was not carrying too much weight 
+	to cross a bridge without it collapsing etc. */
+
+void test_WEIGHT_success()
+{
+	TODO("Must mock getObjectWeight()");
+}
+
+// =============================================================================
+// Tests ABILITY <value1> <value2>
+/*	This sets Flag 37, the maximum number of objects conveyable, to value 1 and 
+	Flag 52, the maximum weight of objects the player may carry and wear at any 
+	one time (or their strength), to be value 2 .
+	No checks are made to ensure that the player is not already carrying more 
+	than the maximum. GET and so on, which check the values, will still work 
+	correctly and prevent the player carrying any more objects, even if you set 
+	the value lower than that which is already carried! */
+
+void test_ABILITY_success()
+{
+	beforeEach();
+
+	//BDD given fMaxCarr with value 5, and fStrength with value 50
+	flags[fMaxCarr] = 5;
+	flags[fStrength] = 50;
+
+	//BDD when checking ABILITY 10 100
+	static const char proc[] = { _ABILITY, 10, 100, 255 };
+	do_action(proc, do_ABILITY);
+
+	//BDD then success
+	ASSERT(flags[fMaxCarr] == 10, "Flag fMaxCarr bad value");
+	ASSERT(flags[fStrength] == 100, "Flag fStrength bad value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_ABILITY_indirection()
+{
+	beforeEach();
+
+	//BDD given flag 75 with value 10, fMaxCarr with value 5, and fStrength with value 50
+	flags[75] = 10;
+	flags[fMaxCarr] = 5;
+	flags[fStrength] = 50;
+
+	//BDD when checking ABILITY @75 100
+	static const char proc[] = { _ABILITY|IND, 75, 100, 255 };
+	do_action(proc, do_ABILITY);
+
+	//BDD then success
+	ASSERT(flags[fMaxCarr] == 10, "Flag fMaxCarr bad value");
+	ASSERT(flags[fStrength] == 100, "Flag fStrength bad value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Actions for screen mode/format flags [3 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests MODE <option>
+/*	Allows the current window to have its operation flags changed. In order to 
+	calculate the number to use for the option just add the numbers shown next 
+	to each item to achieve the required bitmask combination:
+		1 - Use the upper character set. (A permanent ^G)
+		2 - SM32 ("More...") will not appear when the window fills.
+	e.g. MODE 3 stops the 'More...' prompt and causes all to be translated to 
+	the 128-256 range. */
+
+void test_MODE_success()
+{
+	beforeEach();
+
+	//BDD given current window mode assigned to 0
+	cw->mode = 0;
+
+	//BDD when checking MODE 3
+	static const char proc[] = { _MODE, 3, 255 };
+	do_action(proc, do_MODE);
+
+	//BDD then success
+	ASSERT(cw->mode == 3, "New mode not is 3");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_MODE_indirection()
+{
+	beforeEach();
+
+	//BDD given flag 75 with value 3, current window mode assigned to 0
+	cw->mode = 0;
+	flags[75] = 3;
+
+	//BDD when checking MODE @75
+	static const char proc[] = { _MODE|IND, 75, 255 };
+	do_action(proc, do_MODE);
+
+	//BDD then success
+	ASSERT(cw->mode == 3, "New mode not is 3");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests INPUT <stream> <option>
+/*	The 'stream' parameter will set the bulk of input to come from the given 
+	window/stream. A value of 0 for 'stream' will not use the graphics stream 
+	as might be expected, but instead causes input to come from the current 
+	stream when the input occurs.
+	Bitmask options:
+		1 - Clear window after input.
+		2 - Reprint input line in current stream when complete.
+		4 - Reprint current text of input after a timeout. */
+
+void test_INPUT_success()
+{
+	TODO("INPUT Not Implemented");
+}
+
+void test_INPUT_indirection()
+{
+	TODO("INPUT Not Implemented");
+}
+
+// =============================================================================
+// Tests TIME <duration> <option>
+/*	Allows input to be set to 'timeout' after a specific duration in 1 second 
+	intervals, i.e. the Process 2 table will be called again if the player types 
+	nothing for the specified period. This action alters flags 48 & 49. 'option' 
+	allows this to also occur on ANYKEY and the "More..." prompt. In order to 
+	calculate the number to use for the option just add the numbers shown next to
+	each item to achieve the required combination;
+	    1 - While waiting for first character of Input only.
+	    2 - While waiting for the key on the "More..." prompt.
+	    4 - While waiting for the key on the ANYKEY action.
+	e.g. TIME 5 6 (option = 2+4) will allow 5 seconds of inactivity on behalf of 
+	the player on input, ANYKEY or "More..." and between each key press. Whereas 
+	TIME 5 3 (option = 1+2) allows it only on the first character of input and on 
+	"More...".
+	TIME 0 0 will stop timeouts (default). */
+
+void test_TIME_success()
+{
+	beforeEach();
+
+	//BDD given fTime w/value 0, and fTIFlags w/value 0
+	flags[fTime] = 0;
+	flags[fTIFlags] = 0;
+
+	//BDD when checking TIME 10 3
+	static const char proc[] = { _TIME, 10, 3, 255 };
+	do_action(proc, do_TIME);
+
+	//BDD then success
+	ASSERT(flags[fTime] == 10, "Flag fTime is not 10");
+	ASSERT(flags[fTIFlags] == 3, "Flag fTIFlags is not 3");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TIME_indirection()
+{
+	beforeEach();
+
+	//BDD given flag 75 w/value 10, fTime w/value 0, and fTIFlags w/value 0
+	flags[75] = 10;
+	flags[fTime] = 0;
+	flags[fTIFlags] = 0;
+
+	//BDD when checking TIME @75 3
+	static const char proc[] = { _TIME|IND, 75, 3, 255 };
+	do_action(proc, do_TIME);
+
+	//BDD then success
+	ASSERT(flags[fTime] == 10, "Flag fTime is not 10");
+	ASSERT(flags[fTIFlags] == 3, "Flag fTIFlags is not 3");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Actions for screen control & output [20 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests WINDOW <window>
+/*	Selects window (0-7) as current print output stream. */
+
+void test_WINDOW_success()
+{
+	beforeEach();
+
+	//BDD given current windows is 0
+	cw = &windows[0];
+
+	//BDD when checking WINDOW 1
+	static const char proc[] = { _WINDOW, 1, 255 };
+	do_action(proc, do_WINDOW);
+
+	//BDD then success
+	ASSERT(cw == &windows[1], "Current window is not 1");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_WINDOW_indirection()
+{
+	beforeEach();
+
+	//BDD given current windows is 0, and flag 75 w/value 1
+	cw = &windows[0];
+	flags[75] = 1;
+
+	//BDD when checking WINDOW @75
+	static const char proc[] = { _WINDOW|IND, 75, 255 };
+	do_action(proc, do_WINDOW);
+
+	//BDD then success
+	ASSERT(cw == &windows[1], "Current window is not 1");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests WINAT <line> <col>
+/*	Sets current window to start at given line and column. Height and width to fit 
+	available screen. */
+
+void test_WINAT_success()
+{
+	beforeEach();
+
+	//BDD given current window at (0,0)
+	cw->winX = 0;
+	cw->winY = 0;
+
+	//BDD when checking WINAT 5 10
+	static const char proc[] = { _WINAT, 5, 10, 255 };
+	do_action(proc, do_WINAT);
+
+	//BDD then success
+	ASSERT(cw->winX == 10, "Current window X is not 10");
+	ASSERT(cw->winY == 5, "Current window Y is not 5");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_WINAT_oversize()
+{
+	beforeEach();
+
+	//BDD given current window at (10,10) w/size (85x25)
+	cw->winX = 0;
+	cw->winY = 0;
+	cw->winW = 85;
+	cw->winH = 25;
+
+	//BDD when checking WINAT 10 10
+	static const char proc[] = { _WINAT, 10, 10, 255 };
+	do_action(proc, do_WINAT);
+
+	//BDD then success
+	ASSERT(cw->winW == MAX_COLUMNS - cw->winX, "Current window W not match");
+	ASSERT(cw->winH == MAX_LINES - cw->winY, "Current window H not match");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_WINAT_indirection()
+{
+	beforeEach();
+
+	//BDD given current window at (0,0), and flag 75 w/value 5
+	cw->winX = 0;
+	cw->winY = 0;
+	flags[75] = 5;
+
+	//BDD when checking WINAT @75 10
+	static const char proc[] = { _WINAT|IND, 75, 10, 255 };
+	do_action(proc, do_WINAT);
+
+	//BDD then success
+	ASSERT(cw->winX == 10, "Current window X is not 10");
+	ASSERT(cw->winY == 5, "Current window Y is not 5");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests WINSIZE <height> <width>
+/*	Sets current window size to given height and width. Clipping needed to fit 
+	available screen. */
+
+void test_WINSIZE_success()
+{
+	beforeEach();
+
+	//BDD given current window size is (20x15)
+	cw->winW = 20;
+	cw->winH = 15;
+
+	//BDD when checking WINSIZE 15 25
+	static const char proc[] = { _WINSIZE, 15, 25, 255 };
+	do_action(proc, do_WINSIZE);
+
+	//BDD then success
+	ASSERT(cw->winW == 25, "Current window W is not 25");
+	ASSERT(cw->winH == 15, "Current window H is not 15");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_WINSIZE_oversize()
+{
+	beforeEach();
+
+	//BDD given current window size is (20x15) and at (10,10)
+	cw->winX = 10;
+	cw->winY = 10;
+	cw->winW = 20;
+	cw->winH = 15;
+
+	//BDD when checking WINSIZE 127 127
+	static const char proc[] = { _WINSIZE, 127, 127, 255 };
+	do_action(proc, do_WINSIZE);
+
+	//BDD then success
+	ASSERT(cw->winW == MAX_COLUMNS - cw->winX, "Current window W not match");
+	ASSERT(cw->winH == MAX_LINES - cw->winY, "Current window H not match");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_WINSIZE_indirection()
+{
+	beforeEach();
+
+	//BDD given current window size is (20x15), and flag 75 w/value 15
+	cw->winW = 20;
+	cw->winH = 15;
+	flags[75] = 15;
+
+	//BDD when checking WINSIZE @75 25
+	static const char proc[] = { _WINSIZE|IND, 75, 25, 255 };
+	do_action(proc, do_WINSIZE);
+
+	//BDD then success
+	ASSERT(cw->winW == 25, "Current window W is not 25");
+	ASSERT(cw->winH == 15, "Current window H is not 15");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests CENTRE
+/*	Will ensure the current window is centered for the current column width of the 
+	screen. (Does not affect line position). */
+
+void test_CENTRE_success()
+{
+	beforeEach();
+
+	//BDD given current window at (1,1) w/size (20x15)
+	cw->winX = 1;
+	cw->winY = 1;
+	cw->winW = 20;
+	cw->winH = 15;
+
+	//BDD when checking CENTRE
+	static const char proc[] = { _CENTRE, 255 };
+	do_action(proc, do_CENTRE);
+
+	//BDD then success
+	ASSERT(cw->winX == (MAX_COLUMNS - cw->winW)/2, "Current window W not match");
+	ASSERT(cw->winY == 1, "Current window Y has changed");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests CLS
+/*	Clears the current window. */
+
+void test_CLS_success()
+{
+	beforeEach();
+
+	//BDD given a used current window
+	cw->cursorX = 1;
+	cw->cursorY = 2;
+	cw->lastPicLocation = 20;
+	lastPicShow = true;
+	printedLines = 5;
+
+	//BDD when checking CLS
+	static const char proc[] = { _CLS, 255 };
+	do_action(proc, do_CLS);
+
+	//BDD then success
+	ASSERT(cw->cursorX == 0, "Current window cursorX not reset");
+	ASSERT(cw->cursorY == 0, "Current window cursorY not reset");
+	ASSERT(cw->lastPicLocation == NO_LASTPICTURE, "Current window lastPicLocation not reset");
+	ASSERT(lastPicShow == false, "lastPicShow not reset");
+	ASSERT(printedLines == 0, "printedLines not reset");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests SAVEAT
+/*	Save and Restore print position for current window. This allows you to 
+	maintain the print position for example while printing elsewhere in the 
+	window. You should consider using a seperate window for most tasks. This 
+	may find use in the creation of a new input line or in animation 
+	sequences... */
+
+void test_SAVEAT_success()
+{
+	beforeEach();
+
+	//BDD given not saved cursor pos, and cursor at (1,2)
+	savedPosX = 0;
+	savedPosY = 0;
+	cw->cursorX = 1;
+	cw->cursorY = 2;
+
+	//BDD when checking SAVEAT
+	static const char proc[] = { _SAVEAT, 255 };
+	do_action(proc, do_SAVEAT);
+
+	//BDD then success
+	ASSERT(savedPosX == 1, "Saved pos X not 1");
+	ASSERT(savedPosY == 2, "Saved pos Y not 2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests BACKAT
+
+void test_BACKAT_success()
+{
+	beforeEach();
+
+	//BDD given a saved cursor pos (1,2), and cursor at (0,0)
+	savedPosX = 1;
+	savedPosY = 2;
+	cw->cursorX = 0;
+	cw->cursorY = 0;
+
+	//BDD when checking BACKAT
+	static const char proc[] = { _BACKAT, 255 };
+	do_action(proc, do_BACKAT);
+
+	//BDD then success
+	ASSERT(cw->cursorX == 1, "Restored pos X not 1");
+	ASSERT(cw->cursorY == 2, "Restored pos Y not 2");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests PAPER <colour>
+/*	Set paper colour acording to the lookup table given in the graphics editors */
+
+void test_PAPER_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests INK <colour>
+/*	Set text colour acording to the lookup table given in the graphics editors */
+
+void test_INK_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests BORDER <colour>
+/*	Set border colour acording to the lookup table given in the graphics editors. */
+
+void test_BORDER_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests PRINTAT <line> <col>
+/*	Sets current print position to given point if in current window. If not then 
+	print position becomes top left of window. */
+
+void test_PRINTAT_success()
+{
+	beforeEach();
+
+	//BDD given cursor at (0,0)
+	cw->cursorX = 0;
+	cw->cursorY = 0;
+
+	//BDD when checking PRINTAT 10 5
+	static const char proc[] = { _PRINTAT, 10, 5, 255 };
+	do_action(proc, do_PRINTAT);
+
+	//BDD then success
+	ASSERT(cw->cursorX == 5, "Cursor X not 5");
+	ASSERT(cw->cursorY == 10, "Cursor Y not 10");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_PRINTAT_indirection()
+{
+	beforeEach();
+
+	//BDD given cursor at (0,0), and flag 75 w/value 10
+	cw->cursorX = 0;
+	cw->cursorY = 0;
+	flags[75] = 10;
+
+	//BDD when checking PRINTAT @75 5
+	static const char proc[] = { _PRINTAT|IND, 75, 5, 255 };
+	do_action(proc, do_PRINTAT);
+
+	//BDD then success
+	ASSERT(cw->cursorX == 5, "Cursor X not 5");
+	ASSERT(cw->cursorY == 10, "Cursor Y not 10");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests TAB <col>
+/*	Sets current print position to given column on current line. */
+
+void test_TAB_success()
+{
+	beforeEach();
+
+	//BDD given cursor at (2,3)
+	cw->cursorX = 2;
+	cw->cursorY = 3;
+
+	//BDD when checking TAB 10
+	static const char proc[] = { _TAB, 10, 255 };
+	do_action(proc, do_TAB);
+
+	//BDD then success
+	ASSERT(cw->cursorX == 10, "Cursor X not 10");
+	ASSERT(cw->cursorY == 3, "Cursor Y not 3");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_TAB_indirection()
+{
+	beforeEach();
+
+	//BDD given cursor at (2,3), and flag 75 w/value 10
+	cw->cursorX = 2;
+	cw->cursorY = 3;
+	flags[75] = 10;
+
+	//BDD when checking TAB @75
+	static const char proc[] = { _TAB|IND, 75, 255 };
+	do_action(proc, do_TAB);
+
+	//BDD then success
+	ASSERT(cw->cursorX == 10, "Cursor X not 10");
+	ASSERT(cw->cursorY == 3, "Cursor Y not 3");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// Tests SPACE
+/*	Will simply print a space to the current output stream. Shorter than MES 
+	Space! */
+
+void test_SPACE_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests NEWLINE
+/*	Prints a carriage return/line feed. */
+
+void test_NEWLINE_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests MES <mesno>
+/*	Prints Message mesno. */
+
+void test_MES_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests MESSAGE <mesno>
+/*	Prints Message mesno., then carries out a NEWLINE action. */
+
+void test_MESSAGE_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests SYSMESS <sysno>
+/*	Prints System Message sysno. */
+
+void test_SYSMES_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests DESC <locno>
+/*	Prints the text for location locno. without a NEWLINE. */
+
+void test_DESC_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests PRINT <flagno>
+/*	The decimal contents of Flag flagno. are displayed without leading or 
+	trailing spaces. */
+
+void test_PRINT_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Tests DPRINT <flagno>
+/*	Will print the contents of flagno and flagno+1 as a two byte number. */
+
+void test_DPRINT_success()
+{
+	TODO("UI not mocked");
+}
+
+// =============================================================================
+// Actions for listing objects [2 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests LISTOBJ
+/*	If any objects are present then SM1 ("I can also see:") is printed, followed 
+	by a list of all objects present at the current location.
+	If there are no objects then nothing is printed. */
+
+void test_LISTOBJ_success()
+{
+	TODO("-----");
+}
+
+void test_LISTOBJ_none()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests LISTAT <locno+>
+/*	If any objects are present then they are listed. Otherwise SM53 ("nothing.") 
+	is printed - note that you will usually have to precede this action with a 
+	message along the lines of "In the bag is:" etc. */
+
+void test_LISTAT_success()
+{
+	TODO("-----");
+}
+
+void test_LISTAT_none()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions for current game state save/load [4 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests SAVE <opt>
+/*	This action saves the current game position on disc or tape. SM60 ("Type in 
+	name of file.") is printed and the input routine is called to get the filename 
+	from the player. If the supplied filename is not acceptable SM59 ("File name 
+	error.") is printed - this is not checked on 8 bit machines, the file name 
+	is MADE acceptable! */
+
+void test_SAVE_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests LOAD <opt>
+/*	This action loads a game position from disc or tape. A filename is obtained 
+	in the same way as for SAVE. A variety of errors may appear on each machine 
+	if the file is not found or suffers a load error. Usually 'I/O Error'. The 
+	next action is carried out only if the load is successful. Otherwise a system 
+	clear, GOTO 0, RESTART is carried out. */
+
+void test_LOAD_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests RAMSAVE
+/*	In a similar way to SAVE this action saves all the information relevant to 
+	the game in progress not onto disc but into a memory buffer. This buffer is 
+	of course volatile and will be destroyed when the machine is turned off 
+	which should be made clear to the player. The next action is always carried 
+	out. */
+
+void test_RAMSAVE_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests RAMSAVE <flagno>
+/*	This action is the counterpart of RAMSAVE and allows the saved buffer to be 
+	restored. The parameter specifies the last flag to be reloaded which can be 
+	used to preserve values over a restore.
+	Note 1: The RAM actions could be used to implement an OOPS command that is 
+	common on other systems to take back the previous move; by creating an entry 
+	in the main loop which does an automatic RAMSAVE every time the player enters 
+	a move.
+	Note 2: These four actions allow the next Condact to be carried out. They 
+	should normally always be followed by a RESTART or describe in order that 
+	the game state is restored to an identical position. */
+
+void test_RAMLOAD_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions to pause game [2 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests ANYKEY
+/*	SM16 ("Press any key to continue") is printed and the keyboard is scanned until 
+	a key is pressed or until the timeout duration has elapsed if enabled. */
+
+void test_ANYKEY_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests PAUSE <value>
+/*	Pauses for value/50 secs. However, if value is zero then the pause is for 
+	256/50 secs. */
+
+void test_PAUSE_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions to control the parse [3 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests PARSE <n>
+/*	The parameter 'n' controls which level of string indentation is to be 
+	searched. At the moment only two are supported by the interpreters so only 
+	the values 0 and 1 are valid.
+		0 - Parse the main input line for the next LS.
+		1 - Parse any string (phrase enclosed in quotes [""]) that was contained 
+		    in the last LS extracted. */
+
+void test_PARSE_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests NEWTEXT
+/*	Forces the loss of any remaining phrases on the current input line. You 
+	would use this to prevent the player continuing without a fresh input 
+	should something go badly for his situation. e.g. the GET action carries 
+	out a NEWTEXT if it fails to get the required object for any reason, to 
+	prevent disaster with a sentence such as:
+		GET SWORD AND KILL ORC WITH IT
+	as attacking the ORC without the sword may be dangerous! */
+
+void test_NEWTEXT_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests SYNONYM
+/*	Substitutes the given verb and noun in the LS. Nullword (Usually '_') can be 
+	used to suppress substitution for one or the other - or both I suppose! e.g.
+	        MATCH    ON         SYNONYM LIGHT MATCH
+	        STRIKE   MATCH      SYNONYM LIGHT _
+	        LIGHT    MATCH      ....                 ; Actions...
+	will switch the LS into a standard format for several different entries. 
+	Allowing only one to deal with the actual actions. */
+
+void test_SYNONYM_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions for flow control [7 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests PROCESS
+/*	This powerful action transfers the attention of DAAD to the specified Process 
+	table number. Note that it is a true subroutine call and any exit from the 
+	new table (e.g. DONE, OK etc) will return control to the condact which follows 
+	the calling PROCESS action. A sub-process can call (nest) further process' to 
+	a depth of 10 at which point a run time error will be generated. */
+
+void test_PROCESS_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests REDO
+/*	Will restart the currently executing table, allowing...
+	TODO:incomplete descripcion in documentation */
+
+void test_REDO_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests DOALL
+/*	Another powerful action which allows the implementation 'ALL' type command.
+
+	1 - An attempt is made to find an object at Location locno. 
+	    If this is unsuccessful the DOALL is cancelled and action DONE is performed.
+	2 - The object number is converted into the LS Noun1 (and Adjective1 if present)
+	    by reference to the object definition section. If Noun(Adjective)1 matches
+	    Noun(Adjective)2 then a return is made to step 1. This implements the "Verb
+	    ALL EXCEPT object" facility of the parser.
+	3 - The next condact and/or entry in the table is then considered. This 
+	    effectively converts a phrase of "Verb All" into "Verb object" which is
+	    then processed by the table as if the player had typed it in.
+	4 - When an attempt is made to exit the current table, if the DOALL is still 
+	    active (i.e. has not been cancelled by an action) then the attention of 
+	    DAAD is returned to the DOALL as from step 1; with the object search 
+	    continuing from the next highest object number to that just considered.
+
+	The main ramification of the search method through the object definition 
+	section is; objects which have the Same Noun(Adjective) description (where the 
+	game works out which object is referred to by its presence) must be checked for 
+	in ascending order of object number, or one of them may be missed.
+	Use the of DOALL to implement things like OPEN ALL must account for fact that 
+	doors are often flags only and would have to bemade into objects if they were to 
+	be included in a DOALL. */
+
+void test_DOALL_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests SKIP
+/*	Skip a distance of -128 to 128, or to the specified label. Will move the 
+	current entry in a table back or fore. 0 means next entry (so is meaningless).
+	-1 means restart current entry (Dangerous). */
+
+void test_SKIP_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests RESTART
+/*	Will cancel any DOALL loop, any sub-process calls and make a jump
+	to execute process 0 again from the start.*/
+
+void test_RESTART_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests END
+/*	SM13 ("Would you like to play again?") is printed and the input routine called.
+	Any DOALL loop and sub-process calls are cancelled. If the reply does not start 
+	with the first character of SM31 a jump is made to Initialise.
+	Otherwise the player is returned to the operating system - by doing the command 
+	EXIT 0.*/
+
+void test_END_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests EXIT <value>
+/*	If value is 0 then will return directly to the operating system. 
+	reset ensure you use your PART number as the non zero value! */
+
+void test_EXIT_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions for exit tables [3 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests DONE
+/*	This action jumps to the end of the process table and flags to DAAD that an 
+	action has been carried out. i.e. no more condacts or entries are considered. 
+	A return will thus be made to the previous calling process table, or to the 
+	start point of any active DOALL loop. */
+
+void test_DONE_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests NOTDONE
+/*	This action jumps to the end of the process table and flags PAW that #no# 
+	action has been carried out. i.e. no more condacts or entries are considered. 
+	A return will thus be made to the previous calling process table or to the 
+	start point of any active DOALL loop. This will cause PAW to print one of the
+	"I can't" messages if needed. i.e. if no other action is carried out and no 
+	entry is present in the connections section for the current Verb. */
+
+void test_NOTDONE_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests OK
+/*	SM15 ("OK") is printed and action DONE is performed. */
+
+void test_OK_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions to call external routines [4 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests EXTERN <value> <routine>
+/*	Calls external routine with parameter value. The address is set by linking 
+	the #extern pre-compiler command */
+
+void test_EXTERN_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests CALL <address(dword)>
+/*	Allows 'address' in memory (or in the database segment for 16bit) to be 
+	executed. See the extern secion for more details. */
+
+void test_CALL_success()
+{
+	TODO("CALL Not Implemented");
+}
+
+// =============================================================================
+// Tests SFX <value1> <value2>
+//       SFX <pa> <routine>
+/*	This is a second EXTERN type action designed for Sound Effects extensions. 
+	e.g. It has a 'default' function which allows value 'value1' to be written 
+	to register 'value2' of the sound chip on 8 bit machines. This can be 
+	changed with #sfx or through linking - see the machine details and extern 
+	section for specifics. */
+
+void test_SFX_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests GFX <pa> <routine>
+/*	An EXTERN which is meant to deal with any graphics extensions to DAAD. On 
+	16bit it is used to implement the screen switching facilities. This can be 
+	changed with #gfx or through linking. See the machine details and extern 
+	section for specifics.
+	
+	GFX pa routine
+
+	where routine can be:
+       0*   Back->Phys
+       1*   Phys->Back
+       2*   SWAP (Phys<>Back) (In CGA this is a bit rough...)
+       3*   Graphics Write to Phys
+       4*   Graphics Write to Back
+       5*   Clear Phys
+       6*   Clear Back
+       7    Text Write to Phys      -ST only
+       8    Text Write to Back      -ST only
+       9*   Set Palette value (Value is offset of 4 flag data block containing 
+	   	    Num,Red,Green,Blue. RGB values are 0-255
+      10    Read Palette value (Value is offset of 4 flag data block)
+
+	* = supported by MSX2 interpreter. */
+
+void test_GFX_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions to show pictures [2 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests PICTURE <picno>
+/*	Will load into the picture buffer the given picture. If there no corresponding
+	picture the next entry will be carried out, if there is then the next CondAct 
+	is executed. */
+
+void test_PICTURE_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Tests DISPLAY <value>
+/*	If value=0 then the last buffered picture is placed onscreen. 
+	If value !=0 and the picture is not a subroutine then the given window area 
+	is cleared. This is normally used with indirection and a flag to check and 
+	display darkness. */
+
+void test_DISPLAY_success()
+{
+	TODO("-----");
+}
+
+// =============================================================================
+// Actions miscellaneous [2 condacts]
+// =============================================================================
+
+// =============================================================================
+// Tests MOUSE <option>
+/*	This action in preparation for the hypercard system implements skeleton 
+	mouse handler on the IBM. */
+
+void test_MOUSE_success()
+{
+	TODO("MOUSE Not Implemented");
+}
+
+// =============================================================================
+// Tests BEEP <length> <tone>
+/*	Length is the duration in 1/50 seconds. Tone is like BEEP in ZX Basic but
+	adding 60 to it and multiplied by 2.
+	http://www.worldofspectrum.org/ZXBasicManual/zxmanchap19.html */
+
+void test_BEEP_success()
+{
+	TODO("-----");
+}
 
 
 
 
 
 // =============================================================================
+// =============================================================================
 // main
+// =============================================================================
+// =============================================================================
 
 int main(char** argv, int argc)
 {
@@ -3115,9 +5155,9 @@ int main(char** argv, int argc)
 	test_SWAP_success(); test_SWAP_indirection();
 	test_PLACE_success(); test_PLACE_indirection();
 	test_PUTO_success(); test_PUTO_indirection();
-	test_PUTIN_worn(); test_PUTIN_here(); test_PUTIN_notHere(); test_PUTIN_success();
+	test_PUTIN_worn(); test_PUTIN_here(); test_PUTIN_notHere(); test_PUTIN_success(); test_PUTIN_indirection();
 	test_TAKEOUT_carried(); test_TAKEOUT_worn(); test_TAKEOUT_here(); test_TAKEOUT_notHere(); test_TAKEOUT_maxWeight();
-		test_TAKEOUT_maxObjs(); test_TAKEOUT_success();
+		test_TAKEOUT_maxObjs(); test_TAKEOUT_success(); test_TAKEOUT_indirection();
 	test_DROPALL_success();
 	test_AUTOG_carried(); test_AUTOG_worn(); test_AUTOG_success();
 	test_AUTOD_success();
@@ -3125,7 +5165,91 @@ int main(char** argv, int argc)
 	test_AUTOR_success();
 	test_AUTOP_success();
 	test_AUTOT_success();
-	test_COPYOO_success();
+	test_COPYOO_success(); test_COPYOO_indirection();
 	test_RESET_success();
+	test_COPYOF_success(); test_COPYOF_indirection();
+	test_COPYFO_success(); test_COPYFO_indirection();
+	test_WHATO_success();
+	test_SETCO_success(); test_SETCO_indirection();
+	test_WEIGH_success(); test_WEIGH_indirection();
+
+	test_SET_success(); test_SET_indirection();
+	test_CLEAR_success(); test_CLEAR_indirection();
+	test_LET_success(); test_LET_indirection();
+	test_PLUS_success(); test_PLUS_overflow(); test_PLUS_indirection();
+	test_MINUS_success(); test_MINUS_overflow(); test_MINUS_indirection();
+	test_ADD_success(); test_ADD_overflow(); test_ADD_indirection();
+	test_SUB_success(); test_SUB_overflow(); test_SUB_indirection();
+	test_COPYFF_success(); test_COPYFF_indirection();
+	test_COPYBF_success(); test_COPYBF_indirection();
+	test_RANDOM_success(); test_RANDOM_indirection();
+	test_MOVE_success(); test_MOVE_indirection();
+
+	test_GOTO_success(); test_GOTO_indirection();
+	test_WEIGHT_success();
+	test_ABILITY_success(); test_ABILITY_indirection();
+
+	test_MODE_success(); test_MODE_indirection();
+	test_INPUT_success(); test_INPUT_indirection();
+	test_TIME_success(); test_TIME_indirection();
+
+	test_WINDOW_success(); test_WINDOW_indirection();
+	test_WINAT_success(); test_WINAT_oversize(); test_WINAT_indirection();
+	test_WINSIZE_success(); test_WINSIZE_oversize(); test_WINSIZE_indirection();
+	test_CENTRE_success();
+	test_CLS_success();
+	test_SAVEAT_success();
+	test_BACKAT_success();
+	test_PAPER_success();
+	test_INK_success();
+	test_BORDER_success();
+	test_PRINTAT_success(); test_PRINTAT_indirection();
+	test_TAB_success(); test_TAB_indirection();
+	test_SPACE_success();
+	test_NEWLINE_success();
+	test_MES_success();
+	test_MESSAGE_success();
+	test_SYSMES_success();
+	test_DESC_success();
+	test_PRINT_success();
+	test_DPRINT_success();
+	
+	test_LISTOBJ_success(); test_LISTOBJ_none();
+	test_LISTAT_success(); test_LISTAT_none();
+
+	test_SAVE_success();
+	test_LOAD_success();
+	test_RAMSAVE_success();
+	test_RAMLOAD_success();
+
+	test_ANYKEY_success();
+	test_PAUSE_success();
+
+	test_PARSE_success();
+	test_NEWTEXT_success();
+	test_SYNONYM_success();
+
+	test_PROCESS_success();
+	test_REDO_success();
+	test_DOALL_success();
+	test_SKIP_success();
+	test_RESTART_success();
+	test_END_success();
+	test_EXIT_success();
+
+	test_DONE_success();
+	test_NOTDONE_success();
+	test_OK_success();
+
+	test_EXTERN_success();
+	test_CALL_success();
+	test_SFX_success();
+	test_GFX_success();
+
+	test_PICTURE_success();
+	test_DISPLAY_success();
+
+	test_MOUSE_success();
+	test_BEEP_success();
 
 }

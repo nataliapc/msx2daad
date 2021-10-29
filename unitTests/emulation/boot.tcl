@@ -9,4 +9,4 @@ set fullspeedwhenloading on
 debug set_watchpoint write_io 0x18
 
 set speed 9999
-after time 60 wait_until_boot
+after time 300 wait_until_boot
