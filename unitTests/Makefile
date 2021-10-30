@@ -6,7 +6,7 @@ CC = sdcc
 HEX2BIN = hex2bin
 
 CXXFLAGS := -DUNIT_TESTS -DLANG_ES -DMSXDOS1 -DMSX2
-OPFLAGS := --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0
+OPFLAGS := --opt-code-size
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84 --disable-warning 85
 CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
 

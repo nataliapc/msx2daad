@@ -2,10 +2,18 @@
 #include "assert.h"
 
 
-void _ASSERT(bool succeedCondition, const char *failMsg, char *file, char *func, int line)
+void _ASSERT_TRUE(bool succeedCondition, const char *failMsg, char *file, char *func, int line)
 {
 	if (!succeedCondition) {
 		cprintf("### Assert failed at: %s :: %s :: line %d\n\r    by \"%s\"\n\r\x07", file, func, line, failMsg);
+		exit0();
+	}
+}
+
+void _ASSERT_EQUAL(uint16_t value, uint16_t expected, const char *failMsg, char *file, char *func, int line)
+{
+	if (value != expected) {
+		cprintf("### Assert failed at: %s :: %s :: line %d\n\r    by \"%s\"\n\r    received:%u expected:%u\n\r\x07", file, func, line, failMsg, value, expected);
 		exit0();
 	}
 }

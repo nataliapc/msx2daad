@@ -79,7 +79,6 @@ static const CondactArgs const CONDACTS[128] = {
 };
 #endif	//VERBOSE
 
-
 static const char SAVEGAME[] = "SAVEGAME.000";
 
 static void _internal_picture(uint8_t value);
@@ -638,7 +637,7 @@ void do_QUIT()
 	printSystemMsg(12);
 	do_NEWLINE();
 	clearLogicalSentences();
-	prompt();
+	prompt(false);
 	char c = *tmpMsg;
 	getSystemMsg(30);
 	if (*tmpMsg==c) do_END();
@@ -1600,9 +1599,14 @@ void do_MODE() {	// option
 		2 - Reprint input line in current stream when complete.
 		4 - Reprint current text of input after a timeout. */
 #ifndef DISABLE_INPUT
-void do_INPUT() {	// stream option
-	//TODO: INPUT not implemented yet
-	flags[fInStream] = getValueOrIndirection();
+void do_INPUT() {	// stream options
+	//TODO: INPUT not fully implemented
+	static uint8_t window;
+	window = getValueOrIndirection();					// <stream>
+	if (window >= WINDOWS_NUM) { pPROC++; return; }
+	flags[fInStream] = window;
+	uint8_t options = ((*pPROC++) & 0x07) << 3;			// <options>
+	flags[fTIFlags] = (flags[fTIFlags] & 0xc7) | options;
 }
 #endif
 
@@ -1625,8 +1629,9 @@ void do_INPUT() {	// stream option
 #ifndef DISABLE_TIME
 void do_TIME()		// duration option
 {
-	flags[fTime] = getValueOrIndirection();		// Timeout duration required
-	flags[fTIFlags] = *pPROC++;					// Timeout Control bitmask flags
+	flags[fTime] = getValueOrIndirection();		// <duration> Timeout duration required
+	uint8_t options = (*pPROC++) & 0x07;		// <option> Timeout Control bitmask flags
+	flags[fTIFlags] = (flags[fTIFlags] & 0xf8) | options;
 }
 #endif
 
@@ -1638,8 +1643,11 @@ void do_TIME()		// duration option
 #ifndef DISABLE_WINDOW
 void do_WINDOW()	// window
 {
-	flags[fCurWin] = getValueOrIndirection();
-	cw = &windows[flags[fCurWin]];
+	static uint8_t window;
+	window = getValueOrIndirection();
+	if (window >= WINDOWS_NUM) return;
+	flags[fCurWin] = window;
+	cw = &windows[window];
 }
 #endif
 
@@ -2235,7 +2243,7 @@ void do_END()
 	printSystemMsg(13);
 	do_NEWLINE();
 	clearLogicalSentences();
-	prompt();
+	prompt(false);
 	char c = *tmpMsg;
 	getSystemMsg(31);
 	if (*tmpMsg==c) _internal_exit();

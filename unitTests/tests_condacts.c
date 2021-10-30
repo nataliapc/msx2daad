@@ -10,9 +10,14 @@
 #define checkEntry  currProc->continueEntry
 
 #define IND		128
+#define MOCK_NUM_OBJECTS		10
 
 
 const char ERROR[] = "Error with checkEntry";
+const char ERROR_ISDONE[] = "Error with isDone";
+const char ERROR_SYSMES[] = "SystemMessage";
+const char ERROR_CARROBJNUM[] = "Carried objects number";
+const char TODO_GENERIC[] = "-----";
 
 uint8_t fake_keyPressed;
 int16_t fake_lastSysMesPrinted;
@@ -71,7 +76,7 @@ void initFlags() {}
 void initObjects() {}
 //void mainLoop() {}
 
-void prompt() {}
+void prompt(bool printPromptMsg) {}
 //void parser() {}
 
 void clearLogicalSentences() {}
@@ -163,11 +168,10 @@ void sfxTone(uint8_t value1, uint8_t value2) {}
 
 
 
-
 static void beforeAll()
 {
 	sfxInit();
-	objects = malloc(sizeof(Object) * 10);
+	objects = malloc(sizeof(Object) * MOCK_NUM_OBJECTS);
 	windows = malloc(sizeof(Window) * WINDOWS_NUM);
 	currProc = malloc(sizeof(PROCstack));
 
@@ -182,7 +186,7 @@ static void beforeEach()
 	checkEntry = true;
 	isDone = false;
 
-	memset(objects, 0, sizeof(Object) * 10);
+	memset(objects, 0, sizeof(Object) * MOCK_NUM_OBJECTS);
 	memset(windows, 0, sizeof(Window) * WINDOWS_NUM);
 
 	cw = windows;
@@ -1956,7 +1960,7 @@ void test_INKEY_success()
 	do_action(proc, do_INKEY);
 
 	//BDD then success
-	ASSERT(flags[fKey1] == 'A', ERROR);
+	ASSERT_EQUAL(flags[fKey1], 'A', ERROR);
 	SUCCEED();
 }
 
@@ -2020,7 +2024,7 @@ void test_GET_carried()
 	do_action(proc, do_GET);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 25, "SystemMessage 25 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2037,7 +2041,7 @@ void test_GET_worn()
 	do_action(proc, do_GET);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 25, "SystemMessage 25 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2055,7 +2059,7 @@ void test_GET_notHere()
 	do_action(proc, do_GET);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 26, "SystemMessage 26 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 26, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2075,7 +2079,7 @@ void test_GET_maxWeight()
 	do_action(proc, do_GET);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 43, "SystemMessage 43 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 43, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2095,7 +2099,7 @@ void test_GET_maxObjs()
 	do_action(proc, do_GET);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 27, "SystemMessage 27 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 27, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2114,8 +2118,8 @@ void test_GET_success()
 	do_action(proc, do_GET);
 
 	//BDD then success
-	ASSERT(fake_lastSysMesPrinted == 36, "SystemMessage 36 not printed");
-	ASSERT(objects[1].location == LOC_CARRIED, "Object not carried");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 36, ERROR_SYSMES);
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object not carried");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2150,9 +2154,9 @@ void test_DROP_success()
 	do_action(proc, do_DROP);
 
 	//BDD then success
-	ASSERT(fake_lastSysMesPrinted == 39, "SystemMessage 39 not printed");
-	ASSERT(objects[1].location == flags[fPlayer], "Droped object not here");
-	ASSERT(flags[fNOCarr] == 0, "Object counter fail");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 39, ERROR_SYSMES);
+	ASSERT_EQUAL(objects[1].location, flags[fPlayer], "Droped object not here");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2169,7 +2173,7 @@ void test_DROP_worn()
 	do_action(proc, do_DROP);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 24, "SystemMessage 24 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 24, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2187,7 +2191,7 @@ void test_DROP_isHere()
 	do_action(proc, do_DROP);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 49, "SystemMessage 49 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2205,7 +2209,7 @@ void test_DROP_notHere()
 	do_action(proc, do_DROP);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 28, "SystemMessage 28 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2244,7 +2248,7 @@ void test_WEAR_isHere()
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 49, "SystemMessage 49 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2262,7 +2266,7 @@ void test_WEAR_worn()
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 29, "SystemMessage 29 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 29, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2281,7 +2285,7 @@ void test_WEAR_notCarried()
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 28, "SystemMessage 28 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2299,7 +2303,7 @@ void test_WEAR_notWareable()
 	do_action(proc, do_WEAR);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 40, "SystemMessage 40 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 40, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2318,9 +2322,9 @@ void test_WEAR_success()
 	do_action(proc, do_WEAR);
 
 	//BDD then success
-	ASSERT(fake_lastSysMesPrinted == 37, "SystemMessage 37 not printed");
-	ASSERT(objects[1].location == LOC_WORN, "Object not worn");
-	ASSERT(flags[fNOCarr] == 0, "Object counter fail");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 37, ERROR_SYSMES);
+	ASSERT_EQUAL(objects[1].location, LOC_WORN, "Object not worn");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2356,7 +2360,7 @@ void test_REMOVE_carried()
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 50, "SystemMessage 50 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 50, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2374,7 +2378,7 @@ void test_REMOVE_isHere()
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 50, "SystemMessage 50 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 50, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2392,7 +2396,7 @@ void test_REMOVE_notHere()
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 23, "SystemMessage 23 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 23, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2411,7 +2415,7 @@ void test_REMOVE_notWareable()
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 41, "SystemMessage 41 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 41, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2431,7 +2435,7 @@ void test_REMOVE_maxObjs()
 	do_action(proc, do_REMOVE);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 42, "SystemMessage 42 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 42, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2451,7 +2455,7 @@ void test_REMOVE_success()
 	do_action(proc, do_REMOVE);
 
 	//BDD then success
-	ASSERT(fake_lastSysMesPrinted == 38, "SystemMessage 38 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 38, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2476,8 +2480,8 @@ void test_CREATE_success()
 	do_action(proc, do_CREATE);
 
 	//BDD then success
-	ASSERT(objects[1].location == flags[fPlayer], "Object not in player location");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
+	ASSERT_EQUAL(objects[1].location, flags[fPlayer], "Object not in player location");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2496,8 +2500,8 @@ void test_CREATE_carried()
 	do_action(proc, do_CREATE);
 
 	//BDD then success
-	ASSERT(objects[1].location == flags[fPlayer], "Object not in player location");
-	ASSERT(flags[fNOCarr] == 0, "Carried objects number not changed");
+	ASSERT_EQUAL(objects[1].location, flags[fPlayer], "Object not in player location");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2517,8 +2521,8 @@ void test_CREATE_indirection()
 	do_action(proc, do_CREATE);
 
 	//BDD then success
-	ASSERT(objects[1].location == flags[fPlayer], "Object not in player location");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
+	ASSERT_EQUAL(objects[1].location, flags[fPlayer], "Object not in player location");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2542,8 +2546,8 @@ void test_DESTROY_success()
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_NOTCREATED, "Object not destroyed");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
+	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, "Object not destroyed");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2562,8 +2566,8 @@ void test_DESTROY_carried()
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_NOTCREATED, "Object not destroyed");
-	ASSERT(flags[fNOCarr] == 0, "Carried objects number not changed");
+	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, "Object not destroyed");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2583,8 +2587,8 @@ void test_DESTROY_indirection()
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_NOTCREATED, "Object not destroyed");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
+	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, "Object not destroyed");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2608,10 +2612,10 @@ void test_SWAP_success()
 	do_action(proc, do_SWAP);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_CARRIED, "Object1 not swapped");
-	ASSERT(objects[2].location == 1, "Object2 not swapped");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
-	ASSERT(flags[fCONum] == 2, "Current object is not object2");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object1 not swapped");
+	ASSERT_EQUAL(objects[2].location, 1, "Object2 not swapped");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(flags[fCONum], 2, "Current object is not object2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2631,10 +2635,10 @@ void test_SWAP_indirection()
 	do_action(proc, do_SWAP);
 
 	//BDD then success
-	ASSERT(objects[1].location == 2, "Object1 not swapped");
-	ASSERT(objects[2].location == 1, "Object2 not swapped");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number changed");
-	ASSERT(flags[fCONum] == 2, "Current object is not object2");
+	ASSERT_EQUAL(objects[1].location, 2, "Object1 not swapped");
+	ASSERT_EQUAL(objects[2].location, 1, "Object2 not swapped");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(flags[fCONum], 2, "Current object is not object2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2658,9 +2662,9 @@ void test_PLACE_success()
 	do_action(proc, do_PLACE);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_CARRIED, "Object1 not carried");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number is not 1");
-	ASSERT(flags[fCONum] == 1, "Current object is not object1");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object1 not carried");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2679,9 +2683,9 @@ void test_PLACE_indirection()
 	do_action(proc, do_PLACE);
 
 	//BDD then success
-	ASSERT(objects[1].location == 1, "Object1 not placed at 1");
-	ASSERT(flags[fNOCarr] == 0, "Carried objects number not changed");
-	ASSERT(flags[fCONum] == 1, "Current object is not object1");
+	ASSERT_EQUAL(objects[1].location, 1, "Object1 not placed at 1");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2708,10 +2712,10 @@ void test_PUTO_success()
 	do_action(proc, do_PUTO);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_CARRIED, "Object1 not carried");
-	ASSERT(flags[fNOCarr] == 1, "Carried objects number is not 1");
-	ASSERT(flags[fCONum] == 1, "Current object is not object1");
-	ASSERT(flags[fCOLoc] == 1, "Flag fCOLoc has changed");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object1 not carried");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
+	ASSERT_EQUAL(flags[fCOLoc], 1, "Flag fCOLoc has changed");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2731,10 +2735,10 @@ void test_PUTO_indirection()
 	do_action(proc, do_PUTO);
 
 	//BDD then success
-	ASSERT(objects[1].location == 2, "Object1 not placed at 2");
-	ASSERT(flags[fNOCarr] == 0, "Carried objects number not changed");
-	ASSERT(flags[fCONum] == 1, "Current object is not object1");
-	ASSERT(flags[fCOLoc] == LOC_CARRIED, "Flag fCOLoc has changed");
+	ASSERT_EQUAL(objects[1].location, 2, "Object1 not placed at 2");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
+	ASSERT_EQUAL(flags[fCOLoc], LOC_CARRIED, "Flag fCOLoc has changed");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2768,7 +2772,7 @@ void test_PUTIN_worn()
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 24, "SystemMessage 24 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 24, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2786,7 +2790,7 @@ void test_PUTIN_here()
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 49, "SystemMessage 49 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2804,7 +2808,7 @@ void test_PUTIN_notHere()
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 28, "SystemMessage 28 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2823,9 +2827,9 @@ void test_PUTIN_success()
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
-	ASSERT(objects[1].location == 2, "Object don't changed location");
-	ASSERT(flags[fNOCarr] == 0, "Object count number not decreased");
-	ASSERT(fake_lastSysMesPrinted == 44, "SystemMessage 44 not printed");
+	ASSERT_EQUAL(objects[1].location, 2, "Object don't changed location");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 44, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2845,9 +2849,9 @@ void test_PUTIN_indirection()
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
-	ASSERT(objects[1].location == 2, "Object don't changed location");
-	ASSERT(flags[fNOCarr] == 0, "Object count number not decreased");
-	ASSERT(fake_lastSysMesPrinted == 44, "SystemMessage 44 not printed");
+	ASSERT_EQUAL(objects[1].location, 2, "Object don't changed location");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 44, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2892,7 +2896,7 @@ void test_TAKEOUT_carried()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 25, "SystemMessage 25 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2909,7 +2913,7 @@ void test_TAKEOUT_worn()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 25, "SystemMessage 25 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2927,7 +2931,7 @@ void test_TAKEOUT_here()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 45, "SystemMessage 45 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 45, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2945,7 +2949,7 @@ void test_TAKEOUT_notHere()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 52, "SystemMessage 52 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 52, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2965,7 +2969,7 @@ void test_TAKEOUT_maxWeight()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 43, "SystemMessage 43 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 43, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2985,7 +2989,7 @@ void test_TAKEOUT_maxObjs()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(fake_lastSysMesPrinted == 27, "SystemMessage 27 not printed");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 27, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3005,9 +3009,9 @@ void test_TAKEOUT_success()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(objects[1].location == LOC_CARRIED, "Object not carried");
-	ASSERT(flags[fNOCarr] == 1, "Objects counter number not increased");
-	ASSERT(fake_lastSysMesPrinted == 36, "SystemMessage 36 not printed");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object not carried");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 36, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3028,9 +3032,9 @@ void test_TAKEOUT_indirection()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT(objects[1].location == LOC_CARRIED, "Object not carried");
-	ASSERT(flags[fNOCarr] == 1, "Objects counter number not increased");
-	ASSERT(fake_lastSysMesPrinted == 36, "SystemMessage 36 not printed");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object not carried");
+	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 36, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3059,10 +3063,10 @@ void test_DROPALL_success()
 	do_action(proc, do_DROPALL);
 
 	//BDD then success
-	ASSERT(objects[1].location == 1, "Object1 not here");
-	ASSERT(objects[2].location == 1, "Object2 not here");
-	ASSERT(objects[3].location == 1, "Object3 not here");
-	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+	ASSERT_EQUAL(objects[1].location, 1, "Object1 not here");
+	ASSERT_EQUAL(objects[2].location, 1, "Object2 not here");
+	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3093,8 +3097,8 @@ void test_AUTOG_carried()
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
-//	ASSERT(objects[3].location == 1, "Object3 not here");
-//	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+//	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+//	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 //	ASSERT(checkEntry, ERROR);
 //	SUCCEED();
 	TODO("Must mock the noun/adjective table");
@@ -3114,8 +3118,8 @@ void test_AUTOG_worn()
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
-//	ASSERT(objects[3].location == 1, "Object3 not here");
-//	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+//	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+//	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 //	ASSERT(checkEntry, ERROR);
 //	SUCCEED();
 	TODO("Must mock the noun/adjective table");
@@ -3135,8 +3139,8 @@ void test_AUTOG_success()
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
-//	ASSERT(objects[3].location == 1, "Object3 not here");
-//	ASSERT(flags[fNOCarr] == 0, "Objects counter number not zero");
+//	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+//	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 //	ASSERT(checkEntry, ERROR);
 //	SUCCEED();
 	TODO("Must mock the noun/adjective table");
@@ -3246,9 +3250,9 @@ void test_COPYOO_success()
 	do_action(proc, do_COPYOO);
 
 	//BDD then fails
-	ASSERT(objects[1].location == 2, "Object1 changed");
-	ASSERT(objects[2].location == 2, "Object1 not changed");
-	ASSERT(flags[fCONum] == 2, "Current object not object2");
+	ASSERT_EQUAL(objects[1].location, 2, "Object1 changed");
+	ASSERT_EQUAL(objects[2].location, 2, "Object1 not changed");
+	ASSERT_EQUAL(flags[fCONum], 2, "Current object not object2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3267,9 +3271,9 @@ void test_COPYOO_indirection()
 	do_action(proc, do_COPYOO);
 
 	//BDD then fails
-	ASSERT(objects[1].location == 2, "Object1 changed");
-	ASSERT(objects[2].location == 2, "Object1 not changed");
-	ASSERT(flags[fCONum] == 2, "Current object not object2");
+	ASSERT_EQUAL(objects[1].location, 2, "Object1 changed");
+	ASSERT_EQUAL(objects[2].location, 2, "Object1 not changed");
+	ASSERT_EQUAL(flags[fCONum], 2, "Current object not object2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3308,7 +3312,7 @@ void test_COPYOF_success()
 	do_action(proc, do_COPYOF);
 
 	//BDD then success
-	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT_EQUAL(flags[200], LOC_WORN, "Flag 200 don't have the object location");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3327,7 +3331,7 @@ void test_COPYOF_indirection()
 	do_action(proc, do_COPYOF);
 
 	//BDD then success
-	ASSERT(flags[200] == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT_EQUAL(flags[200], LOC_WORN, "Flag 200 don't have the object location");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3352,7 +3356,7 @@ void test_COPYFO_success()
 	do_action(proc, do_COPYFO);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT_EQUAL(objects[1].location, LOC_WORN, "Flag 200 don't have the object location");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3371,7 +3375,7 @@ void test_COPYFO_indirection()
 	do_action(proc, do_COPYFO);
 
 	//BDD then success
-	ASSERT(objects[1].location == LOC_WORN, "Flag 200 don't have the object location");
+	ASSERT_EQUAL(objects[1].location, LOC_WORN, "Flag 200 don't have the object location");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3407,8 +3411,8 @@ void test_SETCO_success()
 	do_action(proc, do_SETCO);
 
 	//BDD then success
-	ASSERT(flags[fCONum] == 1, "Current object is not object 1");
-	ASSERT(flags[fCOLoc] == 2, "Current object location is not 2");
+	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object 1");
+	ASSERT_EQUAL(flags[fCOLoc], 2, "Current object location is not 2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3426,8 +3430,8 @@ void test_SETCO_indirection()
 	do_action(proc, do_SETCO);
 
 	//BDD then success
-	ASSERT(flags[fCONum] == 1, "Current object is not object 1");
-	ASSERT(flags[fCOLoc] == 2, "Current object location is not 2");
+	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object 1");
+	ASSERT_EQUAL(flags[fCOLoc], 2, "Current object location is not 2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3471,7 +3475,7 @@ void test_SET_success()
 	do_action(proc, do_SET);
 
 	//BDD then success
-	ASSERT(flags[100] == 255, "Flag 100 is not 255");
+	ASSERT_EQUAL(flags[100], 255, "Flag 100 is not 255");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3489,8 +3493,8 @@ void test_SET_indirection()
 	do_action(proc, do_SET);
 
 	//BDD then success
-	ASSERT(flags[75] == 100, "Flag 75 have changed");
-	ASSERT(flags[100] == 255, "Flag 100 is not 255");
+	ASSERT_EQUAL(flags[75], 100, "Flag 75 have changed");
+	ASSERT_EQUAL(flags[100], 255, "Flag 100 is not 255");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3511,7 +3515,7 @@ void test_CLEAR_success()
 	do_action(proc, do_CLEAR);
 
 	//BDD then success
-	ASSERT(flags[100] == 0, "Flag 100 is not 0");
+	ASSERT_EQUAL(flags[100], 0, "Flag 100 is not 0");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3529,8 +3533,8 @@ void test_CLEAR_indirection()
 	do_action(proc, do_CLEAR);
 
 	//BDD then success
-	ASSERT(flags[75] == 100, "Flag 75 have changed");
-	ASSERT(flags[100] == 0, "Flag 100 is not 0");
+	ASSERT_EQUAL(flags[75], 100, "Flag 75 have changed");
+	ASSERT_EQUAL(flags[100], 0, "Flag 100 is not 0");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3551,7 +3555,7 @@ void test_LET_success()
 	do_action(proc, do_LET);
 
 	//BDD then success
-	ASSERT(flags[100] == 50, "Flag 100 is not 50");
+	ASSERT_EQUAL(flags[100], 50, "Flag 100 is not 50");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3569,7 +3573,7 @@ void test_LET_indirection()
 	do_action(proc, do_LET);
 
 	//BDD then success
-	ASSERT(flags[100] == 80, "Flag 100 is not 80");
+	ASSERT_EQUAL(flags[100], 80, "Flag 100 is not 80");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3591,7 +3595,7 @@ void test_PLUS_success()
 	do_action(proc, do_PLUS);
 
 	//BDD then success
-	ASSERT(flags[100] == 60, "Flag 100 is not 60");
+	ASSERT_EQUAL(flags[100], 60, "Flag 100 is not 60");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3608,7 +3612,7 @@ void test_PLUS_overflow()
 	do_action(proc, do_PLUS);
 
 	//BDD then success
-	ASSERT(flags[100] == 255, "Flag 100 is not 255");
+	ASSERT_EQUAL(flags[100], 255, "Flag 100 is not 255");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3626,7 +3630,7 @@ void test_PLUS_indirection()
 	do_action(proc, do_PLUS);
 
 	//BDD then success
-	ASSERT(flags[100] == 90, "Flag 100 is not 90");
+	ASSERT_EQUAL(flags[100], 90, "Flag 100 is not 90");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3648,7 +3652,7 @@ void test_MINUS_success()
 	do_action(proc, do_MINUS);
 
 	//BDD then success
-	ASSERT(flags[100] == 50, "Flag 100 is not 50");
+	ASSERT_EQUAL(flags[100], 50, "Flag 100 is not 50");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3665,7 +3669,7 @@ void test_MINUS_overflow()
 	do_action(proc, do_MINUS);
 
 	//BDD then success
-	ASSERT(flags[100] == 0, "Flag 100 is not 0");
+	ASSERT_EQUAL(flags[100], 0, "Flag 100 is not 0");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3683,7 +3687,7 @@ void test_MINUS_indirection()
 	do_action(proc, do_MINUS);
 
 	//BDD then success
-	ASSERT(flags[100] == 50, "Flag 100 is not 50");
+	ASSERT_EQUAL(flags[100], 50, "Flag 100 is not 50");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3706,7 +3710,7 @@ void test_ADD_success()
 	do_action(proc, do_ADD);
 
 	//BDD then success
-	ASSERT(flags[150] == 60, "Flag 150 is not 60");
+	ASSERT_EQUAL(flags[150], 60, "Flag 150 is not 60");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3724,7 +3728,7 @@ void test_ADD_overflow()
 	do_action(proc, do_ADD);
 
 	//BDD then success
-	ASSERT(flags[150] == 255, "Flag 150 is not 255");
+	ASSERT_EQUAL(flags[150], 255, "Flag 150 is not 255");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3743,7 +3747,7 @@ void test_ADD_indirection()
 	do_action(proc, do_ADD);
 
 	//BDD then success
-	ASSERT(flags[150] == 60, "Flag 150 is not 60");
+	ASSERT_EQUAL(flags[150], 60, "Flag 150 is not 60");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3766,7 +3770,7 @@ void test_SUB_success()
 	do_action(proc, do_SUB);
 
 	//BDD then success
-	ASSERT(flags[150] == 40, "Flag 150 is not 40");
+	ASSERT_EQUAL(flags[150], 40, "Flag 150 is not 40");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3784,7 +3788,7 @@ void test_SUB_overflow()
 	do_action(proc, do_SUB);
 
 	//BDD then success
-	ASSERT(flags[150] == 0, "Flag 150 is not 0");
+	ASSERT_EQUAL(flags[150], 0, "Flag 150 is not 0");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3803,7 +3807,7 @@ void test_SUB_indirection()
 	do_action(proc, do_SUB);
 
 	//BDD then success
-	ASSERT(flags[150] == 40, "Flag 150 is not 40");
+	ASSERT_EQUAL(flags[150], 40, "Flag 150 is not 40");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3825,8 +3829,8 @@ void test_COPYFF_success()
 	do_action(proc, do_COPYFF);
 
 	//BDD then success
-	ASSERT(flags[150] == 10, "Flag 150 is not 10");
-	ASSERT(flags[100] == 10, "Flag 150 is not 10");
+	ASSERT_EQUAL(flags[150], 10, "Flag 150 is not 10");
+	ASSERT_EQUAL(flags[100], 10, "Flag 150 is not 10");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3845,8 +3849,8 @@ void test_COPYFF_indirection()
 	do_action(proc, do_COPYFF);
 
 	//BDD then success
-	ASSERT(flags[150] == 10, "Flag 150 is not 10");
-	ASSERT(flags[100] == 10, "Flag 150 is not 10");
+	ASSERT_EQUAL(flags[150], 10, "Flag 150 is not 10");
+	ASSERT_EQUAL(flags[100], 10, "Flag 150 is not 10");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3869,8 +3873,8 @@ void test_COPYBF_success()
 	do_action(proc, do_COPYBF);
 
 	//BDD then success
-	ASSERT(flags[150] == 50, "Flag 150 is not 50");
-	ASSERT(flags[100] == 50, "Flag 150 is not 50");
+	ASSERT_EQUAL(flags[150], 50, "Flag 150 is not 50");
+	ASSERT_EQUAL(flags[100], 50, "Flag 150 is not 50");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3889,8 +3893,8 @@ void test_COPYBF_indirection()
 	do_action(proc, do_COPYBF);
 
 	//BDD then success
-	ASSERT(flags[150] == 50, "Flag 150 is not 50");
-	ASSERT(flags[100] == 50, "Flag 150 is not 50");
+	ASSERT_EQUAL(flags[150], 50, "Flag 150 is not 50");
+	ASSERT_EQUAL(flags[100], 50, "Flag 150 is not 50");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3978,7 +3982,7 @@ void test_GOTO_success()
 	do_action(proc, do_GOTO);
 
 	//BDD then success
-	ASSERT(flags[fPlayer] == 1, "Player not moved");
+	ASSERT_EQUAL(flags[fPlayer], 1, "Player not moved");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -3996,7 +4000,7 @@ void test_GOTO_indirection()
 	do_action(proc, do_GOTO);
 
 	//BDD then success
-	ASSERT(flags[fPlayer] == 1, "Player not moved");
+	ASSERT_EQUAL(flags[fPlayer], 1, "Player not moved");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4037,8 +4041,8 @@ void test_ABILITY_success()
 	do_action(proc, do_ABILITY);
 
 	//BDD then success
-	ASSERT(flags[fMaxCarr] == 10, "Flag fMaxCarr bad value");
-	ASSERT(flags[fStrength] == 100, "Flag fStrength bad value");
+	ASSERT_EQUAL(flags[fMaxCarr], 10, "Flag fMaxCarr bad value");
+	ASSERT_EQUAL(flags[fStrength], 100, "Flag fStrength bad value");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4057,8 +4061,8 @@ void test_ABILITY_indirection()
 	do_action(proc, do_ABILITY);
 
 	//BDD then success
-	ASSERT(flags[fMaxCarr] == 10, "Flag fMaxCarr bad value");
-	ASSERT(flags[fStrength] == 100, "Flag fStrength bad value");
+	ASSERT_EQUAL(flags[fMaxCarr], 10, "Flag fMaxCarr bad value");
+	ASSERT_EQUAL(flags[fStrength], 100, "Flag fStrength bad value");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4089,7 +4093,7 @@ void test_MODE_success()
 	do_action(proc, do_MODE);
 
 	//BDD then success
-	ASSERT(cw->mode == 3, "New mode not is 3");
+	ASSERT_EQUAL(cw->mode, 3, "New mode not is 3");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4107,7 +4111,7 @@ void test_MODE_indirection()
 	do_action(proc, do_MODE);
 
 	//BDD then success
-	ASSERT(cw->mode == 3, "New mode not is 3");
+	ASSERT_EQUAL(cw->mode, 3, "New mode not is 3");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4125,12 +4129,41 @@ void test_MODE_indirection()
 
 void test_INPUT_success()
 {
-	TODO("INPUT Not Implemented");
+	beforeEach();
+
+	//BDD given fInStream w/value 0, and fTIFlags w/value 0b11000111
+	flags[fInStream] = 0;
+	flags[fTIFlags] = 0xc7;
+
+	//BDD when checking INPUT 5 7
+	static const char proc[] = { _INPUT, 5, 7, 255 };
+	do_action(proc, do_INPUT);
+
+	//BDD then success
+	ASSERT_EQUAL(flags[fInStream], 5, "Flag fInStream is not 5");
+	ASSERT_EQUAL(flags[fTIFlags], 0xff, "Flag fTIFlags is not 255");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 void test_INPUT_indirection()
 {
-	TODO("INPUT Not Implemented");
+	beforeEach();
+
+	//BDD given flag 75 w/value 5, fInStream w/value 0, and fTIFlags w/value 0b11000111
+	flags[75] = 5;
+	flags[fInStream] = 0;
+	flags[fTIFlags] = 0xc7;
+
+	//BDD when checking INPUT 5 7
+	static const char proc[] = { _INPUT|IND, @75, 7, 255 };
+	do_action(proc, do_INPUT);
+
+	//BDD then success
+	ASSERT_EQUAL(flags[fInStream], 5, "Flag fInStream is not 5");
+	ASSERT_EQUAL(flags[fTIFlags], 0xff, "Flag fTIFlags is not 255");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -4154,17 +4187,17 @@ void test_TIME_success()
 {
 	beforeEach();
 
-	//BDD given fTime w/value 0, and fTIFlags w/value 0
+	//BDD given fTime w/value 0, and fTIFlags w/value 0b11111000
 	flags[fTime] = 0;
-	flags[fTIFlags] = 0;
+	flags[fTIFlags] = 0xf8;
 
-	//BDD when checking TIME 10 3
-	static const char proc[] = { _TIME, 10, 3, 255 };
+	//BDD when checking TIME 10 7
+	static const char proc[] = { _TIME, 10, 7, 255 };
 	do_action(proc, do_TIME);
 
 	//BDD then success
-	ASSERT(flags[fTime] == 10, "Flag fTime is not 10");
-	ASSERT(flags[fTIFlags] == 3, "Flag fTIFlags is not 3");
+	ASSERT_EQUAL(flags[fTime], 10, "Flag fTime is not 10");
+	ASSERT_EQUAL(flags[fTIFlags], 0xff, "Flag fTIFlags is not 255");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4173,18 +4206,18 @@ void test_TIME_indirection()
 {
 	beforeEach();
 
-	//BDD given flag 75 w/value 10, fTime w/value 0, and fTIFlags w/value 0
+	//BDD given flag 75 w/value 10, fTime w/value 0, and fTIFlags w/value 0b11111000
 	flags[75] = 10;
 	flags[fTime] = 0;
-	flags[fTIFlags] = 0;
+	flags[fTIFlags] = 0xf8;
 
-	//BDD when checking TIME @75 3
-	static const char proc[] = { _TIME|IND, 75, 3, 255 };
+	//BDD when checking TIME @75 7
+	static const char proc[] = { _TIME|IND, 75, 7, 255 };
 	do_action(proc, do_TIME);
 
 	//BDD then success
-	ASSERT(flags[fTime] == 10, "Flag fTime is not 10");
-	ASSERT(flags[fTIFlags] == 3, "Flag fTIFlags is not 3");
+	ASSERT_EQUAL(flags[fTime], 10, "Flag fTime is not 10");
+	ASSERT_EQUAL(flags[fTIFlags], 0xff, "Flag fTIFlags is not 255");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4209,7 +4242,7 @@ void test_WINDOW_success()
 	do_action(proc, do_WINDOW);
 
 	//BDD then success
-	ASSERT(cw == &windows[1], "Current window is not 1");
+	ASSERT_EQUAL(cw, &windows[1], "Current window is not 1");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4227,7 +4260,7 @@ void test_WINDOW_indirection()
 	do_action(proc, do_WINDOW);
 
 	//BDD then success
-	ASSERT(cw == &windows[1], "Current window is not 1");
+	ASSERT_EQUAL(cw, &windows[1], "Current window is not 1");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4250,8 +4283,8 @@ void test_WINAT_success()
 	do_action(proc, do_WINAT);
 
 	//BDD then success
-	ASSERT(cw->winX == 10, "Current window X is not 10");
-	ASSERT(cw->winY == 5, "Current window Y is not 5");
+	ASSERT_EQUAL(cw->winX, 10, "Current window X is not 10");
+	ASSERT_EQUAL(cw->winY, 5, "Current window Y is not 5");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4271,8 +4304,8 @@ void test_WINAT_oversize()
 	do_action(proc, do_WINAT);
 
 	//BDD then success
-	ASSERT(cw->winW == MAX_COLUMNS - cw->winX, "Current window W not match");
-	ASSERT(cw->winH == MAX_LINES - cw->winY, "Current window H not match");
+	ASSERT_EQUAL(cw->winW, MAX_COLUMNS - cw->winX, "Current window W not match");
+	ASSERT_EQUAL(cw->winH, MAX_LINES - cw->winY, "Current window H not match");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4291,8 +4324,8 @@ void test_WINAT_indirection()
 	do_action(proc, do_WINAT);
 
 	//BDD then success
-	ASSERT(cw->winX == 10, "Current window X is not 10");
-	ASSERT(cw->winY == 5, "Current window Y is not 5");
+	ASSERT_EQUAL(cw->winX, 10, "Current window X is not 10");
+	ASSERT_EQUAL(cw->winY, 5, "Current window Y is not 5");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4315,8 +4348,8 @@ void test_WINSIZE_success()
 	do_action(proc, do_WINSIZE);
 
 	//BDD then success
-	ASSERT(cw->winW == 25, "Current window W is not 25");
-	ASSERT(cw->winH == 15, "Current window H is not 15");
+	ASSERT_EQUAL(cw->winW, 25, "Current window W is not 25");
+	ASSERT_EQUAL(cw->winH, 15, "Current window H is not 15");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4336,8 +4369,8 @@ void test_WINSIZE_oversize()
 	do_action(proc, do_WINSIZE);
 
 	//BDD then success
-	ASSERT(cw->winW == MAX_COLUMNS - cw->winX, "Current window W not match");
-	ASSERT(cw->winH == MAX_LINES - cw->winY, "Current window H not match");
+	ASSERT_EQUAL(cw->winW, MAX_COLUMNS - cw->winX, "Current window W not match");
+	ASSERT_EQUAL(cw->winH, MAX_LINES - cw->winY, "Current window H not match");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4356,8 +4389,8 @@ void test_WINSIZE_indirection()
 	do_action(proc, do_WINSIZE);
 
 	//BDD then success
-	ASSERT(cw->winW == 25, "Current window W is not 25");
-	ASSERT(cw->winH == 15, "Current window H is not 15");
+	ASSERT_EQUAL(cw->winW, 25, "Current window W is not 25");
+	ASSERT_EQUAL(cw->winH, 15, "Current window H is not 15");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4382,8 +4415,8 @@ void test_CENTRE_success()
 	do_action(proc, do_CENTRE);
 
 	//BDD then success
-	ASSERT(cw->winX == (MAX_COLUMNS - cw->winW)/2, "Current window W not match");
-	ASSERT(cw->winY == 1, "Current window Y has changed");
+	ASSERT_EQUAL(cw->winX, (MAX_COLUMNS - cw->winW)/2, "Current window W not match");
+	ASSERT_EQUAL(cw->winY, 1, "Current window Y has changed");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4408,11 +4441,11 @@ void test_CLS_success()
 	do_action(proc, do_CLS);
 
 	//BDD then success
-	ASSERT(cw->cursorX == 0, "Current window cursorX not reset");
-	ASSERT(cw->cursorY == 0, "Current window cursorY not reset");
-	ASSERT(cw->lastPicLocation == NO_LASTPICTURE, "Current window lastPicLocation not reset");
-	ASSERT(lastPicShow == false, "lastPicShow not reset");
-	ASSERT(printedLines == 0, "printedLines not reset");
+	ASSERT_EQUAL(cw->cursorX, 0, "Current window cursorX not reset");
+	ASSERT_EQUAL(cw->cursorY, 0, "Current window cursorY not reset");
+	ASSERT_EQUAL(cw->lastPicLocation, NO_LASTPICTURE, "Current window lastPicLocation not reset");
+	ASSERT_EQUAL(lastPicShow, false, "lastPicShow not reset");
+	ASSERT_EQUAL(printedLines, 0, "printedLines not reset");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4440,8 +4473,8 @@ void test_SAVEAT_success()
 	do_action(proc, do_SAVEAT);
 
 	//BDD then success
-	ASSERT(savedPosX == 1, "Saved pos X not 1");
-	ASSERT(savedPosY == 2, "Saved pos Y not 2");
+	ASSERT_EQUAL(savedPosX, 1, "Saved pos X not 1");
+	ASSERT_EQUAL(savedPosY, 2, "Saved pos Y not 2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4464,8 +4497,8 @@ void test_BACKAT_success()
 	do_action(proc, do_BACKAT);
 
 	//BDD then success
-	ASSERT(cw->cursorX == 1, "Restored pos X not 1");
-	ASSERT(cw->cursorY == 2, "Restored pos Y not 2");
+	ASSERT_EQUAL(cw->cursorX, 1, "Restored pos X not 1");
+	ASSERT_EQUAL(cw->cursorY, 2, "Restored pos Y not 2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4515,8 +4548,8 @@ void test_PRINTAT_success()
 	do_action(proc, do_PRINTAT);
 
 	//BDD then success
-	ASSERT(cw->cursorX == 5, "Cursor X not 5");
-	ASSERT(cw->cursorY == 10, "Cursor Y not 10");
+	ASSERT_EQUAL(cw->cursorX, 5, "Cursor X not 5");
+	ASSERT_EQUAL(cw->cursorY, 10, "Cursor Y not 10");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4535,8 +4568,8 @@ void test_PRINTAT_indirection()
 	do_action(proc, do_PRINTAT);
 
 	//BDD then success
-	ASSERT(cw->cursorX == 5, "Cursor X not 5");
-	ASSERT(cw->cursorY == 10, "Cursor Y not 10");
+	ASSERT_EQUAL(cw->cursorX, 5, "Cursor X not 5");
+	ASSERT_EQUAL(cw->cursorY, 10, "Cursor Y not 10");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4558,8 +4591,8 @@ void test_TAB_success()
 	do_action(proc, do_TAB);
 
 	//BDD then success
-	ASSERT(cw->cursorX == 10, "Cursor X not 10");
-	ASSERT(cw->cursorY == 3, "Cursor Y not 3");
+	ASSERT_EQUAL(cw->cursorX, 10, "Cursor X not 10");
+	ASSERT_EQUAL(cw->cursorY, 3, "Cursor Y not 3");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4578,8 +4611,8 @@ void test_TAB_indirection()
 	do_action(proc, do_TAB);
 
 	//BDD then success
-	ASSERT(cw->cursorX == 10, "Cursor X not 10");
-	ASSERT(cw->cursorY == 3, "Cursor Y not 3");
+	ASSERT_EQUAL(cw->cursorX, 10, "Cursor X not 10");
+	ASSERT_EQUAL(cw->cursorY, 3, "Cursor Y not 3");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -4670,12 +4703,12 @@ void test_DPRINT_success()
 
 void test_LISTOBJ_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 void test_LISTOBJ_none()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4686,12 +4719,12 @@ void test_LISTOBJ_none()
 
 void test_LISTAT_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 void test_LISTAT_none()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4708,7 +4741,7 @@ void test_LISTAT_none()
 
 void test_SAVE_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4721,7 +4754,7 @@ void test_SAVE_success()
 
 void test_LOAD_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4734,7 +4767,7 @@ void test_LOAD_success()
 
 void test_RAMSAVE_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4752,7 +4785,7 @@ void test_RAMSAVE_success()
 
 void test_RAMLOAD_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4766,7 +4799,7 @@ void test_RAMLOAD_success()
 
 void test_ANYKEY_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4776,7 +4809,7 @@ void test_ANYKEY_success()
 
 void test_PAUSE_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4794,7 +4827,7 @@ void test_PAUSE_success()
 
 void test_PARSE_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4809,7 +4842,7 @@ void test_PARSE_success()
 
 void test_NEWTEXT_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4824,7 +4857,7 @@ void test_NEWTEXT_success()
 
 void test_SYNONYM_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4841,7 +4874,7 @@ void test_SYNONYM_success()
 
 void test_PROCESS_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4851,7 +4884,7 @@ void test_PROCESS_success()
 
 void test_REDO_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4882,7 +4915,7 @@ void test_REDO_success()
 
 void test_DOALL_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4893,7 +4926,7 @@ void test_DOALL_success()
 
 void test_SKIP_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4903,7 +4936,7 @@ void test_SKIP_success()
 
 void test_RESTART_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4916,7 +4949,7 @@ void test_RESTART_success()
 
 void test_END_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4926,7 +4959,7 @@ void test_END_success()
 
 void test_EXIT_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4942,7 +4975,7 @@ void test_EXIT_success()
 
 void test_DONE_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4956,7 +4989,7 @@ void test_DONE_success()
 
 void test_NOTDONE_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4965,7 +4998,7 @@ void test_NOTDONE_success()
 
 void test_OK_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -4979,7 +5012,7 @@ void test_OK_success()
 
 void test_EXTERN_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -5003,7 +5036,7 @@ void test_CALL_success()
 
 void test_SFX_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -5033,7 +5066,7 @@ void test_SFX_success()
 
 void test_GFX_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -5048,7 +5081,7 @@ void test_GFX_success()
 
 void test_PICTURE_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -5060,7 +5093,7 @@ void test_PICTURE_success()
 
 void test_DISPLAY_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 // =============================================================================
@@ -5085,7 +5118,7 @@ void test_MOUSE_success()
 
 void test_BEEP_success()
 {
-	TODO("-----");
+	TODO(TODO_GENERIC);
 }
 
 

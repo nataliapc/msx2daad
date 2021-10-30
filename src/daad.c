@@ -28,15 +28,10 @@ char       *ramsave;					// Memory to store ram save (RAMSAVE)
 static const uint8_t nullObjFake[] = { 0, 0, 0, 0, 0, 0 };
 static const Object  *nullObject;
 
-#ifndef DISABLE_WINDOW
-	#define WINDOWS_NUM		8
-#else
-	#define WINDOWS_NUM		1
-#endif
 Window     *windows;					// 0-7 windows definitions
 Window     *cw;							// Pointer to current active window
 uint8_t     printedLines;				// For "More..." feature
-bool checkPrintedLines_inUse;
+bool        checkPrintedLines_inUse;
 
 #ifndef DISABLE_SAVEAT
 uint8_t     savedPosX;					// For SAVEAT/BACKAT
@@ -236,14 +231,28 @@ void mainLoop()
  * 
  * @return			none.
  */
-void prompt()
+void prompt(bool printPromptMsg)
 {
-	static char c, *p, *extChars;
+	static char c, *p, *extChars, newPrompt;
 	p = tmpMsg;
 
 	#ifdef TRANSCRIPT
 		transcript_flush();
 	#endif
+
+	// Change to input stream window
+	if (flags[fInStream] != 0) {
+		cw = &windows[flags[fInStream]];
+	}
+
+	// Print random prompt message
+	if (printPromptMsg) {
+		newPrompt = flags[fPrompt];
+		if (!newPrompt)
+			while ((newPrompt=(rand()%4)+2)==lastPrompt);
+		printSystemMsg(newPrompt);
+		lastPrompt = newPrompt;
+	}
 
 	doingPrompt = true;
 	printedLines = 0;
@@ -254,8 +263,7 @@ void prompt()
 		// Check first char Timeout flag
 		if (p==tmpMsg) {
 			if (waitForTimeout(TIME_FIRSTCHAR)) {
-				doingPrompt = false;
-				return;
+				goto ret_continue;
 			}
 		}
 		while (!checkKeyboardBuffer()) waitingForInput();
@@ -272,11 +280,30 @@ void prompt()
 			extChars = strchr(getCharsTranslation(), c);
 			if (extChars) c = (char)(extChars-getCharsTranslation()+0x10);
 			gfxPutInputEcho(c, false);
-			*p++ = toupper(c);										// TODO: revise this line
+			*p++ = toupper(c);
 		}
 	} while (c!='\r');
 	gfxPutInputEcho(c, false);
 	*--p = '\0';
+
+ret_continue:
+	// Clear input stream window if flag is enabled
+	if (flags[fTIFlags] & TIME_CLEAR) { do_CLS(); }
+
+	// Restore to current window
+	cw = &windows[flags[fCurWin]];
+
+	// Echo input to current window if flag is enabled
+	if (flags[fTIFlags] & TIME_INPUT) {
+		p = tmpMsg;
+		tmpMsg = heap_top;
+		printSystemMsg(33);	//">"
+		tmpMsg = p;
+		printOutMsg(tmpMsg);
+		do_NEWLINE();
+	}
+
+	// Reset variables
 	printedLines = 0;
 	doingPrompt = false;
 }
@@ -370,17 +397,9 @@ cprintf("%u %u %u %u %u %u %u %u \n",lsBuffer[0],lsBuffer[1],lsBuffer[2],lsBuffe
  */
 bool getLogicalSentence()
 {
-	static char newPrompt;
-
 	// If not logical sentences in buffer we ask the user again
 	if (!*lsBuffer0) {
-		newPrompt = flags[fPrompt];
-		if (!newPrompt)
-			while ((newPrompt=(rand()%4)+2)==lastPrompt);
-		printSystemMsg(newPrompt);
-		lastPrompt = newPrompt;
-
-		prompt();
+		prompt(true);
 		parser();
 	}
 	return populateLogicalSentence();

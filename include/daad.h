@@ -20,6 +20,12 @@
 
 #define TEXT_BUFFER_LEN		100
 
+// Maximum number of Windows
+#ifndef DISABLE_WINDOW
+	#define WINDOWS_NUM		8
+#else
+	#define WINDOWS_NUM		1
+#endif
 
 // Used in struct Object->location
 #define LOC_NOTCREATED		252
@@ -50,13 +56,13 @@
 #define INPUT_PRINTCOMPLETE 2
 #define INPUT_PRINTTIMEOUT  4
 
-// Bitmask used by TIME and flag fTIFlags
-#define TIME_FIRSTCHAR		1		// Set this so timeout can occur at start of input only
-#define TIME_MORE			2		// Set this so timeout can occur on "More..."
-#define TIME_ANYKEY			4		// Set this so timeout can occur on ANYKEY
-#define TIME_CLEAR			8		// TODO Set this to clear input window
-#define TIME_INPUT			16		// TODO Set this to print input in current stream after edit
-#define TIME_RECALL			32		// TODO Set this to cause auto recall of input buffer after timeout
+// Bitmask used by flag fTIFlags (used by TIME, INPUT condacts)
+#define TIME_FIRSTCHAR		1		// Set this so timeout can occur at start of input only (from TIME condact)
+#define TIME_MORE			2		// Set this so timeout can occur on "More..." (from TIME condact)
+#define TIME_ANYKEY			4		// Set this so timeout can occur on ANYKEY (from TIME condact)
+#define TIME_CLEAR			8		// Set this to clear window after input (from INPUT condact)
+#define TIME_INPUT			16		// Set this to print input in current stream after edit (from INPUT condact)
+#define TIME_RECALL			32		// TODO Set this to cause auto recall of input buffer after timeout (from INPUT condact)
 #define TIME_AVAILABLE		64		// TODO Set if data available for recall (not of use to writer)
 #define TIME_TIMEOUT		128		// Set if timeout occurred last frame
 
@@ -215,7 +221,7 @@ enum VOC_TYPE {
 #define fCPNoun   46	// Current pronoun ("IT" usually) Noun
 #define fCPAdject 47	// Current pronoun ("IT" usually) Adjective
 #define fTime     48	// Timeout duration required
-#define fTIFlags  49	// Timeout Control bitmask flags (see documentation)
+#define fTIFlags  49	// Timeout Control bitmask flags (see documentation page 61 or "Bitmask used by flag fTIFlags" above)
 #define fDAObjNo  50	// Objno. for DOALL loop. i.e. value following DOALL
 #define fCONum    51	// Last object referenced by GET/DROP/WEAR/WHATO etc.
 #define fStrength 52	// Players strength (maximum weight of objects carried and worn - initially 10)
@@ -259,7 +265,7 @@ void initFlags();
 void initObjects();
 void mainLoop();
 
-void prompt();
+void prompt(bool printPromptMsg);
 void parser();
 void clearLogicalSentences();
 bool getLogicalSentence();
