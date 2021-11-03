@@ -6,6 +6,9 @@
 #include "daad_platform_api.h"
 #include "daad_condacts.h"
 
+#pragma opt_code_size
+
+
 #define pPROC 		currProc->condact
 #define checkEntry  currProc->continueEntry
 
@@ -16,6 +19,7 @@
 const char ERROR[] = "Error with checkEntry";
 const char ERROR_ISDONE[] = "Error with isDone";
 const char ERROR_SYSMES[] = "SystemMessage";
+const char ERROR_OBJLOC[] = "Object location";
 const char ERROR_CARROBJNUM[] = "Carried objects number";
 const char TODO_GENERIC[] = "-----";
 
@@ -175,6 +179,8 @@ static void beforeAll()
 	windows = malloc(sizeof(Window) * WINDOWS_NUM);
 	currProc = malloc(sizeof(PROCstack));
 
+	ddb = malloc(sizeof(DDB_Header));
+	hdr = (DDB_Header *)ddb;
 }
 
 static void beforeEach()
@@ -186,8 +192,11 @@ static void beforeEach()
 	checkEntry = true;
 	isDone = false;
 
+	memset(hdr, 0, sizeof(DDB_Header));
 	memset(objects, 0, sizeof(Object) * MOCK_NUM_OBJECTS);
 	memset(windows, 0, sizeof(Window) * WINDOWS_NUM);
+
+	hdr->numObjDsc = MOCK_NUM_OBJECTS;
 
 	cw = windows;
 
@@ -2119,7 +2128,7 @@ void test_GET_success()
 
 	//BDD then success
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 36, ERROR_SYSMES);
-	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object not carried");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -2323,7 +2332,7 @@ void test_WEAR_success()
 
 	//BDD then success
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 37, ERROR_SYSMES);
-	ASSERT_EQUAL(objects[1].location, LOC_WORN, "Object not worn");
+	ASSERT_EQUAL(objects[1].location, LOC_WORN, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -2480,7 +2489,7 @@ void test_CREATE_success()
 	do_action(proc, do_CREATE);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, flags[fPlayer], "Object not in player location");
+	ASSERT_EQUAL(objects[1].location, flags[fPlayer], ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -2500,7 +2509,7 @@ void test_CREATE_carried()
 	do_action(proc, do_CREATE);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, flags[fPlayer], "Object not in player location");
+	ASSERT_EQUAL(objects[1].location, flags[fPlayer], ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -2521,7 +2530,7 @@ void test_CREATE_indirection()
 	do_action(proc, do_CREATE);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, flags[fPlayer], "Object not in player location");
+	ASSERT_EQUAL(objects[1].location, flags[fPlayer], ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -2546,7 +2555,7 @@ void test_DESTROY_success()
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, "Object not destroyed");
+	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -2566,7 +2575,7 @@ void test_DESTROY_carried()
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, "Object not destroyed");
+	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -2587,7 +2596,7 @@ void test_DESTROY_indirection()
 	do_action(proc, do_DESTROY);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, "Object not destroyed");
+	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -2612,8 +2621,8 @@ void test_SWAP_success()
 	do_action(proc, do_SWAP);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object1 not swapped");
-	ASSERT_EQUAL(objects[2].location, 1, "Object2 not swapped");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
+	ASSERT_EQUAL(objects[2].location, 1, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(flags[fCONum], 2, "Current object is not object2");
 	ASSERT(checkEntry, ERROR);
@@ -2635,8 +2644,8 @@ void test_SWAP_indirection()
 	do_action(proc, do_SWAP);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, 2, "Object1 not swapped");
-	ASSERT_EQUAL(objects[2].location, 1, "Object2 not swapped");
+	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
+	ASSERT_EQUAL(objects[2].location, 1, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(flags[fCONum], 2, "Current object is not object2");
 	ASSERT(checkEntry, ERROR);
@@ -2662,7 +2671,7 @@ void test_PLACE_success()
 	do_action(proc, do_PLACE);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object1 not carried");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
 	ASSERT(checkEntry, ERROR);
@@ -2683,7 +2692,7 @@ void test_PLACE_indirection()
 	do_action(proc, do_PLACE);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, 1, "Object1 not placed at 1");
+	ASSERT_EQUAL(objects[1].location, 1, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
 	ASSERT(checkEntry, ERROR);
@@ -2712,7 +2721,7 @@ void test_PUTO_success()
 	do_action(proc, do_PUTO);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object1 not carried");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
 	ASSERT_EQUAL(flags[fCOLoc], 1, "Flag fCOLoc has changed");
@@ -2735,7 +2744,7 @@ void test_PUTO_indirection()
 	do_action(proc, do_PUTO);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, 2, "Object1 not placed at 2");
+	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object1");
 	ASSERT_EQUAL(flags[fCOLoc], LOC_CARRIED, "Flag fCOLoc has changed");
@@ -2827,7 +2836,7 @@ void test_PUTIN_success()
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
-	ASSERT_EQUAL(objects[1].location, 2, "Object don't changed location");
+	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 44, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
@@ -2849,7 +2858,7 @@ void test_PUTIN_indirection()
 	do_action(proc, do_PUTIN);
 
 	//BDD then fails
-	ASSERT_EQUAL(objects[1].location, 2, "Object don't changed location");
+	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 44, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
@@ -3009,7 +3018,7 @@ void test_TAKEOUT_success()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object not carried");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 36, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
@@ -3032,7 +3041,7 @@ void test_TAKEOUT_indirection()
 	do_action(proc, do_TAKEOUT);
 
 	//BDD then fails
-	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "Object not carried");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 1, ERROR_CARROBJNUM);
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 36, ERROR_SYSMES);
 	ASSERT(checkEntry, ERROR);
@@ -3054,18 +3063,18 @@ void test_DROPALL_success()
 	//BDD given 3 objects carried or worn
 	flags[fPlayer] = 1;
 	flags[fNOCarr] = 3;
-	objects[1].location = LOC_CARRIED;
+	objects[1].location = LOC_WORN;
 	objects[2].location = LOC_CARRIED;
-	objects[3].location = LOC_WORN;
+	objects[3].location = LOC_CARRIED;
 
 	//BDD when checking DROPALL
 	static const char proc[] = { _DROPALL, 255 };
 	do_action(proc, do_DROPALL);
 
 	//BDD then success
-	ASSERT_EQUAL(objects[1].location, 1, "Object1 not here");
-	ASSERT_EQUAL(objects[2].location, 1, "Object2 not here");
-	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+	ASSERT_EQUAL(objects[1].location, 1, ERROR_OBJLOC);
+	ASSERT_EQUAL(objects[2].location, 1, ERROR_OBJLOC);
+	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -3097,7 +3106,7 @@ void test_AUTOG_carried()
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
-//	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+//	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
 //	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 //	ASSERT(checkEntry, ERROR);
 //	SUCCEED();
@@ -3118,7 +3127,7 @@ void test_AUTOG_worn()
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
-//	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+//	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
 //	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 //	ASSERT(checkEntry, ERROR);
 //	SUCCEED();
@@ -3139,7 +3148,7 @@ void test_AUTOG_success()
 	do_action(proc, do_AUTOG);
 
 	//BDD then fails
-//	ASSERT_EQUAL(objects[3].location, 1, "Object3 not here");
+//	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
 //	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 //	ASSERT(checkEntry, ERROR);
 //	SUCCEED();
@@ -3250,8 +3259,8 @@ void test_COPYOO_success()
 	do_action(proc, do_COPYOO);
 
 	//BDD then fails
-	ASSERT_EQUAL(objects[1].location, 2, "Object1 changed");
-	ASSERT_EQUAL(objects[2].location, 2, "Object1 not changed");
+	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
+	ASSERT_EQUAL(objects[2].location, 2, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fCONum], 2, "Current object not object2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
@@ -3271,8 +3280,8 @@ void test_COPYOO_indirection()
 	do_action(proc, do_COPYOO);
 
 	//BDD then fails
-	ASSERT_EQUAL(objects[1].location, 2, "Object1 changed");
-	ASSERT_EQUAL(objects[2].location, 2, "Object1 not changed");
+	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
+	ASSERT_EQUAL(objects[2].location, 2, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fCONum], 2, "Current object not object2");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();

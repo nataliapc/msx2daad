@@ -10,8 +10,8 @@ OPFLAGS := --opt-code-size
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84 --disable-warning 85
 CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
 
-TESTDIR = ./
-SRCDIR = ../src/
+SRCDIR = ./src/
+DAADSRCDIR = ../src/
 LIBDIR = ../libs/
 INCDIR = ../include/
 OBJDIR = ./obj/
@@ -30,19 +30,19 @@ $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
 	@echo "#### ASM $@"
 	@$(DIR_GUARD)
-	@$(AS) -o $@ $^
-
-$(OBJDIR)%.rel: $(TESTDIR)%.c
-	@echo "#### CC $@"
-	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+	@$(AS) -g -o $@ $^
 
 $(OBJDIR)%.rel: $(SRCDIR)%.c
 	@echo "#### CC $@"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
 
-$(OBJDIR)condacts.com: $(REL_LIBS) $(TESTDIR)tests_condacts.c
+$(OBJDIR)%.rel: $(DAADSRCDIR)%.c
+	@echo "#### CC $@"
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+
+$(OBJDIR)condacts.com: $(REL_LIBS) $(SRCDIR)tests_condacts.c
 	@echo "######## Compiling $@"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^) -o $(subst .com,.ihx,$@)
@@ -53,7 +53,7 @@ $(OBJDIR)condacts.com: $(REL_LIBS) $(TESTDIR)tests_condacts.c
 clean:
 	@rm -f dsk/tests.com
 	@rm -f *.com *.asm *.lst *.sym *.bin *.ihx *.lk *.map *.noi *.rel
-	@rm -f $(OBJDIR)/*
+	@rm -rf $(OBJDIR)
 
 test: all
 	@bash -c 'if pgrep -x "openmsx" > /dev/null \
@@ -61,9 +61,9 @@ test: all
 		echo "**** openmsx already running..." \
 	; else \
 #		openmsx -machine Philips_NMS_8245 -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
-#		openmsx -machine turbor -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 #		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
-		openmsx -machine msx2plus -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
+#		openmsx -machine msx2plus -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
+		openmsx -machine turbor -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 	; fi'
 
 legacy:
