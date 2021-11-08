@@ -9,10 +9,24 @@
 #pragma opt_code_size
 
 
+static const char __THIS_FILE__[] = __FILE__;
+
+#undef ASSERT
+#undef ASSERT_EQUAL
+#undef FAIL
+#undef SUCCEED
+#undef TODO
+#define ASSERT(cond, failMsg)					_ASSERT_TRUE(cond, failMsg, __THIS_FILE__, _func, __LINE__)
+#define ASSERT_EQUAL(value, expected, failMsg)	_ASSERT_EQUAL((uint16_t)(value), (uint16_t)(expected), failMsg, __THIS_FILE__, _func, __LINE__)
+#define FAIL(failMsg)							_FAIL(failMsg, __THIS_FILE__, _func, __LINE__)
+#define SUCCEED()								_SUCCEED(__THIS_FILE__, _func)
+#define TODO(infoMsg)							_TODO(infoMsg, __THIS_FILE__, __func__)
+
+
 #define pPROC 		currProc->condact
 #define checkEntry  currProc->continueEntry
 
-#define IND		128
+#define IND						128
 #define MOCK_NUM_OBJECTS		10
 
 
@@ -25,6 +39,8 @@ const char TODO_GENERIC[] = "-----";
 
 uint8_t fake_keyPressed;
 int16_t fake_lastSysMesPrinted;
+
+extern const CONDACT_LIST condactList[];
 
 // =============================================================================
 // Global variables
@@ -171,6 +187,7 @@ void sfxWriteRegister(uint8_t reg, uint8_t value) {}
 void sfxTone(uint8_t value1, uint8_t value2) {}
 
 
+// =============================================================================
 
 static void beforeAll()
 {
@@ -204,11 +221,13 @@ static void beforeEach()
 	fake_lastSysMesPrinted = -1;
 }
 
-static void do_action(char *pProc, void (* const function)())
+static void do_action(char *pProc)
 {
 	pPROC = pProc + 1;
 	indirection = *pProc & IND;
-	function();
+
+	CondactStruct *currCondact = (CondactStruct*)pProc++;
+	condactList[currCondact->condact].function();
 }
 
 
@@ -222,6 +241,7 @@ static void do_action(char *pProc, void (* const function)())
 
 void test_AT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -229,7 +249,7 @@ void test_AT_success()
 
 	//BDD when check it with AT 5
 	static const char proc[] = { _AT, 5, 255 };
-	do_action(proc, do_AT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -238,6 +258,7 @@ void test_AT_success()
 
 void test_AT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 21
@@ -245,7 +266,7 @@ void test_AT_fails()
 
 	//BDD when check it with AT 5
 	static const char proc[] = { _AT, 5, 255 };
-	do_action(proc, do_AT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -254,6 +275,7 @@ void test_AT_fails()
 
 void test_AT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -262,7 +284,7 @@ void test_AT_indirection()
 
 	//BDD when check it with AT @150
 	static const char proc[] = { _AT|IND, 150, 255 };
-	do_action(proc, do_AT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -275,6 +297,7 @@ void test_AT_indirection()
 
 void test_NOTAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -282,7 +305,7 @@ void test_NOTAT_success()
 
 	//BDD when check it with NOTAT 2
 	char proc[] = { _NOTAT, 2, 255 };
-	do_action(proc, do_NOTAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -291,6 +314,7 @@ void test_NOTAT_success()
 
 void test_NOTAT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -298,7 +322,7 @@ void test_NOTAT_fails()
 
 	//BDD when check it with NOTAT 5
 	char proc[] = { _NOTAT, 5, 255 };
-	do_action(proc, do_NOTAT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -307,6 +331,7 @@ void test_NOTAT_fails()
 
 void test_NOTAT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -315,7 +340,7 @@ void test_NOTAT_indirection()
 
 	//BDD when check it with NOTAT @150
 	static const char proc[] = { _NOTAT|IND, 150, 255 };
-	do_action(proc, do_NOTAT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -328,6 +353,7 @@ void test_NOTAT_indirection()
 
 void test_ATGT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -335,7 +361,7 @@ void test_ATGT_success()
 
 	//BDD when check it with ATGT 2
 	static const char proc[] = { _ATGT, 2, 255 };
-	do_action(proc, do_ATGT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -344,6 +370,7 @@ void test_ATGT_success()
 
 void test_ATGT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5
@@ -351,7 +378,7 @@ void test_ATGT_fails()
 
 	//BDD when check it with ATGT 5
 	static const char proc[] = { _ATGT, 5, 255 };
-	do_action(proc, do_ATGT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -360,6 +387,7 @@ void test_ATGT_fails()
 
 void test_ATGT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5
@@ -368,7 +396,7 @@ void test_ATGT_indirection()
 
 	//BDD when check it with ATGT @150
 	static const char proc[] = { _ATGT|IND, 150, 255 };
-	do_action(proc, do_ATGT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -381,6 +409,7 @@ void test_ATGT_indirection()
 
 void test_ATLT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -388,7 +417,7 @@ void test_ATLT_success()
 
 	//BDD when check it with ATLT 12
 	static const char proc[] = { _ATLT, 12, 255 };
-	do_action(proc, do_ATLT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -397,6 +426,7 @@ void test_ATLT_success()
 
 void test_ATLT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5
@@ -404,7 +434,7 @@ void test_ATLT_fails()
 
 	//BDD when check it with ATLT 2
 	static const char proc[] = { _ATLT, 2, 255 };
-	do_action(proc, do_ATLT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -413,6 +443,7 @@ void test_ATLT_fails()
 
 void test_ATLT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5
@@ -421,7 +452,7 @@ void test_ATLT_indirection()
 
 	//BDD when check it with ATLT @150
 	static const char proc[] = { _ATLT|IND, 150, 255 };
-	do_action(proc, do_ATLT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -439,6 +470,7 @@ void test_ATLT_indirection()
 
 void test_PRESENT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5 and object 1 at same place
@@ -447,7 +479,7 @@ void test_PRESENT_success()
 
 	//BDD when checking PRESENT 1
 	static const char proc[] = { _PRESENT, 1, 255 };
-	do_action(proc, do_PRESENT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -456,6 +488,7 @@ void test_PRESENT_success()
 
 void test_PRESENT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2
@@ -464,7 +497,7 @@ void test_PRESENT_fails()
 
 	//BDD when checking PRESENT 1
 	static const char proc[] = { _PRESENT, 1, 255 };
-	do_action(proc, do_PRESENT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -473,6 +506,7 @@ void test_PRESENT_fails()
 
 void test_PRESENT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 5
@@ -482,7 +516,7 @@ void test_PRESENT_indirection()
 
 	//BDD when checking PRESENT @150
 	static const char proc[] = { _PRESENT|IND, 150, 255 };
-	do_action(proc, do_PRESENT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -496,6 +530,7 @@ void test_PRESENT_indirection()
 
 void test_ABSENT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2
@@ -504,7 +539,7 @@ void test_ABSENT_success()
 
 	//BDD when checking ABSENT 1
 	static const char proc[] = { _ABSENT, 1, 255 };
-	do_action(proc, do_ABSENT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -513,6 +548,7 @@ void test_ABSENT_success()
 
 void test_ABSENT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5 and object 1 at same place
@@ -521,7 +557,7 @@ void test_ABSENT_fails()
 
 	//BDD when checking ABSENT 1
 	static const char proc[] = { _ABSENT, 1, 255 };
-	do_action(proc, do_ABSENT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -530,6 +566,7 @@ void test_ABSENT_fails()
 
 void test_ABSENT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2
@@ -539,7 +576,7 @@ void test_ABSENT_indirection()
 
 	//BDD when checking ABSENT @150
 	static const char proc[] = { _ABSENT|IND, 150, 255 };
-	do_action(proc, do_ABSENT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -552,6 +589,7 @@ void test_ABSENT_indirection()
 
 void test_WORN_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5 and object 1 is worn
@@ -560,7 +598,7 @@ void test_WORN_success()
 
 	//BDD when checking WORN 1
 	static const char proc[] = { _WORN, 1, 255 };
-	do_action(proc, do_WORN);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -569,6 +607,7 @@ void test_WORN_success()
 
 void test_WORN_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 5
@@ -577,7 +616,7 @@ void test_WORN_fails()
 
 	//BDD when checking WORN 1
 	static const char proc[] = { _WORN, 1, 255 };
-	do_action(proc, do_WORN);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -586,6 +625,7 @@ void test_WORN_fails()
 
 void test_WORN_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 is worn
@@ -595,7 +635,7 @@ void test_WORN_indirection()
 
 	//BDD when checking WORN @150
 	static const char proc[] = { _WORN|IND, 150, 255 };
-	do_action(proc, do_WORN);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -608,6 +648,7 @@ void test_WORN_indirection()
 
 void test_NOTWORN_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2
@@ -616,7 +657,7 @@ void test_NOTWORN_success()
 
 	//BDD when checking NOTWORN 1
 	static const char proc[] = { _NOTWORN, 1, 255 };
-	do_action(proc, do_NOTWORN);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -625,6 +666,7 @@ void test_NOTWORN_success()
 
 void test_NOTWORN_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5 and object 1 is worn
@@ -633,7 +675,7 @@ void test_NOTWORN_fails()
 
 	//BDD when checking NOTWORN 1
 	static const char proc[] = { _NOTWORN, 1, 255 };
-	do_action(proc, do_NOTWORN);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -642,6 +684,7 @@ void test_NOTWORN_fails()
 
 void test_NOTWORN_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2
@@ -651,7 +694,7 @@ void test_NOTWORN_indirection()
 
 	//BDD when checking NOTWORN @150
 	static const char proc[] = { _NOTWORN|IND, 150, 255 };
-	do_action(proc, do_NOTWORN);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -664,6 +707,7 @@ void test_NOTWORN_indirection()
 
 void test_CARRIED_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5 and object 1 is carried
@@ -672,7 +716,7 @@ void test_CARRIED_success()
 
 	//BDD when checking CARRIED 1
 	static const char proc[] = { _CARRIED, 1, 255 };
-	do_action(proc, do_CARRIED);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -681,6 +725,7 @@ void test_CARRIED_success()
 
 void test_CARRIED_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 5
@@ -689,7 +734,7 @@ void test_CARRIED_fails()
 
 	//BDD when checking CARRIED 1
 	static const char proc[] = { _CARRIED, 1, 255 };
-	do_action(proc, do_CARRIED);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -698,6 +743,7 @@ void test_CARRIED_fails()
 
 void test_CARRIED_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 is carried
@@ -707,7 +753,7 @@ void test_CARRIED_indirection()
 
 	//BDD when checking CARRIED @150
 	static const char proc[] = { _CARRIED|IND, 150, 255 };
-	do_action(proc, do_CARRIED);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -720,6 +766,7 @@ void test_CARRIED_indirection()
 
 void test_NOTCARR_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2
@@ -728,7 +775,7 @@ void test_NOTCARR_success()
 
 	//BDD when checking NOTCARR 1
 	static const char proc[] = { _NOTCARR, 1, 255 };
-	do_action(proc, do_NOTCARR);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -737,6 +784,7 @@ void test_NOTCARR_success()
 
 void test_NOTCARR_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5 and object 1 is carried
@@ -745,7 +793,7 @@ void test_NOTCARR_fails()
 
 	//BDD when checking NOTCARR 1
 	static const char proc[] = { _NOTCARR, 1, 255 };
-	do_action(proc, do_NOTCARR);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -754,6 +802,7 @@ void test_NOTCARR_fails()
 
 void test_NOTCARR_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2
@@ -763,7 +812,7 @@ void test_NOTCARR_indirection()
 
 	//BDD when checking NOTCARR @150
 	static const char proc[] = { _NOTCARR|IND, 150, 255 };
-	do_action(proc, do_NOTCARR);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -776,6 +825,7 @@ void test_NOTCARR_indirection()
 
 void test_ISAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given object 1 is at loc 5
@@ -783,7 +833,7 @@ void test_ISAT_success()
 
 	//BDD when checking ISAT 1 5
 	static const char proc[] = { _ISAT, 1, 5, 255 };
-	do_action(proc, do_ISAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -792,6 +842,7 @@ void test_ISAT_success()
 
 void test_ISAT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given object 1 at loc 5
@@ -799,7 +850,7 @@ void test_ISAT_fails()
 
 	//BDD when checking ISAT 1 6
 	static const char proc[] = { _ISAT, 1, 6, 255 };
-	do_action(proc, do_ISAT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -808,6 +859,7 @@ void test_ISAT_fails()
 
 void test_ISAT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 is HERE
@@ -817,7 +869,7 @@ void test_ISAT_indirection()
 
 	//BDD when checking ISAT @150 HERE
 	static const char proc[] = { _ISAT|IND, 150, LOC_HERE, 255 };
-	do_action(proc, do_ISAT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -830,6 +882,7 @@ void test_ISAT_indirection()
 
 void test_ISNOTAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given object 1 at loc 2
@@ -837,7 +890,7 @@ void test_ISNOTAT_success()
 
 	//BDD when checking ISNOTAT 1 5
 	static const char proc[] = { _ISNOTAT, 1, 5, 255 };
-	do_action(proc, do_ISNOTAT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -846,6 +899,7 @@ void test_ISNOTAT_success()
 
 void test_ISNOTAT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given object 1 is at loc 5
@@ -853,7 +907,7 @@ void test_ISNOTAT_fails()
 
 	//BDD when checking ISNOTAT 1 5
 	static const char proc[] = { _ISNOTAT, 1, 5, 255 };
-	do_action(proc, do_ISNOTAT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -862,6 +916,7 @@ void test_ISNOTAT_fails()
 
 void test_ISNOTAT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given player at loc 5 and object 1 at loc 2 and flag 150 with value 1
@@ -871,7 +926,7 @@ void test_ISNOTAT_indirection()
 
 	//BDD when checking ISNOTAT @150 HERE
 	static const char proc[] = { _ISNOTAT|IND, 150, LOC_HERE, 255 };
-	do_action(proc, do_ISNOTAT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -888,6 +943,7 @@ void test_ISNOTAT_indirection()
 
 void test_ZERO_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 0
@@ -895,7 +951,7 @@ void test_ZERO_success()
 
 	//BDD when checking ZERO 150
 	static const char proc[] = { _ZERO, 150, 255 };
-	do_action(proc, do_ZERO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -904,6 +960,7 @@ void test_ZERO_success()
 
 void test_ZERO_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25
@@ -911,7 +968,7 @@ void test_ZERO_fails()
 
 	//BDD when checking ZERO 150
 	static const char proc[] = { _ZERO, 150, 255 };
-	do_action(proc, do_ZERO);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -920,6 +977,7 @@ void test_ZERO_fails()
 
 void test_ZERO_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 5
@@ -928,7 +986,7 @@ void test_ZERO_indirection()
 
 	//BDD when checking ZERO @150
 	static const char proc[] = { _ZERO|IND, 150, 255 };
-	do_action(proc, do_ZERO);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -941,6 +999,7 @@ void test_ZERO_indirection()
 
 void test_NOTZERO_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25
@@ -948,7 +1007,7 @@ void test_NOTZERO_success()
 
 	//BDD when checking NOTZERO 150
 	static const char proc[] = { _NOTZERO, 150, 255 };
-	do_action(proc, do_NOTZERO);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -957,6 +1016,7 @@ void test_NOTZERO_success()
 
 void test_NOTZERO_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 0
@@ -964,7 +1024,7 @@ void test_NOTZERO_fails()
 
 	//BDD when checking NOTZERO 150
 	static const char proc[] = { _NOTZERO, 150, 255 };
-	do_action(proc, do_NOTZERO);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -973,6 +1033,7 @@ void test_NOTZERO_fails()
 
 void test_NOTZERO_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 25
@@ -981,7 +1042,7 @@ void test_NOTZERO_indirection()
 
 	//BDD when checking NOTZERO @150
 	static const char proc[] = { _NOTZERO|IND, 150, 255 };
-	do_action(proc, do_NOTZERO);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -994,6 +1055,7 @@ void test_NOTZERO_indirection()
 
 void test_EQ_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 25
@@ -1001,7 +1063,7 @@ void test_EQ_success()
 
 	//BDD when checking EQ 150 25
 	static const char proc[] = { _EQ, 150, 25, 255 };
-	do_action(proc, do_EQ);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1010,6 +1072,7 @@ void test_EQ_success()
 
 void test_EQ_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25
@@ -1017,7 +1080,7 @@ void test_EQ_fails()
 
 	//BDD when checking EQ 150 0
 	static const char proc[] = { _EQ, 150, 0, 255 };
-	do_action(proc, do_EQ);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1026,6 +1089,7 @@ void test_EQ_fails()
 
 void test_EQ_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 25
@@ -1034,7 +1098,7 @@ void test_EQ_indirection()
 
 	//BDD when checking EQ @150 25
 	static const char proc[] = { _EQ|IND, 150, 25, 255 };
-	do_action(proc, do_EQ);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1047,6 +1111,7 @@ void test_EQ_indirection()
 
 void test_NOTEQ_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25
@@ -1054,7 +1119,7 @@ void test_NOTEQ_success()
 
 	//BDD when checking NOTEQ 150 0
 	static const char proc[] = { _NOTEQ, 150, 0, 255 };
-	do_action(proc, do_NOTEQ);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1063,6 +1128,7 @@ void test_NOTEQ_success()
 
 void test_NOTEQ_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 25
@@ -1070,7 +1136,7 @@ void test_NOTEQ_fails()
 
 	//BDD when checking NOTEQ 150 25
 	static const char proc[] = { _NOTEQ, 150, 25, 255 };
-	do_action(proc, do_NOTEQ);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1079,6 +1145,7 @@ void test_NOTEQ_fails()
 
 void test_NOTEQ_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 25
@@ -1087,7 +1154,7 @@ void test_NOTEQ_indirection()
 
 	//BDD when checking NOTEQ @150 5
 	static const char proc[] = { _NOTEQ|IND, 150, 5, 255 };
-	do_action(proc, do_NOTEQ);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1100,6 +1167,7 @@ void test_NOTEQ_indirection()
 
 void test_GT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 50
@@ -1107,7 +1175,7 @@ void test_GT_success()
 
 	//BDD when checking GT 150 25
 	static const char proc[] = { _GT, 150, 25, 255 };
-	do_action(proc, do_GT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1116,6 +1184,7 @@ void test_GT_success()
 
 void test_GT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25
@@ -1123,7 +1192,7 @@ void test_GT_fails()
 
 	//BDD when checking GT 150 50
 	static const char proc[] = { _GT, 150, 50, 255 };
-	do_action(proc, do_GT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1132,6 +1201,7 @@ void test_GT_fails()
 
 void test_GT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 50
@@ -1140,7 +1210,7 @@ void test_GT_indirection()
 
 	//BDD when checking GT @150 25
 	static const char proc[] = { _GT|IND, 150, 25, 255 };
-	do_action(proc, do_GT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1153,6 +1223,7 @@ void test_GT_indirection()
 
 void test_LT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 25
@@ -1160,7 +1231,7 @@ void test_LT_success()
 
 	//BDD when checking LT 150 50
 	static const char proc[] = { _LT, 150, 50, 255 };
-	do_action(proc, do_LT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1169,6 +1240,7 @@ void test_LT_success()
 
 void test_LT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 50
@@ -1176,7 +1248,7 @@ void test_LT_fails()
 
 	//BDD when checking LT 150 25
 	static const char proc[] = { _LT, 150, 25, 255 };
-	do_action(proc, do_LT);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1185,6 +1257,7 @@ void test_LT_fails()
 
 void test_LT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 25
@@ -1193,7 +1266,7 @@ void test_LT_indirection()
 
 	//BDD when checking LT @150 50
 	static const char proc[] = { _LT|IND, 150, 50, 255 };
-	do_action(proc, do_LT);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1206,6 +1279,7 @@ void test_LT_indirection()
 
 void test_SAME_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 and 151 with value 25
@@ -1214,7 +1288,7 @@ void test_SAME_success()
 
 	//BDD when checking SAME 150 151
 	static const char proc[] = { _SAME, 150, 151, 255 };
-	do_action(proc, do_SAME);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1223,6 +1297,7 @@ void test_SAME_success()
 
 void test_SAME_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25 and flag 151 with value 50
@@ -1231,7 +1306,7 @@ void test_SAME_fails()
 
 	//BDD when checking SAME 150 151
 	static const char proc[] = { _SAME, 150, 151, 255 };
-	do_action(proc, do_SAME);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1240,6 +1315,7 @@ void test_SAME_fails()
 
 void test_SAME_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 25 and flag 151 with value 25
@@ -1249,7 +1325,7 @@ void test_SAME_indirection()
 
 	//BDD when checking SAME @150 151
 	static const char proc[] = { _SAME|IND, 150, 151, 255 };
-	do_action(proc, do_SAME);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1262,6 +1338,7 @@ void test_SAME_indirection()
 
 void test_NOTSAME_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25 and flag 151 with value 50
@@ -1270,7 +1347,7 @@ void test_NOTSAME_success()
 
 	//BDD when checking NOTSAME 150 151
 	static const char proc[] = { _NOTSAME, 150, 151, 255 };
-	do_action(proc, do_NOTSAME);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1279,6 +1356,7 @@ void test_NOTSAME_success()
 
 void test_NOTSAME_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 25 and flag 151 with value 25
@@ -1287,7 +1365,7 @@ void test_NOTSAME_fails()
 
 	//BDD when checking NOTSAME 150 151
 	static const char proc[] = { _NOTSAME, 150, 151, 255 };
-	do_action(proc, do_NOTSAME);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1296,6 +1374,7 @@ void test_NOTSAME_fails()
 
 void test_NOTSAME_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 25 and flag 151 with value 50
@@ -1305,7 +1384,7 @@ void test_NOTSAME_indirection()
 
 	//BDD when checking NOTSAME @150 151
 	static const char proc[] = { _NOTSAME|IND, 150, 5, 255 };
-	do_action(proc, do_NOTSAME);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1318,6 +1397,7 @@ void test_NOTSAME_indirection()
 
 void test_BIGGER_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 50 and 151 with value 25
@@ -1326,7 +1406,7 @@ void test_BIGGER_success()
 
 	//BDD when checking BIGGER 150 151
 	static const char proc[] = { _BIGGER, 150, 151, 255 };
-	do_action(proc, do_BIGGER);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1335,6 +1415,7 @@ void test_BIGGER_success()
 
 void test_BIGGER_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 25 and flag 151 with value 50
@@ -1343,7 +1424,7 @@ void test_BIGGER_fails()
 
 	//BDD when checking BIGGER 150 151
 	static const char proc[] = { _BIGGER, 150, 151, 255 };
-	do_action(proc, do_BIGGER);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1352,6 +1433,7 @@ void test_BIGGER_fails()
 
 void test_BIGGER_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 50 and flag 151 with value 25
@@ -1361,7 +1443,7 @@ void test_BIGGER_indirection()
 
 	//BDD when checking BIGGER @150 151
 	static const char proc[] = { _BIGGER|IND, 150, 151, 255 };
-	do_action(proc, do_BIGGER);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1374,6 +1456,7 @@ void test_BIGGER_indirection()
 
 void test_SMALLER_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 150 with value 25 and 151 with value 50
@@ -1382,7 +1465,7 @@ void test_SMALLER_success()
 
 	//BDD when checking SMALLER 150 151
 	static const char proc[] = { _SMALLER, 150, 151, 255 };
-	do_action(proc, do_SMALLER);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1391,6 +1474,7 @@ void test_SMALLER_success()
 
 void test_SMALLER_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 50 and flag 151 with value 25
@@ -1399,7 +1483,7 @@ void test_SMALLER_fails()
 
 	//BDD when checking SMALLER 150 151
 	static const char proc[] = { _SMALLER, 150, 151, 255 };
-	do_action(proc, do_SMALLER);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1408,6 +1492,7 @@ void test_SMALLER_fails()
 
 void test_SMALLER_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 1 and flag 1 with value 25 and flag 151 with value 50
@@ -1417,7 +1502,7 @@ void test_SMALLER_indirection()
 
 	//BDD when checking SMALLER @150 151
 	static const char proc[] = { _SMALLER|IND, 150, 151, 255 };
-	do_action(proc, do_SMALLER);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1434,6 +1519,7 @@ void test_SMALLER_indirection()
 
 void test_ADJECT1_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given the adject1 1 from Logical Sentence
@@ -1441,7 +1527,7 @@ void test_ADJECT1_success()
 
 	//BDD when checking ADJECT1 1
 	static const char proc[] = { _ADJECT1, 1, 255 };
-	do_action(proc, do_ADJECT1);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1450,6 +1536,7 @@ void test_ADJECT1_success()
 
 void test_ADJECT1_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the adject1 1 from Logical Sentence
@@ -1457,7 +1544,7 @@ void test_ADJECT1_fails()
 
 	//BDD when checking ADJECT1 2
 	static const char proc[] = { _ADJECT1, 2, 255 };
-	do_action(proc, do_ADJECT1);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1466,6 +1553,7 @@ void test_ADJECT1_fails()
 
 void test_ADJECT1_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the adject1 1 from Logical Sentence and flag 150 with value 1
@@ -1474,7 +1562,7 @@ void test_ADJECT1_indirection()
 
 	//BDD when checking ADJECT1 @150
 	static const char proc[] = { _ADJECT1|IND, 150, 255 };
-	do_action(proc, do_ADJECT1);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1487,6 +1575,7 @@ void test_ADJECT1_indirection()
 
 void test_ADVERB_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given the adverb 1 from Logical Sentence
@@ -1494,7 +1583,7 @@ void test_ADVERB_success()
 
 	//BDD when checking ADVERB 1
 	static const char proc[] = { _ADVERB, 1, 255 };
-	do_action(proc, do_ADVERB);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1503,6 +1592,7 @@ void test_ADVERB_success()
 
 void test_ADVERB_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the adverb 1 from Logical Sentence
@@ -1510,7 +1600,7 @@ void test_ADVERB_fails()
 
 	//BDD when checking ADVERB 2
 	static const char proc[] = { _ADVERB, 2, 255 };
-	do_action(proc, do_ADVERB);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1519,6 +1609,7 @@ void test_ADVERB_fails()
 
 void test_ADVERB_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the adverb 1 from Logical Sentence and flag 150 with value 1
@@ -1527,7 +1618,7 @@ void test_ADVERB_indirection()
 
 	//BDD when checking ADVERB @150
 	static const char proc[] = { _ADVERB|IND, 150, 255 };
-	do_action(proc, do_ADVERB);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1540,6 +1631,7 @@ void test_ADVERB_indirection()
 
 void test_PREP_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given the prep 1 from Logical Sentence
@@ -1547,7 +1639,7 @@ void test_PREP_success()
 
 	//BDD when checking PREP 1
 	static const char proc[] = { _PREP, 1, 255 };
-	do_action(proc, do_PREP);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1556,6 +1648,7 @@ void test_PREP_success()
 
 void test_PREP_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the prep 1 from Logical Sentence
@@ -1563,7 +1656,7 @@ void test_PREP_fails()
 
 	//BDD when checking PREP 2
 	static const char proc[] = { _PREP, 2, 255 };
-	do_action(proc, do_PREP);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1572,6 +1665,7 @@ void test_PREP_fails()
 
 void test_PREP_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the prep 1 from Logical Sentence and flag 150 with value 1
@@ -1580,7 +1674,7 @@ void test_PREP_indirection()
 
 	//BDD when checking PREP @150
 	static const char proc[] = { _PREP|IND, 150, 255 };
-	do_action(proc, do_PREP);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1593,6 +1687,7 @@ void test_PREP_indirection()
 
 void test_NOUN2_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given the noun2 1 from Logical Sentence
@@ -1600,7 +1695,7 @@ void test_NOUN2_success()
 
 	//BDD when checking NOUN2 1
 	static const char proc[] = { _NOUN2, 1, 255 };
-	do_action(proc, do_NOUN2);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1609,6 +1704,7 @@ void test_NOUN2_success()
 
 void test_NOUN2_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the noun2 1 from Logical Sentence
@@ -1616,7 +1712,7 @@ void test_NOUN2_fails()
 
 	//BDD when checking NOUN2 2
 	static const char proc[] = { _NOUN2, 2, 255 };
-	do_action(proc, do_NOUN2);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1625,6 +1721,7 @@ void test_NOUN2_fails()
 
 void test_NOUN2_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the noun2 1 from Logical Sentence and flag 150 with value 1
@@ -1633,7 +1730,7 @@ void test_NOUN2_indirection()
 
 	//BDD when checking NOUN2 @150
 	static const char proc[] = { _NOUN2|IND, 150, 255 };
-	do_action(proc, do_NOUN2);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1646,6 +1743,7 @@ void test_NOUN2_indirection()
 
 void test_ADJECT2_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given the adject2 1 from Logical Sentence
@@ -1653,7 +1751,7 @@ void test_ADJECT2_success()
 
 	//BDD when checking ADJECT2 1
 	static const char proc[] = { _ADJECT2, 1, 255 };
-	do_action(proc, do_ADJECT2);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1662,6 +1760,7 @@ void test_ADJECT2_success()
 
 void test_ADJECT2_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the adject2 1 from Logical Sentence
@@ -1669,7 +1768,7 @@ void test_ADJECT2_fails()
 
 	//BDD when checking ADJECT2 2
 	static const char proc[] = { _ADJECT2, 2, 255 };
-	do_action(proc, do_ADJECT2);
+	do_action(proc);
 	
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1678,6 +1777,7 @@ void test_ADJECT2_fails()
 
 void test_ADJECT2_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given the adject2 1 from Logical Sentence and flag 150 with value 1
@@ -1686,7 +1786,7 @@ void test_ADJECT2_indirection()
 
 	//BDD when checking ADJECT2 @150
 	static const char proc[] = { _ADJECT2|IND, 150, 255 };
-	do_action(proc, do_ADJECT2);
+	do_action(proc);
 	
 	//BDD then success
 	ASSERT(checkEntry, ERROR);
@@ -1706,13 +1806,14 @@ void test_ADJECT2_indirection()
 
 void test_CHANCE_0_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given none
 
 	//BDD when checking CHANCE 0
 	static const char proc[] = { _CHANCE, 0, 255 };
-	do_action(proc, do_CHANCE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1721,13 +1822,14 @@ void test_CHANCE_0_fails()
 
 void test_CHANCE_255_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given none
 
 	//BDD when checking CHANCE 255
 	static const char proc[] = { _CHANCE, 255, 255 };
-	do_action(proc, do_CHANCE);
+	do_action(proc);
 	
 	//BDD then succes
 	ASSERT(checkEntry, ERROR);
@@ -1736,6 +1838,7 @@ void test_CHANCE_255_success()
 
 void test_CHANCE_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given flag 150 with value 255
@@ -1743,7 +1846,7 @@ void test_CHANCE_indirection()
 
 	//BDD when checking CHANCE @150
 	static const char proc[] = { _CHANCE|IND, 150, 255 };
-	do_action(proc, do_CHANCE);
+	do_action(proc);
 	
 	//BDD then succes
 	ASSERT(checkEntry, ERROR);
@@ -1765,6 +1868,7 @@ void test_CHANCE_indirection()
 
 void test_ISDONE_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given last table executed at least one action
@@ -1772,7 +1876,7 @@ void test_ISDONE_success()
 
 	//BDD when checking ISDONE
 	static const char proc[] = { _ISDONE, 255 };
-	do_action(proc, do_ISDONE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(checkEntry, ERROR);
@@ -1782,6 +1886,7 @@ void test_ISDONE_success()
 
 void test_ISDONE_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given last table not executed at least one action
@@ -1789,7 +1894,7 @@ void test_ISDONE_fails()
 
 	//BDD when checking ISDONE
 	static const char proc[] = { _ISDONE, 255 };
-	do_action(proc, do_ISDONE);
+	do_action(proc);
 	
 	//BDD then succes
 	ASSERT(!checkEntry, ERROR);
@@ -1804,6 +1909,7 @@ void test_ISDONE_fails()
 
 void test_ISNDONE_success()		//TODO improve this test
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given last table not executed at least one action
@@ -1811,7 +1917,7 @@ void test_ISNDONE_success()		//TODO improve this test
 
 	//BDD when checking ISNDONE
 	static const char proc[] = { _ISNDONE, 255 };
-	do_action(proc, do_ISNDONE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(checkEntry, ERROR);
@@ -1820,6 +1926,7 @@ void test_ISNDONE_success()		//TODO improve this test
 
 void test_ISNDONE_fails()		//TODO improve this test
 {
+	const char *_func = __func__;
 	beforeEach();
 	
 	//BDD given last table executed at least one action
@@ -1827,7 +1934,7 @@ void test_ISNDONE_fails()		//TODO improve this test
 
 	//BDD when checking ISNDONE
 	static const char proc[] = { _ISNDONE, 255 };
-	do_action(proc, do_ISNDONE);
+	do_action(proc);
 	
 	//BDD then succes
 	ASSERT(!checkEntry, ERROR);
@@ -1846,6 +1953,7 @@ void test_ISNDONE_fails()		//TODO improve this test
 
 void test_HASAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current object attribute 10 is set
@@ -1853,7 +1961,7 @@ void test_HASAT_success()
 
 	//BDD when checking HASAT 10
 	static const char proc[] = { _HASAT, 10, 255 };
-	do_action(proc, do_HASAT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(checkEntry, ERROR);
@@ -1862,6 +1970,7 @@ void test_HASAT_success()
 
 void test_HASAT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current object attribute 5 is not set
@@ -1869,7 +1978,7 @@ void test_HASAT_fails()
 
 	//BDD when checking HASAT 5
 	static const char proc[] = { _HASAT, 5, 255 };
-	do_action(proc, do_HASAT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1878,6 +1987,7 @@ void test_HASAT_fails()
 
 void test_HASAT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current object attribute 10 is set and flag 150 with value 10
@@ -1886,7 +1996,7 @@ void test_HASAT_indirection()
 
 	//BDD when checking HASAT @150
 	static const char proc[] = { _HASAT|IND, 150, 255 };
-	do_action(proc, do_HASAT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(checkEntry, ERROR);
@@ -1899,6 +2009,7 @@ void test_HASAT_indirection()
 
 void test_HASNAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current object attribute 5 is not set
@@ -1906,7 +2017,7 @@ void test_HASNAT_success()
 
 	//BDD when checking HASNAT 5
 	static const char proc[] = { _HASNAT, 5, 255 };
-	do_action(proc, do_HASNAT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(checkEntry, ERROR);
@@ -1915,6 +2026,7 @@ void test_HASNAT_success()
 
 void test_HASNAT_fails()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current object attribute 10 is set
@@ -1922,7 +2034,7 @@ void test_HASNAT_fails()
 
 	//BDD when checking HASNAT 10
 	static const char proc[] = { _HASNAT, 10, 255 };
-	do_action(proc, do_HASNAT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
@@ -1931,6 +2043,7 @@ void test_HASNAT_fails()
 
 void test_HASNAT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current object attribute 10 is set and flag 150 with value 10
@@ -1939,7 +2052,7 @@ void test_HASNAT_indirection()
 
 	//BDD when checking HASNAT @150
 	static const char proc[] = { _HASNAT|IND, 150, 255 };
-	do_action(proc, do_HASNAT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT(checkEntry, ERROR);
@@ -1959,6 +2072,7 @@ void test_HASNAT_indirection()
 
 void test_INKEY_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given 'A' key pressed
@@ -1966,7 +2080,7 @@ void test_INKEY_success()
 
 	//BDD when checking INKEY
 	static const char proc[] = { _INKEY, 255 };
-	do_action(proc, do_INKEY);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fKey1], 'A', ERROR);
@@ -1981,6 +2095,7 @@ void test_INKEY_success()
 
 void test_QUIT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given 'Y' key pressed
@@ -1988,7 +2103,7 @@ void test_QUIT_success()
 
 	//BDD when checking QUIT
 	// static const char proc[] = { _QUIT, 255 };
-	// do_action(proc, do_QUIT);
+	// do_action(proc);
 
 	//BDD then success
 	// ASSERT(!checkEntry, ERROR);
@@ -2023,6 +2138,7 @@ void test_QUIT_success()
 
 void test_GET_carried()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -2030,7 +2146,7 @@ void test_GET_carried()
 
 	//BDD when checking GET 1
 	static const char proc[] = { _GET, 1, 255 };
-	do_action(proc, do_GET);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
@@ -2040,6 +2156,7 @@ void test_GET_carried()
 
 void test_GET_worn()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1
@@ -2047,7 +2164,7 @@ void test_GET_worn()
 
 	//BDD when checking GET 1
 	static const char proc[] = { _GET, 1, 255 };
-	do_action(proc, do_GET);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
@@ -2057,6 +2174,7 @@ void test_GET_worn()
 
 void test_GET_notHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at another location than the player
@@ -2065,7 +2183,7 @@ void test_GET_notHere()
 
 	//BDD when checking GET 1
 	static const char proc[] = { _GET, 1, 255 };
-	do_action(proc, do_GET);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 26, ERROR_SYSMES);
@@ -2075,6 +2193,7 @@ void test_GET_notHere()
 
 void test_GET_maxWeight()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 with weight (50), more than player can carry (25)
@@ -2085,7 +2204,7 @@ void test_GET_maxWeight()
 
 	//BDD when checking GET 1
 	static const char proc[] = { _GET, 1, 255 };
-	do_action(proc, do_GET);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 43, ERROR_SYSMES);
@@ -2095,6 +2214,7 @@ void test_GET_maxWeight()
 
 void test_GET_maxObjs()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at same location than player, but exceeds max number of objected carried
@@ -2105,7 +2225,7 @@ void test_GET_maxObjs()
 
 	//BDD when checking GET 1
 	static const char proc[] = { _GET, 1, 255 };
-	do_action(proc, do_GET);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 27, ERROR_SYSMES);
@@ -2115,6 +2235,7 @@ void test_GET_maxObjs()
 
 void test_GET_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at same location than player, and could be carried
@@ -2124,7 +2245,7 @@ void test_GET_success()
 
 	//BDD when checking GET 1
 	static const char proc[] = { _GET, 1, 255 };
-	do_action(proc, do_GET);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 36, ERROR_SYSMES);
@@ -2150,6 +2271,7 @@ void test_GET_success()
 
 void test_DROP_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -2160,7 +2282,7 @@ void test_DROP_success()
 
 	//BDD when checking DROP 1
 	static const char proc[] = { _DROP, 1, 255 };
-	do_action(proc, do_DROP);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 39, ERROR_SYSMES);
@@ -2172,6 +2294,7 @@ void test_DROP_success()
 
 void test_DROP_worn()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1
@@ -2179,7 +2302,7 @@ void test_DROP_worn()
 
 	//BDD when checking DROP 1
 	static const char proc[] = { _DROP, 1, 255 };
-	do_action(proc, do_DROP);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 24, ERROR_SYSMES);
@@ -2189,6 +2312,7 @@ void test_DROP_worn()
 
 void test_DROP_isHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 placed at same location than player
@@ -2197,7 +2321,7 @@ void test_DROP_isHere()
 
 	//BDD when checking DROP 1
 	static const char proc[] = { _DROP, 1, 255 };
-	do_action(proc, do_DROP);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
@@ -2207,6 +2331,7 @@ void test_DROP_isHere()
 
 void test_DROP_notHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 placed at same location than player
@@ -2215,7 +2340,7 @@ void test_DROP_notHere()
 
 	//BDD when checking DROP 1
 	static const char proc[] = { _DROP, 1, 255 };
-	do_action(proc, do_DROP);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
@@ -2245,6 +2370,7 @@ void test_DROP_notHere()
 
 void test_WEAR_isHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 placed at same location than player
@@ -2254,7 +2380,7 @@ void test_WEAR_isHere()
 
 	//BDD when checking WEAR 1
 	static const char proc[] = { _WEAR, 1, 255 };
-	do_action(proc, do_WEAR);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
@@ -2264,6 +2390,7 @@ void test_WEAR_isHere()
 
 void test_WEAR_worn()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1
@@ -2272,7 +2399,7 @@ void test_WEAR_worn()
 
 	//BDD when checking WEAR 1
 	static const char proc[] = { _WEAR, 1, 255 };
-	do_action(proc, do_WEAR);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 29, ERROR_SYSMES);
@@ -2282,6 +2409,7 @@ void test_WEAR_worn()
 
 void test_WEAR_notCarried()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a not carried object 1 and player at location 1
@@ -2291,7 +2419,7 @@ void test_WEAR_notCarried()
 
 	//BDD when checking WEAR 1
 	static const char proc[] = { _WEAR, 1, 255 };
-	do_action(proc, do_WEAR);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
@@ -2301,6 +2429,7 @@ void test_WEAR_notCarried()
 
 void test_WEAR_notWareable()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1 but is not wareable
@@ -2309,7 +2438,7 @@ void test_WEAR_notWareable()
 
 	//BDD when checking WEAR 1
 	static const char proc[] = { _WEAR, 1, 255 };
-	do_action(proc, do_WEAR);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 40, ERROR_SYSMES);
@@ -2319,6 +2448,7 @@ void test_WEAR_notWareable()
 
 void test_WEAR_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a wareable and carried object 1
@@ -2328,7 +2458,7 @@ void test_WEAR_success()
 
 	//BDD when checking WEAR 1
 	static const char proc[] = { _WEAR, 1, 255 };
-	do_action(proc, do_WEAR);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 37, ERROR_SYSMES);
@@ -2359,6 +2489,7 @@ void test_WEAR_success()
 
 void test_REMOVE_carried()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -2366,7 +2497,7 @@ void test_REMOVE_carried()
 
 	//BDD when checking REMOVE 1
 	static const char proc[] = { _REMOVE, 1, 255 };
-	do_action(proc, do_REMOVE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 50, ERROR_SYSMES);
@@ -2376,6 +2507,7 @@ void test_REMOVE_carried()
 
 void test_REMOVE_isHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a object 1 at same location than player
@@ -2384,7 +2516,7 @@ void test_REMOVE_isHere()
 
 	//BDD when checking REMOVE 1
 	static const char proc[] = { _REMOVE, 1, 255 };
-	do_action(proc, do_REMOVE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 50, ERROR_SYSMES);
@@ -2394,6 +2526,7 @@ void test_REMOVE_isHere()
 
 void test_REMOVE_notHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a object 1 at different location than player
@@ -2402,7 +2535,7 @@ void test_REMOVE_notHere()
 
 	//BDD when checking REMOVE 1
 	static const char proc[] = { _REMOVE, 1, 255 };
-	do_action(proc, do_REMOVE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 23, ERROR_SYSMES);
@@ -2412,6 +2545,7 @@ void test_REMOVE_notHere()
 
 void test_REMOVE_notWareable()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried and not wareable object 1
@@ -2421,7 +2555,7 @@ void test_REMOVE_notWareable()
 
 	//BDD when checking REMOVE 1
 	static const char proc[] = { _REMOVE, 1, 255 };
-	do_action(proc, do_REMOVE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 41, ERROR_SYSMES);
@@ -2431,6 +2565,7 @@ void test_REMOVE_notWareable()
 
 void test_REMOVE_maxObjs()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1 but max carried objects reached
@@ -2441,7 +2576,7 @@ void test_REMOVE_maxObjs()
 
 	//BDD when checking REMOVE 1
 	static const char proc[] = { _REMOVE, 1, 255 };
-	do_action(proc, do_REMOVE);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 42, ERROR_SYSMES);
@@ -2451,6 +2586,7 @@ void test_REMOVE_maxObjs()
 
 void test_REMOVE_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1
@@ -2461,7 +2597,7 @@ void test_REMOVE_success()
 
 	//BDD when checking REMOVE 1
 	static const char proc[] = { _REMOVE, 1, 255 };
-	do_action(proc, do_REMOVE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 38, ERROR_SYSMES);
@@ -2477,6 +2613,7 @@ void test_REMOVE_success()
 
 void test_CREATE_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a uncreated object 1 and the player at location 1
@@ -2486,7 +2623,7 @@ void test_CREATE_success()
 
 	//BDD when checking CREATE 1
 	static const char proc[] = { _CREATE, 1, 255 };
-	do_action(proc, do_CREATE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, flags[fPlayer], ERROR_OBJLOC);
@@ -2497,6 +2634,7 @@ void test_CREATE_success()
 
 void test_CREATE_carried()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1 and the player at location 1
@@ -2506,7 +2644,7 @@ void test_CREATE_carried()
 
 	//BDD when checking CREATE 1
 	static const char proc[] = { _CREATE, 1, 255 };
-	do_action(proc, do_CREATE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, flags[fPlayer], ERROR_OBJLOC);
@@ -2517,6 +2655,7 @@ void test_CREATE_carried()
 
 void test_CREATE_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a uncreated object 1 and the player at location 2 and flag 150 with value 1
@@ -2527,7 +2666,7 @@ void test_CREATE_indirection()
 
 	//BDD when checking CREATE @150
 	static const char proc[] = { _CREATE|IND, 150, 255 };
-	do_action(proc, do_CREATE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, flags[fPlayer], ERROR_OBJLOC);
@@ -2543,6 +2682,7 @@ void test_CREATE_indirection()
 
 void test_DESTROY_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 and the player at location 1
@@ -2552,7 +2692,7 @@ void test_DESTROY_success()
 
 	//BDD when checking DESTROY 1
 	static const char proc[] = { _DESTROY, 1, 255 };
-	do_action(proc, do_DESTROY);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, ERROR_OBJLOC);
@@ -2563,6 +2703,7 @@ void test_DESTROY_success()
 
 void test_DESTROY_carried()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1 and the player at location 1
@@ -2572,7 +2713,7 @@ void test_DESTROY_carried()
 
 	//BDD when checking DESTROY 1
 	static const char proc[] = { _DESTROY, 1, 255 };
-	do_action(proc, do_DESTROY);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, ERROR_OBJLOC);
@@ -2583,6 +2724,7 @@ void test_DESTROY_carried()
 
 void test_DESTROY_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 and the player at location 2 and flag 150 with value 1
@@ -2593,7 +2735,7 @@ void test_DESTROY_indirection()
 
 	//BDD when checking CREATE @150
 	static const char proc[] = { _DESTROY|IND, 150, 255 };
-	do_action(proc, do_DESTROY);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_NOTCREATED, ERROR_OBJLOC);
@@ -2609,6 +2751,7 @@ void test_DESTROY_indirection()
 
 void test_SWAP_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc1, and object 2 carried
@@ -2618,7 +2761,7 @@ void test_SWAP_success()
 
 	//BDD when checking SWAP 1 2
 	static const char proc[] = { _SWAP, 1, 2, 255 };
-	do_action(proc, do_SWAP);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
@@ -2631,6 +2774,7 @@ void test_SWAP_success()
 
 void test_SWAP_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc1, object 2 carried, and flag 150 with value 1
@@ -2641,7 +2785,7 @@ void test_SWAP_indirection()
 
 	//BDD when checking SWAP @150 2
 	static const char proc[] = { _SWAP|IND, 150, 2, 255 };
-	do_action(proc, do_SWAP);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
@@ -2660,6 +2804,7 @@ void test_SWAP_indirection()
 
 void test_PLACE_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc 1
@@ -2668,7 +2813,7 @@ void test_PLACE_success()
 
 	//BDD when checking PLACE 1 2
 	static const char proc[] = { _PLACE, 1, LOC_CARRIED, 255 };
-	do_action(proc, do_PLACE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
@@ -2680,6 +2825,7 @@ void test_PLACE_success()
 
 void test_PLACE_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1, and flag 150 with value 1
@@ -2689,7 +2835,7 @@ void test_PLACE_indirection()
 
 	//BDD when checking PLACE @150 1
 	static const char proc[] = { _PLACE|IND, 150, 1, 255 };
-	do_action(proc, do_PLACE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, 1, ERROR_OBJLOC);
@@ -2708,6 +2854,7 @@ void test_PLACE_indirection()
 
 void test_PUTO_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 referenced
@@ -2718,7 +2865,7 @@ void test_PUTO_success()
 
 	//BDD when checking PUTO LOC_CARRIED
 	static const char proc[] = { _PUTO, LOC_CARRIED, 255 };
-	do_action(proc, do_PUTO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
@@ -2731,6 +2878,7 @@ void test_PUTO_success()
 
 void test_PUTO_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1, and flag 150 with value 2
@@ -2741,7 +2889,7 @@ void test_PUTO_indirection()
 
 	//BDD when checking PUTO @150
 	static const char proc[] = { _PUTO|IND, 150, 1, 255 };
-	do_action(proc, do_PUTO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
@@ -2771,6 +2919,7 @@ void test_PUTO_indirection()
 
 void test_PUTIN_worn()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1
@@ -2778,7 +2927,7 @@ void test_PUTIN_worn()
 
 	//BDD when checking PUTIN 1 2
 	static const char proc[] = { _PUTIN, 1, 2, 255 };
-	do_action(proc, do_PUTIN);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 24, ERROR_SYSMES);
@@ -2788,6 +2937,7 @@ void test_PUTIN_worn()
 
 void test_PUTIN_here()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 here
@@ -2796,7 +2946,7 @@ void test_PUTIN_here()
 
 	//BDD when checking PUTIN 1 2
 	static const char proc[] = { _PUTIN, 1, 2, 255 };
-	do_action(proc, do_PUTIN);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
@@ -2806,6 +2956,7 @@ void test_PUTIN_here()
 
 void test_PUTIN_notHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 here
@@ -2814,7 +2965,7 @@ void test_PUTIN_notHere()
 
 	//BDD when checking PUTIN 1 2
 	static const char proc[] = { _PUTIN, 1, 2, 255 };
-	do_action(proc, do_PUTIN);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
@@ -2824,6 +2975,7 @@ void test_PUTIN_notHere()
 
 void test_PUTIN_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -2833,7 +2985,7 @@ void test_PUTIN_success()
 
 	//BDD when checking PUTIN 1 2
 	static const char proc[] = { _PUTIN, 1, 2, 255 };
-	do_action(proc, do_PUTIN);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
@@ -2845,6 +2997,7 @@ void test_PUTIN_success()
 
 void test_PUTIN_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 75 with value 1, and a carried object 1
@@ -2855,7 +3008,7 @@ void test_PUTIN_indirection()
 
 	//BDD when checking PUTIN @75 2
 	static const char proc[] = { _PUTIN|IND, 75, 2, 255 };
-	do_action(proc, do_PUTIN);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
@@ -2895,6 +3048,7 @@ void test_PUTIN_indirection()
 
 void test_TAKEOUT_carried()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -2902,7 +3056,7 @@ void test_TAKEOUT_carried()
 
 	//BDD when checking TAKEOUT 1 3
 	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
@@ -2912,6 +3066,7 @@ void test_TAKEOUT_carried()
 
 void test_TAKEOUT_worn()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1
@@ -2919,7 +3074,7 @@ void test_TAKEOUT_worn()
 
 	//BDD when checking TAKEOUT 1 3
 	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
@@ -2929,6 +3084,7 @@ void test_TAKEOUT_worn()
 
 void test_TAKEOUT_here()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 that is here
@@ -2937,7 +3093,7 @@ void test_TAKEOUT_here()
 
 	//BDD when checking TAKEOUT 1 3
 	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 45, ERROR_SYSMES);
@@ -2947,6 +3103,7 @@ void test_TAKEOUT_here()
 
 void test_TAKEOUT_notHere()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 that is here, and not at loc 3
@@ -2955,7 +3112,7 @@ void test_TAKEOUT_notHere()
 
 	//BDD when checking TAKEOUT 1 3
 	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 52, ERROR_SYSMES);
@@ -2965,6 +3122,7 @@ void test_TAKEOUT_notHere()
 
 void test_TAKEOUT_maxWeight()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc 3, and total weight of carried/worn objects + object 1 exceeds the maximum
@@ -2975,7 +3133,7 @@ void test_TAKEOUT_maxWeight()
 
 	//BDD when checking TAKEOUT 1 3
 	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 43, ERROR_SYSMES);
@@ -2985,6 +3143,7 @@ void test_TAKEOUT_maxWeight()
 
 void test_TAKEOUT_maxObjs()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc 3, and total num of carried objects + object 1 exceeds the maximum
@@ -2995,7 +3154,7 @@ void test_TAKEOUT_maxObjs()
 
 	//BDD when checking TAKEOUT 1 3
 	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 27, ERROR_SYSMES);
@@ -3005,6 +3164,7 @@ void test_TAKEOUT_maxObjs()
 
 void test_TAKEOUT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc 3, and total num of carried objects + object 1 no exceeds the maximum
@@ -3015,7 +3175,7 @@ void test_TAKEOUT_success()
 
 	//BDD when checking TAKEOUT 1 3
 	static const char proc[] = { _TAKEOUT, 1, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
@@ -3027,6 +3187,7 @@ void test_TAKEOUT_success()
 
 void test_TAKEOUT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 75 with value 1, an object 1 at loc 3, and total num of carried objects + object 1 no exceeds the maximum
@@ -3038,7 +3199,7 @@ void test_TAKEOUT_indirection()
 
 	//BDD when checking TAKEOUT @75 3
 	static const char proc[] = { _TAKEOUT|IND, 75, 3, 255 };
-	do_action(proc, do_TAKEOUT);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, ERROR_OBJLOC);
@@ -3058,6 +3219,7 @@ void test_TAKEOUT_indirection()
 
 void test_DROPALL_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given 3 objects carried or worn
@@ -3069,7 +3231,7 @@ void test_DROPALL_success()
 
 	//BDD when checking DROPALL
 	static const char proc[] = { _DROPALL, 255 };
-	do_action(proc, do_DROPALL);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, 1, ERROR_OBJLOC);
@@ -3094,6 +3256,7 @@ void test_DROPALL_success()
 
 void test_AUTOG_carried()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -3103,7 +3266,7 @@ void test_AUTOG_carried()
 
 	//BDD when checking AUTOG 1
 	static const char proc[] = { _AUTOG, 1, 255 };
-	do_action(proc, do_AUTOG);
+	do_action(proc);
 
 	//BDD then fails
 //	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
@@ -3115,6 +3278,7 @@ void test_AUTOG_carried()
 
 void test_AUTOG_worn()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -3124,7 +3288,7 @@ void test_AUTOG_worn()
 
 	//BDD when checking AUTOG 1
 	static const char proc[] = { _AUTOG, 1, 255 };
-	do_action(proc, do_AUTOG);
+	do_action(proc);
 
 	//BDD then fails
 //	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
@@ -3136,6 +3300,7 @@ void test_AUTOG_worn()
 
 void test_AUTOG_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a carried object 1
@@ -3145,7 +3310,7 @@ void test_AUTOG_success()
 
 	//BDD when checking AUTOG 1
 	static const char proc[] = { _AUTOG, 1, 255 };
-	do_action(proc, do_AUTOG);
+	do_action(proc);
 
 	//BDD then fails
 //	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
@@ -3248,6 +3413,7 @@ void test_AUTOT_success()
 
 void test_COPYOO_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc 2, and an object 2 at loc 4
@@ -3256,7 +3422,7 @@ void test_COPYOO_success()
 
 	//BDD when checking COPYOO 1 2
 	static const char proc[] = { _COPYOO, 1, 2, 255 };
-	do_action(proc, do_COPYOO);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
@@ -3268,6 +3434,7 @@ void test_COPYOO_success()
 
 void test_COPYOO_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given floag 75 with value 1, an object 1 at loc 2, and an object 2 at loc 4
@@ -3277,7 +3444,7 @@ void test_COPYOO_indirection()
 
 	//BDD when checking COPYOO @75 2
 	static const char proc[] = { _COPYOO|IND, 75, 2, 255 };
-	do_action(proc, do_COPYOO);
+	do_action(proc);
 
 	//BDD then fails
 	ASSERT_EQUAL(objects[1].location, 2, ERROR_OBJLOC);
@@ -3310,6 +3477,7 @@ void test_RESET_success()
 
 void test_COPYOF_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1, and an empty flag 200
@@ -3318,7 +3486,7 @@ void test_COPYOF_success()
 
 	//BDD when checking COPYOF 1 200
 	static const char proc[] = { _COPYOF, 1, 200, 255 };
-	do_action(proc, do_COPYOF);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[200], LOC_WORN, "Flag 200 don't have the object location");
@@ -3328,6 +3496,7 @@ void test_COPYOF_success()
 
 void test_COPYOF_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1, a flag 75 with value 1, and an empty flag 200
@@ -3337,7 +3506,7 @@ void test_COPYOF_indirection()
 
 	//BDD when checking COPYOF @75 200
 	static const char proc[] = { _COPYOF|IND, 75, 200, 255 };
-	do_action(proc, do_COPYOF);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[200], LOC_WORN, "Flag 200 don't have the object location");
@@ -3354,6 +3523,7 @@ void test_COPYOF_indirection()
 
 void test_COPYFO_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1, and an empty flag 200
@@ -3362,7 +3532,7 @@ void test_COPYFO_success()
 
 	//BDD when checking COPYFO 200 1
 	static const char proc[] = { _COPYFO, 200, 1, 255 };
-	do_action(proc, do_COPYFO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_WORN, "Flag 200 don't have the object location");
@@ -3372,6 +3542,7 @@ void test_COPYFO_success()
 
 void test_COPYFO_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a worn object 1, a flag 75 with value 1, and an empty flag 200
@@ -3381,7 +3552,7 @@ void test_COPYFO_indirection()
 
 	//BDD when checking COPYFO @75 1
 	static const char proc[] = { _COPYFO|IND, 75, 1, 255 };
-	do_action(proc, do_COPYFO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(objects[1].location, LOC_WORN, "Flag 200 don't have the object location");
@@ -3410,6 +3581,7 @@ void test_WHATO_success()
 
 void test_SETCO_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given an object 1 at loc 2
@@ -3417,7 +3589,7 @@ void test_SETCO_success()
 
 	//BDD when checking SETCO 1
 	static const char proc[] = { _SETCO, 1, 255 };
-	do_action(proc, do_SETCO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object 1");
@@ -3428,6 +3600,7 @@ void test_SETCO_success()
 
 void test_SETCO_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 75 with value 1, and object 1 at loc 2
@@ -3436,7 +3609,7 @@ void test_SETCO_indirection()
 
 	//BDD when checking SETCO @75
 	static const char proc[] = { _SETCO|IND, 75, 255 };
-	do_action(proc, do_SETCO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fCONum], 1, "Current object is not object 1");
@@ -3474,6 +3647,7 @@ void test_WEIGH_indirection()
 
 void test_SET_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 1
@@ -3481,7 +3655,7 @@ void test_SET_success()
 
 	//BDD when checking SET 100
 	static const char proc[] = { _SET, 100, 255 };
-	do_action(proc, do_SET);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 255, "Flag 100 is not 255");
@@ -3491,6 +3665,7 @@ void test_SET_success()
 
 void test_SET_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, and flag 100 with value 1
@@ -3499,7 +3674,7 @@ void test_SET_indirection()
 
 	//BDD when checking SET @75
 	static const char proc[] = { _SET|IND, 75, 255 };
-	do_action(proc, do_SET);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[75], 100, "Flag 75 have changed");
@@ -3514,6 +3689,7 @@ void test_SET_indirection()
 
 void test_CLEAR_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 100
@@ -3521,7 +3697,7 @@ void test_CLEAR_success()
 
 	//BDD when checking CLEAR 100
 	static const char proc[] = { _CLEAR, 100, 255 };
-	do_action(proc, do_CLEAR);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 0, "Flag 100 is not 0");
@@ -3531,6 +3707,7 @@ void test_CLEAR_success()
 
 void test_CLEAR_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, flag 100 with value 150
@@ -3539,7 +3716,7 @@ void test_CLEAR_indirection()
 
 	//BDD when checking CLEAR @75
 	static const char proc[] = { _CLEAR|IND, 75, 255 };
-	do_action(proc, do_CLEAR);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[75], 100, "Flag 75 have changed");
@@ -3554,6 +3731,7 @@ void test_CLEAR_indirection()
 
 void test_LET_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 1
@@ -3561,7 +3739,7 @@ void test_LET_success()
 
 	//BDD when checking LET 100 50
 	static const char proc[] = { _LET, 100, 50, 255 };
-	do_action(proc, do_LET);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 50, "Flag 100 is not 50");
@@ -3571,6 +3749,7 @@ void test_LET_success()
 
 void test_LET_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with valur 100, flag 100 with value 1
@@ -3579,7 +3758,7 @@ void test_LET_indirection()
 
 	//BDD when checking LET @75 80
 	static const char proc[] = { _LET|IND, 75, 80, 255 };
-	do_action(proc, do_LET);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 80, "Flag 100 is not 80");
@@ -3594,6 +3773,7 @@ void test_LET_indirection()
 
 void test_PLUS_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 10
@@ -3601,7 +3781,7 @@ void test_PLUS_success()
 
 	//BDD when checking PLUS 100 50
 	static const char proc[] = { _PLUS, 100, 50, 255 };
-	do_action(proc, do_PLUS);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 60, "Flag 100 is not 60");
@@ -3611,6 +3791,7 @@ void test_PLUS_success()
 
 void test_PLUS_overflow()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 210
@@ -3618,7 +3799,7 @@ void test_PLUS_overflow()
 
 	//BDD when checking PLUS 100 50
 	static const char proc[] = { _PLUS, 100, 50, 255 };
-	do_action(proc, do_PLUS);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 255, "Flag 100 is not 255");
@@ -3628,6 +3809,7 @@ void test_PLUS_overflow()
 
 void test_PLUS_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, flag 100 with value 10
@@ -3636,7 +3818,7 @@ void test_PLUS_indirection()
 
 	//BDD when checking PLUS @75 80
 	static const char proc[] = { _PLUS|IND, 75, 80, 255 };
-	do_action(proc, do_PLUS);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 90, "Flag 100 is not 90");
@@ -3651,6 +3833,7 @@ void test_PLUS_indirection()
 
 void test_MINUS_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 60
@@ -3658,7 +3841,7 @@ void test_MINUS_success()
 
 	//BDD when checking MINUS 100 10
 	static const char proc[] = { _MINUS, 100, 10, 255 };
-	do_action(proc, do_MINUS);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 50, "Flag 100 is not 50");
@@ -3668,6 +3851,7 @@ void test_MINUS_success()
 
 void test_MINUS_overflow()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 60
@@ -3675,7 +3859,7 @@ void test_MINUS_overflow()
 
 	//BDD when checking MINUS 100 150
 	static const char proc[] = { _MINUS, 100, 150, 255 };
-	do_action(proc, do_MINUS);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 0, "Flag 100 is not 0");
@@ -3685,6 +3869,7 @@ void test_MINUS_overflow()
 
 void test_MINUS_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, flag 100 with value 60
@@ -3693,7 +3878,7 @@ void test_MINUS_indirection()
 
 	//BDD when checking MINUS @75 10
 	static const char proc[] = { _MINUS|IND, 75, 10, 255 };
-	do_action(proc, do_MINUS);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[100], 50, "Flag 100 is not 50");
@@ -3708,6 +3893,7 @@ void test_MINUS_indirection()
 
 void test_ADD_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 10, and flag 150 with value 50
@@ -3716,7 +3902,7 @@ void test_ADD_success()
 
 	//BDD when checking ADD 100 150
 	static const char proc[] = { _ADD, 100, 150, 255 };
-	do_action(proc, do_ADD);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 60, "Flag 150 is not 60");
@@ -3726,6 +3912,7 @@ void test_ADD_success()
 
 void test_ADD_overflow()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 10, and flag 150 with value 250
@@ -3734,7 +3921,7 @@ void test_ADD_overflow()
 
 	//BDD when checking ADD 100 150
 	static const char proc[] = { _ADD, 100, 150, 255 };
-	do_action(proc, do_ADD);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 255, "Flag 150 is not 255");
@@ -3744,6 +3931,7 @@ void test_ADD_overflow()
 
 void test_ADD_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
@@ -3753,7 +3941,7 @@ void test_ADD_indirection()
 
 	//BDD when checking ADD @75 150
 	static const char proc[] = { _ADD|IND, 75, 150, 255 };
-	do_action(proc, do_ADD);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 60, "Flag 150 is not 60");
@@ -3768,6 +3956,7 @@ void test_ADD_indirection()
 
 void test_SUB_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 10, and flag 150 with value 50
@@ -3776,7 +3965,7 @@ void test_SUB_success()
 
 	//BDD when checking SUB 100 150
 	static const char proc[] = { _SUB, 100, 150, 255 };
-	do_action(proc, do_SUB);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 40, "Flag 150 is not 40");
@@ -3786,6 +3975,7 @@ void test_SUB_success()
 
 void test_SUB_overflow()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 50, and flag 150 with value 10
@@ -3794,7 +3984,7 @@ void test_SUB_overflow()
 
 	//BDD when checking SUB 100 150
 	static const char proc[] = { _SUB, 100, 150, 255 };
-	do_action(proc, do_SUB);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 0, "Flag 150 is not 0");
@@ -3804,6 +3994,7 @@ void test_SUB_overflow()
 
 void test_SUB_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
@@ -3813,7 +4004,7 @@ void test_SUB_indirection()
 
 	//BDD when checking SUB @75 150
 	static const char proc[] = { _SUB|IND, 75, 150, 255 };
-	do_action(proc, do_SUB);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 40, "Flag 150 is not 40");
@@ -3827,6 +4018,7 @@ void test_SUB_indirection()
 
 void test_COPYFF_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 10, and flag 150 with value 50
@@ -3835,7 +4027,7 @@ void test_COPYFF_success()
 
 	//BDD when checking COPYFF 100 150
 	static const char proc[] = { _COPYFF, 100, 150, 255 };
-	do_action(proc, do_COPYFF);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 10, "Flag 150 is not 10");
@@ -3846,6 +4038,7 @@ void test_COPYFF_success()
 
 void test_COPYFF_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
@@ -3855,7 +4048,7 @@ void test_COPYFF_indirection()
 
 	//BDD when checking COPYFF @75 150
 	static const char proc[] = { _COPYFF|IND, 75, 150, 255 };
-	do_action(proc, do_COPYFF);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 10, "Flag 150 is not 10");
@@ -3871,6 +4064,7 @@ void test_COPYFF_indirection()
 
 void test_COPYBF_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 100 with value 10, and flag 150 with value 50
@@ -3879,7 +4073,7 @@ void test_COPYBF_success()
 
 	//BDD when checking COPYBF 100 150
 	static const char proc[] = { _COPYBF, 100, 150, 255 };
-	do_action(proc, do_COPYBF);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 50, "Flag 150 is not 50");
@@ -3890,6 +4084,7 @@ void test_COPYBF_success()
 
 void test_COPYBF_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 75 with value 100, flag 100 with value 10, and flag 150 with value 50
@@ -3899,7 +4094,7 @@ void test_COPYBF_indirection()
 
 	//BDD when checking COPYBF @75 150
 	static const char proc[] = { _COPYBF|IND, 75, 150, 255 };
-	do_action(proc, do_COPYBF);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[150], 50, "Flag 150 is not 50");
@@ -3915,6 +4110,7 @@ void test_COPYBF_indirection()
 
 void test_RANDOM_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 150 with value 255
@@ -3922,7 +4118,7 @@ void test_RANDOM_success()
 
 	//BDD when checking RANDOM 150
 	static const char proc[] = { _RANDOM, 150, 255 };
-	do_action(proc, do_RANDOM);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(flags[150] >= 1, "Flag 150 is 0");
@@ -3933,6 +4129,7 @@ void test_RANDOM_success()
 
 void test_RANDOM_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a flag 150 with value 255, and flag 75 with valur 150
@@ -3941,7 +4138,7 @@ void test_RANDOM_indirection()
 
 	//BDD when checking RANDOM @75
 	static const char proc[] = { _RANDOM|IND, 75, 255 };
-	do_action(proc, do_RANDOM);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT(flags[150] >= 1, "Flag 150 is 0");
@@ -3981,6 +4178,7 @@ void test_MOVE_indirection()
 
 void test_GOTO_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5
@@ -3988,7 +4186,7 @@ void test_GOTO_success()
 
 	//BDD when checking GOTO 1
 	static const char proc[] = { _GOTO, 1, 255 };
-	do_action(proc, do_GOTO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fPlayer], 1, "Player not moved");
@@ -3998,6 +4196,7 @@ void test_GOTO_success()
 
 void test_GOTO_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given player at loc 5, and flag 75 with value 1
@@ -4006,7 +4205,7 @@ void test_GOTO_indirection()
 
 	//BDD when checking GOTO @75
 	static const char proc[] = { _GOTO|IND, 75, 255 };
-	do_action(proc, do_GOTO);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fPlayer], 1, "Player not moved");
@@ -4039,6 +4238,7 @@ void test_WEIGHT_success()
 
 void test_ABILITY_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given fMaxCarr with value 5, and fStrength with value 50
@@ -4047,7 +4247,7 @@ void test_ABILITY_success()
 
 	//BDD when checking ABILITY 10 100
 	static const char proc[] = { _ABILITY, 10, 100, 255 };
-	do_action(proc, do_ABILITY);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fMaxCarr], 10, "Flag fMaxCarr bad value");
@@ -4058,6 +4258,7 @@ void test_ABILITY_success()
 
 void test_ABILITY_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 75 with value 10, fMaxCarr with value 5, and fStrength with value 50
@@ -4067,7 +4268,7 @@ void test_ABILITY_indirection()
 
 	//BDD when checking ABILITY @75 100
 	static const char proc[] = { _ABILITY|IND, 75, 100, 255 };
-	do_action(proc, do_ABILITY);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fMaxCarr], 10, "Flag fMaxCarr bad value");
@@ -4092,6 +4293,7 @@ void test_ABILITY_indirection()
 
 void test_MODE_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window mode assigned to 0
@@ -4099,7 +4301,7 @@ void test_MODE_success()
 
 	//BDD when checking MODE 3
 	static const char proc[] = { _MODE, 3, 255 };
-	do_action(proc, do_MODE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->mode, 3, "New mode not is 3");
@@ -4109,6 +4311,7 @@ void test_MODE_success()
 
 void test_MODE_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 75 with value 3, current window mode assigned to 0
@@ -4117,7 +4320,7 @@ void test_MODE_indirection()
 
 	//BDD when checking MODE @75
 	static const char proc[] = { _MODE|IND, 75, 255 };
-	do_action(proc, do_MODE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->mode, 3, "New mode not is 3");
@@ -4138,6 +4341,7 @@ void test_MODE_indirection()
 
 void test_INPUT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given fInStream w/value 0, and fTIFlags w/value 0b11000111
@@ -4146,7 +4350,7 @@ void test_INPUT_success()
 
 	//BDD when checking INPUT 5 7
 	static const char proc[] = { _INPUT, 5, 7, 255 };
-	do_action(proc, do_INPUT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fInStream], 5, "Flag fInStream is not 5");
@@ -4157,6 +4361,7 @@ void test_INPUT_success()
 
 void test_INPUT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 75 w/value 5, fInStream w/value 0, and fTIFlags w/value 0b11000111
@@ -4166,7 +4371,7 @@ void test_INPUT_indirection()
 
 	//BDD when checking INPUT 5 7
 	static const char proc[] = { _INPUT|IND, @75, 7, 255 };
-	do_action(proc, do_INPUT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fInStream], 5, "Flag fInStream is not 5");
@@ -4194,6 +4399,7 @@ void test_INPUT_indirection()
 
 void test_TIME_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given fTime w/value 0, and fTIFlags w/value 0b11111000
@@ -4202,7 +4408,7 @@ void test_TIME_success()
 
 	//BDD when checking TIME 10 7
 	static const char proc[] = { _TIME, 10, 7, 255 };
-	do_action(proc, do_TIME);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fTime], 10, "Flag fTime is not 10");
@@ -4213,6 +4419,7 @@ void test_TIME_success()
 
 void test_TIME_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given flag 75 w/value 10, fTime w/value 0, and fTIFlags w/value 0b11111000
@@ -4222,7 +4429,7 @@ void test_TIME_indirection()
 
 	//BDD when checking TIME @75 7
 	static const char proc[] = { _TIME|IND, 75, 7, 255 };
-	do_action(proc, do_TIME);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(flags[fTime], 10, "Flag fTime is not 10");
@@ -4241,6 +4448,7 @@ void test_TIME_indirection()
 
 void test_WINDOW_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current windows is 0
@@ -4248,7 +4456,7 @@ void test_WINDOW_success()
 
 	//BDD when checking WINDOW 1
 	static const char proc[] = { _WINDOW, 1, 255 };
-	do_action(proc, do_WINDOW);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw, &windows[1], "Current window is not 1");
@@ -4258,6 +4466,7 @@ void test_WINDOW_success()
 
 void test_WINDOW_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current windows is 0, and flag 75 w/value 1
@@ -4266,7 +4475,7 @@ void test_WINDOW_indirection()
 
 	//BDD when checking WINDOW @75
 	static const char proc[] = { _WINDOW|IND, 75, 255 };
-	do_action(proc, do_WINDOW);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw, &windows[1], "Current window is not 1");
@@ -4281,6 +4490,7 @@ void test_WINDOW_indirection()
 
 void test_WINAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window at (0,0)
@@ -4289,7 +4499,7 @@ void test_WINAT_success()
 
 	//BDD when checking WINAT 5 10
 	static const char proc[] = { _WINAT, 5, 10, 255 };
-	do_action(proc, do_WINAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->winX, 10, "Current window X is not 10");
@@ -4300,6 +4510,7 @@ void test_WINAT_success()
 
 void test_WINAT_oversize()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window at (10,10) w/size (85x25)
@@ -4310,7 +4521,7 @@ void test_WINAT_oversize()
 
 	//BDD when checking WINAT 10 10
 	static const char proc[] = { _WINAT, 10, 10, 255 };
-	do_action(proc, do_WINAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->winW, MAX_COLUMNS - cw->winX, "Current window W not match");
@@ -4321,6 +4532,7 @@ void test_WINAT_oversize()
 
 void test_WINAT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window at (0,0), and flag 75 w/value 5
@@ -4330,7 +4542,7 @@ void test_WINAT_indirection()
 
 	//BDD when checking WINAT @75 10
 	static const char proc[] = { _WINAT|IND, 75, 10, 255 };
-	do_action(proc, do_WINAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->winX, 10, "Current window X is not 10");
@@ -4346,6 +4558,7 @@ void test_WINAT_indirection()
 
 void test_WINSIZE_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window size is (20x15)
@@ -4354,7 +4567,7 @@ void test_WINSIZE_success()
 
 	//BDD when checking WINSIZE 15 25
 	static const char proc[] = { _WINSIZE, 15, 25, 255 };
-	do_action(proc, do_WINSIZE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->winW, 25, "Current window W is not 25");
@@ -4365,6 +4578,7 @@ void test_WINSIZE_success()
 
 void test_WINSIZE_oversize()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window size is (20x15) and at (10,10)
@@ -4375,7 +4589,7 @@ void test_WINSIZE_oversize()
 
 	//BDD when checking WINSIZE 127 127
 	static const char proc[] = { _WINSIZE, 127, 127, 255 };
-	do_action(proc, do_WINSIZE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->winW, MAX_COLUMNS - cw->winX, "Current window W not match");
@@ -4386,6 +4600,7 @@ void test_WINSIZE_oversize()
 
 void test_WINSIZE_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window size is (20x15), and flag 75 w/value 15
@@ -4395,7 +4610,7 @@ void test_WINSIZE_indirection()
 
 	//BDD when checking WINSIZE @75 25
 	static const char proc[] = { _WINSIZE|IND, 75, 25, 255 };
-	do_action(proc, do_WINSIZE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->winW, 25, "Current window W is not 25");
@@ -4411,6 +4626,7 @@ void test_WINSIZE_indirection()
 
 void test_CENTRE_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given current window at (1,1) w/size (20x15)
@@ -4421,7 +4637,7 @@ void test_CENTRE_success()
 
 	//BDD when checking CENTRE
 	static const char proc[] = { _CENTRE, 255 };
-	do_action(proc, do_CENTRE);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->winX, (MAX_COLUMNS - cw->winW)/2, "Current window W not match");
@@ -4436,6 +4652,7 @@ void test_CENTRE_success()
 
 void test_CLS_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a used current window
@@ -4447,7 +4664,7 @@ void test_CLS_success()
 
 	//BDD when checking CLS
 	static const char proc[] = { _CLS, 255 };
-	do_action(proc, do_CLS);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->cursorX, 0, "Current window cursorX not reset");
@@ -4469,6 +4686,7 @@ void test_CLS_success()
 
 void test_SAVEAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given not saved cursor pos, and cursor at (1,2)
@@ -4479,7 +4697,7 @@ void test_SAVEAT_success()
 
 	//BDD when checking SAVEAT
 	static const char proc[] = { _SAVEAT, 255 };
-	do_action(proc, do_SAVEAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(savedPosX, 1, "Saved pos X not 1");
@@ -4493,6 +4711,7 @@ void test_SAVEAT_success()
 
 void test_BACKAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given a saved cursor pos (1,2), and cursor at (0,0)
@@ -4503,7 +4722,7 @@ void test_BACKAT_success()
 
 	//BDD when checking BACKAT
 	static const char proc[] = { _BACKAT, 255 };
-	do_action(proc, do_BACKAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->cursorX, 1, "Restored pos X not 1");
@@ -4546,6 +4765,7 @@ void test_BORDER_success()
 
 void test_PRINTAT_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given cursor at (0,0)
@@ -4554,7 +4774,7 @@ void test_PRINTAT_success()
 
 	//BDD when checking PRINTAT 10 5
 	static const char proc[] = { _PRINTAT, 10, 5, 255 };
-	do_action(proc, do_PRINTAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->cursorX, 5, "Cursor X not 5");
@@ -4565,6 +4785,7 @@ void test_PRINTAT_success()
 
 void test_PRINTAT_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given cursor at (0,0), and flag 75 w/value 10
@@ -4574,7 +4795,7 @@ void test_PRINTAT_indirection()
 
 	//BDD when checking PRINTAT @75 5
 	static const char proc[] = { _PRINTAT|IND, 75, 5, 255 };
-	do_action(proc, do_PRINTAT);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->cursorX, 5, "Cursor X not 5");
@@ -4589,6 +4810,7 @@ void test_PRINTAT_indirection()
 
 void test_TAB_success()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given cursor at (2,3)
@@ -4597,7 +4819,7 @@ void test_TAB_success()
 
 	//BDD when checking TAB 10
 	static const char proc[] = { _TAB, 10, 255 };
-	do_action(proc, do_TAB);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->cursorX, 10, "Cursor X not 10");
@@ -4608,6 +4830,7 @@ void test_TAB_success()
 
 void test_TAB_indirection()
 {
+	const char *_func = __func__;
 	beforeEach();
 
 	//BDD given cursor at (2,3), and flag 75 w/value 10
@@ -4617,7 +4840,7 @@ void test_TAB_indirection()
 
 	//BDD when checking TAB @75
 	static const char proc[] = { _TAB|IND, 75, 255 };
-	do_action(proc, do_TAB);
+	do_action(proc);
 
 	//BDD then success
 	ASSERT_EQUAL(cw->cursorX, 10, "Cursor X not 10");
@@ -5134,6 +5357,7 @@ void test_BEEP_success()
 
 
 
+
 // =============================================================================
 // =============================================================================
 // main
@@ -5143,6 +5367,7 @@ void test_BEEP_success()
 int main(char** argv, int argc)
 {
 	cputs("### UNIT TESTS of MSX2DAAD ###");
+
 	beforeAll();
 
 	test_AT_success(); test_AT_fails(); test_AT_indirection();

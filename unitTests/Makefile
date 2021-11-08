@@ -48,7 +48,7 @@ $(OBJDIR)condacts.com: $(REL_LIBS) $(SRCDIR)tests_condacts.c
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^) -o $(subst .com,.ihx,$@)
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
 	@echo "**** Copying .COM files to DSK/"
-	@cp $(OBJDIR)*.com dsk/
+	@cp $@ dsk/
 
 clean:
 	@rm -f dsk/tests.com

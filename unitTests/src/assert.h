@@ -18,5 +18,7 @@ void _FAIL(const char *failMsg, char *file, char *func, int line);
 void _SUCCEED(char *file, char *func);
 void _TODO(const char *infoMsg, char *file, char *func);
 
+void crt_exit();
+
 
 #endif //__ASSERT_H__
