@@ -18,8 +18,6 @@
 	;--- Step 1: Initialize globals
 
 init:
-;	call    gsinit
-
 	;--- Step 2: Build the parameter pointers table on 0x100,
 	;    and terminate each parameter with 0.
 	;    MSX-DOS places the command line length at 0x80 (one byte),
@@ -119,6 +117,7 @@ cont:
 	ld      b,#0
 	push    bc      ;Pass info as parameters to "main"
 	push    hl
+	
 
 	;--- Step 3: Call the "main" function
 	push de
@@ -126,11 +125,12 @@ cont:
 	ld (_heap_top),de
 	pop de
 
+	call gsinit
 	call _main
 
 	;--- Step 4: Program termination.
 	;    Termination code for DOS 2 was returned on L.
-                
+_crt_exit::
 	ld      c,#0x62   ;DOS 2 function for program termination (_TERM)
 	ld      b,l
 	call    5         ;On DOS 2 this terminates; on DOS 1 this returns...
@@ -143,15 +143,45 @@ cont:
 	;* Place data after program code, and data init code after data
 
 	.area	_CODE
+	.area	_INITIALIZER
+	.area   _GSINIT
+	.area   _GSFINAL
+
 	.area	_DATA
+	.area	_INITIALIZED
 _heap_top::
 	.dw 0
 
-;gsinit:
-;	.area   _GSINIT
-;
-;	.area   _GSFINAL
-;	ret
+.area   _GSINIT
+gsinit::
+	; Default-initialized global variables.
+;	ld   bc, #l__DATA
+;	ld   a, b
+;	or   a, c
+;	jr   Z, zeroed_data
+;	ld   hl, #s__DATA
+;	ld   (hl), #0x00
+;	dec  bc
+;	ld   a, b
+;	or   a, c
+;	jr   Z, zeroed_data
+;	ld   e, l
+;	ld   d, h
+;	inc  de
+;	ldir
+zeroed_data:
+	; Explicitly initialized global variables.
+;	ld bc, #l__INITIALIZER
+;	ld   a, b
+;	or   a, c
+;	jr   Z, gsinit_next
+;	ld   de, #s__INITIALIZED
+;	ld   hl, #s__INITIALIZER
+;	ldir
+gsinit_next:
+.area   _GSFINAL
+	ret
+
 
 	;* These doesn't seem to be necessary... (?)
 

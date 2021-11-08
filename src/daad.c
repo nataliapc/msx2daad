@@ -62,8 +62,7 @@ static uint8_t doingPrompt;
  */
 bool initDAAD(int argc, char **argv)
 {
-	static uint16_t *p;
-	static uint8_t i;
+	uint16_t *p;
 	
 	loadFilesBin(argc, argv);
 
@@ -104,7 +103,7 @@ bool initDAAD(int argc, char **argv)
 		return false;
 
 	//Update header positions addresses
-	for (i=0; i<12; i++) {
+	for (uint8_t i=0; i<12; i++) {
 		*(p++) += (uint16_t)ddb;
 	}
 
@@ -144,7 +143,7 @@ bool initDAAD(int argc, char **argv)
  */
 void initFlags()
 {
-	static uint8_t i;
+	uint8_t i;
 
 	//Clear flag of player location
 	flags[fPlayer] = 0;
@@ -188,11 +187,10 @@ void initFlags()
  */
 void initObjects()
 {
-	static uint8_t *objLoc, *attrLoc, *extAttrLoc, *nameObj;
-	objLoc = (uint8_t*)hdr->objLocLst;
-	attrLoc = (uint8_t*)hdr->objAttrPos;
-	extAttrLoc = (uint8_t*)hdr->objExtrPos;
-	nameObj = (uint8_t*)hdr->objNamePos;
+	uint8_t *objLoc = (uint8_t*)hdr->objLocLst,
+			*attrLoc = (uint8_t*)hdr->objAttrPos,
+			*extAttrLoc = (uint8_t*)hdr->objExtrPos,
+			*nameObj = (uint8_t*)hdr->objNamePos;
 
 	flags[fNOCarr] = 0;
 
@@ -233,7 +231,7 @@ void mainLoop()
  */
 void prompt(bool printPromptMsg)
 {
-	static char c, *p, *extChars, newPrompt;
+	char c, *p, *extChars, newPrompt;
 	p = tmpMsg;
 
 	#ifdef TRANSCRIPT
@@ -318,14 +316,14 @@ ret_continue:
  */
 void parser()
 {
-	static uint8_t i;
-	static char *tmpVOC, *p, *p2;
-	static Vocabulary *voc;
+	uint8_t i;
+	char *tmpVOC, *p, *p2;
+	Vocabulary *voc;
 	uint8_t *lsBuffer, *aux;
-	tmpVOC = safeMemoryAllocate();
-	p = tmpMsg;
 	lsBuffer = lsBuffer0;
 	aux = lsBuffer1;
+	p = tmpMsg;
+	tmpVOC = safeMemoryAllocate();
 
 	//Clear logical sentences buffer
 	clearLogicalSentences();
@@ -414,8 +412,8 @@ bool getLogicalSentence()
  */
 bool populateLogicalSentence()
 {
-	static char *p, type, id, adj;
-	static bool ret;
+	char *p, type, id, adj;
+	bool ret;
 	p = lsBuffer0;
 	adj = fAdject1;
 	ret = false;
@@ -526,7 +524,7 @@ void nextLogicalSentence()
 #ifdef VERBOSE2
 cputs("nextLogicalSentence()\n");
 #endif
-	static char *p, *c;
+	char *p, *c;
 	p = lsBuffer0;
 	c = lsBuffer0;
 
@@ -652,8 +650,8 @@ void errorCode(uint8_t code)
  */
 char* getToken(uint8_t num) __z88dk_fastcall
 {
-	static char *p;
-	static uint8_t i;
+	char *p;
+	uint8_t i;
 	p = (char*)hdr->tokensPos;
 	i=0;
 
@@ -768,7 +766,7 @@ void printOutMsg(char *str)
  */
 void printChar(int ch) __z88dk_fastcall
 {
-	static char c;
+	char c;
 	c = (char)ch;
 
 	#if (defined(DEBUG) || defined(TEST)) && !defined(TRANSCRIPT)
@@ -819,7 +817,7 @@ void printChar(int ch) __z88dk_fastcall
  */
 void checkPrintedLines()
 {
-	static char *oldTmpMsg;
+	char *oldTmpMsg;
 
 	if (checkPrintedLines_inUse ||
 		cw->mode & MODE_DISABLEMORE || 
@@ -988,9 +986,8 @@ void printObjectMsgModif(uint8_t num, char modif)
  */
 uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
 {
-	static uint16_t i;
-	for (i=0; i<hdr->numObjDsc; i++) {
-		if (objects[i].nounId==noun && 
+	for (uint16_t i=0; i<hdr->numObjDsc; i++) {
+		if (noun!=NULLWORD && objects[i].nounId==noun && 
 		   (adjc==NULLWORD || objects[i].adjectiveId==adjc) && 							// If 'adjc' not needed or 'adjc' matchs
 		   ((location==LOC_HERE || objects[i].location==location) ||					// It's in anywhere or placed in 'location'...
 		    (location==LOC_CONTAINER && location<hdr->numObjDsc && 
@@ -1015,13 +1012,10 @@ uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
  */
 uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
 {
-	static uint16_t weight;
-	Object *obj;
-	static uint16_t i;
-	weight = 0;
-	obj = objects;
+	uint16_t weight = 0;
+	Object *obj = objects;
 
-	for (i=0; i<hdr->numObjDsc; i++) {
+	for (uint16_t i=0; i<hdr->numObjDsc; i++) {
 		if ((objno==NULLWORD || objno==i) && (!isCarriedWorn || obj->location==LOC_CARRIED || obj->location==LOC_WORN)) {
 			if (obj->attribs.mask.isContainer && obj->attribs.mask.weight!=0) {
 				weight += getObjectWeight(i, false);
@@ -1044,8 +1038,7 @@ uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
  */
 void referencedObject(uint8_t objno) __z88dk_fastcall
 {
-	Object *objRef;
-	objRef = objno==NULLWORD ? nullObject : &objects[objno];
+	Object *objRef = objno==NULLWORD ? nullObject : &objects[objno];
 
 	flags[fCONum] = objno;							// Flag 51
 	flags[fCOLoc] = objRef->location;				// Flag 54
@@ -1074,8 +1067,8 @@ static char transcript_buff[1024];
 
 void transcript_flush()
 {
-	static uint16_t fp;
-	static uint32_t size;
+	uint16_t fp;
+	uint32_t size;
 
 	size = filesize(transcript_filename);
 	if (size>=0xff00)

@@ -11,6 +11,8 @@
 #include "daad.h"
 #include "daad_condacts.h"
 
+#pragma opt_code_speed
+
 #define pPROC 		(currProc->condact)
 #define checkEntry  (currProc->continueEntry)
 
@@ -22,7 +24,7 @@ extern bool isDone;						// Variable for ISDONE/ISNOTDONE condacts.
 extern bool lastPicShow;				// True if last location picture was drawed.
 
 
-static const CONDACT_LIST condactList[] = {
+const CONDACT_LIST condactList[] = {
 	{ do_AT,        0 }, { do_NOTAT,     0 }, { do_ATGT,      0 }, { do_ATLT,      0 },	{ do_PRESENT,	0 },	// 0-4
 	{ do_ABSENT,    0 }, { do_WORN,      0 }, { do_NOTWORN,   0 }, { do_CARRIED,   0 }, { do_NOTCARR,   0 },	// 5-9
 	{ do_CHANCE,    0 }, { do_ZERO,      0 }, { do_NOTZERO,   0 }, { do_EQ,        0 }, { do_GT,        0 },	// 10-14
@@ -216,7 +218,7 @@ void processPROC()
 }
 
 // TODO High Priority:
-//      INPUT
+//      INPUT		//TODO partially implemented
 //
 // TODO Low Priority:
 //		SAVE		//TODO get filename from player
@@ -235,6 +237,7 @@ static uint8_t getValueOrIndirection()
 	return indirection ? flags[value] : value;
 }
 
+#pragma opt_code_size
 
 // =============================================================================
 // Conditions of player locations [4 condacts]
@@ -1069,7 +1072,7 @@ void do_DROPALL()
 	do {
 		if (objects[i].location==LOC_CARRIED || objects[i].location==LOC_WORN)
 			objects[i].location = flags[fPlayer];
-	} while(i++ < ((DDB_Header*)ddb)->numObjDsc);
+	} while(i++ < hdr->numObjDsc);
 	flags[fNOCarr] = 0;
 }
 #endif

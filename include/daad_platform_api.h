@@ -32,8 +32,8 @@
 #define STRINGIFY(x) STRINGIFY2(x)
 
 // Tools
-#define ADDR_POINTER_BYTE(X)	(*((uint8_t*)X))
-#define ADDR_POINTER_WORD(X)	(*((uint16_t*)X))
+#define ADDR_POINTER_BYTE(X)	(*((uint8_t*)(X)))
+#define ADDR_POINTER_WORD(X)	(*((uint16_t*)(X)))
 
 
 // System functions

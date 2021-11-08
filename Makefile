@@ -16,7 +16,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifndef VERSION
-	VERSION := 1.5rc1
+	VERSION := 1.5
 endif
 ifndef CXXFLAGS
 	CXXFLAGS := -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSXDOS1 -DMSX2
@@ -54,7 +54,7 @@ $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
 	@echo "$(COL_BLUE)#### ASM $@$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(AS) -o $@ $^
+	@$(AS) -go $@ $^
 
 $(OBJDIR)%.rel: $(SRCDIR)%.c
 	@echo "$(COL_BLUE)#### CC $@$(COL_RESET)"
@@ -69,7 +69,7 @@ $(OBJDIR)%.c.rel: $(SRCLIB)%.c
 $(OBJDIR)%.s.rel: $(SRCLIB)%.s
 	@echo "$(COL_BLUE)#### ASM $@$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(AS) -o $@ $^
+	@$(AS) -go $@ $^
 
 $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos_*))
 	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
@@ -90,7 +90,7 @@ $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)u
 msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
 	@echo "$(COL_YELLOW)######## Compiling $@$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^)
+	@$(CC) $(CCFLAGS) $(FULLOPT) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^)
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
 	@echo "**** Copying .COM files to DSK/"
 	@cp *.com dsk/
