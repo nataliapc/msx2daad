@@ -780,7 +780,6 @@ inline void gfxPutChWindow(uint8_t c)
  */
 inline void gfxPutInputEcho(char c, bool keepPos)
 {
-	if (c==0x08) c=' ';
 	if (keepPos)
 		gfxPutChWindow(c);
 	else

@@ -271,7 +271,7 @@ void prompt(bool printPromptMsg)
 			if (p<=tmpMsg) continue;
 			*--p = '\0';
 			if (cw->cursorX>0) cw->cursorX--; else { cw->cursorX = cw->winW-1; cw->cursorY--; }
-			gfxPutInputEcho(c, true);
+			gfxPutInputEcho(' ', true);
 		} else
 		if (c>=' ' || c=='\r') {
 			if (p-tmpMsg > TEXT_BUFFER_LEN) continue;				// Avoid chars at buffer limit end
@@ -281,7 +281,6 @@ void prompt(bool printPromptMsg)
 			*p++ = toupper(c);
 		}
 	} while (c!='\r');
-	gfxPutInputEcho(c, false);
 	*--p = '\0';
 
 ret_continue:
