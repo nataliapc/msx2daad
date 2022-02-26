@@ -34,8 +34,10 @@ const char ERROR[] = "Error with checkEntry";
 const char ERROR_ISDONE[] = "Error with isDone";
 const char ERROR_SYSMES[] = "SystemMessage";
 const char ERROR_OBJLOC[] = "Object location";
+const char ERROR_FLAG[] = "Bad flag value";
 const char ERROR_CARROBJNUM[] = "Carried objects number";
 const char TODO_GENERIC[] = "-----";
+const char TODO_UI[] = "UI not mocked";
 
 uint8_t fake_keyPressed;
 int16_t fake_lastSysMesPrinted;
@@ -198,6 +200,8 @@ static void beforeAll()
 
 	ddb = malloc(sizeof(DDB_Header));
 	hdr = (DDB_Header *)ddb;
+	
+	ramsave = malloc(512);
 }
 
 static void beforeEach()
@@ -212,6 +216,7 @@ static void beforeEach()
 	memset(hdr, 0, sizeof(DDB_Header));
 	memset(objects, 0, sizeof(Object) * MOCK_NUM_OBJECTS);
 	memset(windows, 0, sizeof(Window) * WINDOWS_NUM);
+	memset(ramsave, 0, 512);
 
 	hdr->numObjDsc = MOCK_NUM_OBJECTS;
 
@@ -4737,7 +4742,7 @@ void test_BACKAT_success()
 
 void test_PAPER_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4746,7 +4751,7 @@ void test_PAPER_success()
 
 void test_INK_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4755,7 +4760,7 @@ void test_INK_success()
 
 void test_BORDER_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4856,7 +4861,7 @@ void test_TAB_indirection()
 
 void test_SPACE_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4865,7 +4870,7 @@ void test_SPACE_success()
 
 void test_NEWLINE_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4874,7 +4879,7 @@ void test_NEWLINE_success()
 
 void test_MES_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4883,7 +4888,7 @@ void test_MES_success()
 
 void test_MESSAGE_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4892,7 +4897,7 @@ void test_MESSAGE_success()
 
 void test_SYSMES_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4901,7 +4906,7 @@ void test_SYSMES_success()
 
 void test_DESC_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4911,7 +4916,7 @@ void test_DESC_success()
 
 void test_PRINT_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4920,7 +4925,7 @@ void test_PRINT_success()
 
 void test_DPRINT_success()
 {
-	TODO("UI not mocked");
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4935,12 +4940,12 @@ void test_DPRINT_success()
 
 void test_LISTOBJ_success()
 {
-	TODO(TODO_GENERIC);
+	TODO(TODO_UI);
 }
 
 void test_LISTOBJ_none()
 {
-	TODO(TODO_GENERIC);
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4951,12 +4956,12 @@ void test_LISTOBJ_none()
 
 void test_LISTAT_success()
 {
-	TODO(TODO_GENERIC);
+	TODO(TODO_UI);
 }
 
 void test_LISTAT_none()
 {
-	TODO(TODO_GENERIC);
+	TODO(TODO_UI);
 }
 
 // =============================================================================
@@ -4971,11 +4976,6 @@ void test_LISTAT_none()
 	error.") is printed - this is not checked on 8 bit machines, the file name 
 	is MADE acceptable! */
 
-void test_SAVE_success()
-{
-	TODO(TODO_GENERIC);
-}
-
 // =============================================================================
 // Tests LOAD <opt>
 /*	This action loads a game position from disc or tape. A filename is obtained 
@@ -4984,9 +4984,30 @@ void test_SAVE_success()
 	next action is carried out only if the load is successful. Otherwise a system 
 	clear, GOTO 0, RESTART is carried out. */
 
-void test_LOAD_success()
+void test_SAVE_LOAD_success()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	uint16_t i;
+	beforeEach();
+
+	//BDD given flags and objects
+	for (i=0; i<256; i++) flags[i] = i;
+	for (i=0; i<MOCK_NUM_OBJECTS; i++) objects[i].location = i;
+
+	//BDD when checking SAVE
+	static const char proc[] = { _SAVE, 255 };
+	do_action(proc);
+	//BDD and cleaning data
+	for (i=0; i<256; i++) flags[i] = 0;
+	for (i=0; i<MOCK_NUM_OBJECTS; i++) objects[i].location = 0;
+	//BDD and checking LOAD
+	static const char proc2[] = { _LOAD, 255 };
+	do_action(proc2);
+
+	//BDD then success
+	for (i=0; i<256; i++) ASSERT_EQUAL(i, flags[i], "Incorrect flag");
+	for (i=0; i<MOCK_NUM_OBJECTS; i++) ASSERT_EQUAL(i, objects[i].location, "Incorrect obj loc");
+	SUCCEED();
 }
 
 // =============================================================================
@@ -4999,7 +5020,22 @@ void test_LOAD_success()
 
 void test_RAMSAVE_success()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	uint16_t i;
+	beforeEach();
+
+	//BDD given flags and objects
+	for (i=0; i<256; i++) flags[i] = i;
+	for (i=0; i<MOCK_NUM_OBJECTS; i++) objects[i].location = i;
+
+	//BDD when checking RAMSAVE
+	static const char proc[] = { _RAMSAVE, 255 };
+	do_action(proc);
+
+	//BDD then success
+	for (i=0; i<256; i++) ASSERT_EQUAL(flags[i], ramsave[i], "Incorrect flag");
+	for (i=0; i<MOCK_NUM_OBJECTS; i++) ASSERT_EQUAL(objects[i].location, ramsave[256+i], "Incorrect obj loc");
+	SUCCEED();
 }
 
 // =============================================================================
@@ -5017,7 +5053,21 @@ void test_RAMSAVE_success()
 
 void test_RAMLOAD_success()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	uint16_t i;
+	beforeEach();
+
+	//BDD given flags and objects
+	for (i=0; i<512; i++) ramsave[i] = i % 256;
+
+	//BDD when checking RAMLOAD
+	static const char proc[] = { _RAMLOAD, 255 };
+	do_action(proc);
+
+	//BDD then success
+	for (i=0; i<256; i++) ASSERT_EQUAL(i, flags[i], "Incorrect flag");
+	for (i=0; i<MOCK_NUM_OBJECTS; i++) ASSERT_EQUAL(i, objects[i].location, "Incorrect obj loc");
+	SUCCEED();
 }
 
 // =============================================================================
@@ -5089,7 +5139,59 @@ void test_NEWTEXT_success()
 
 void test_SYNONYM_success()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flags and objects
+	flags[fVerb] = 1;
+	flags[fNoun1] = 2;
+
+	//BDD when checking RAMLOAD
+	static const char proc[] = { _SYNONYM, 3, 4, 255 };
+	do_action(proc);
+
+	//BDD then success
+	ASSERT_EQUAL(flags[fVerb], 3, ERROR_FLAG);
+	ASSERT_EQUAL(flags[fNoun1], 4, ERROR_FLAG);
+	SUCCEED();
+}
+
+void test_SYNONYM_success_verb()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flags and objects
+	flags[fVerb] = 1;
+	flags[fNoun1] = 2;
+
+	//BDD when checking RAMLOAD
+	static const char proc[] = { _SYNONYM, NULLWORD, 4, 255 };
+	do_action(proc);
+
+	//BDD then success
+	ASSERT_EQUAL(flags[fVerb], 1, ERROR_FLAG);
+	ASSERT_EQUAL(flags[fNoun1], 4, ERROR_FLAG);
+	SUCCEED();
+}
+
+void test_SYNONYM_success_noun()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flags and objects
+	flags[fVerb] = 1;
+	flags[fNoun1] = 2;
+
+	//BDD when checking RAMLOAD
+	static const char proc[] = { _SYNONYM, 3, NULLWORD, 255 };
+	do_action(proc);
+
+	//BDD then success
+	ASSERT_EQUAL(flags[fVerb], 3, ERROR_FLAG);
+	ASSERT_EQUAL(flags[fNoun1], 2, ERROR_FLAG);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -5484,8 +5586,7 @@ int main(char** argv, int argc)
 	test_LISTOBJ_success(); test_LISTOBJ_none();
 	test_LISTAT_success(); test_LISTAT_none();
 
-	test_SAVE_success();
-	test_LOAD_success();
+	test_SAVE_LOAD_success();
 	test_RAMSAVE_success();
 	test_RAMLOAD_success();
 
@@ -5494,7 +5595,7 @@ int main(char** argv, int argc)
 
 	test_PARSE_success();
 	test_NEWTEXT_success();
-	test_SYNONYM_success();
+	test_SYNONYM_success(); test_SYNONYM_success_verb(); test_SYNONYM_success_noun();
 
 	test_PROCESS_success();
 	test_REDO_success();

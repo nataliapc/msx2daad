@@ -51,6 +51,7 @@ int main(int argc, char **argv)
 	p = checkText;
 	while (*p) {
 		if (*p=='\n') *p = '\0';
+		if (*p=='\r') *p = '\0';
 		p++;
 	}
 

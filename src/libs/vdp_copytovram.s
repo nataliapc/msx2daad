@@ -17,27 +17,25 @@ _copyToVRAM::
         pop  ix
 
 copyToVRAM::	; source:HL vram:A+DE size:BC
-		push  de
-		push  bc
-		call  setVDP_Write	; A+DE
-		pop   bc
-		pop   de
+		push bc
+		call setVDP_Write	; A+DE
+		pop  bc
 
-		ld   d,b
-		ld   b,c
-		ld   c,#0x98
+		ld   d, b			; Num of blocks of 256 bytes
+		ld   b, c			; Rest
+		ld   c, #0x98
 
-	c2v_loop0:
-		outi
-		jp   nz,c2v_loop0
-		xor  a
-		cp   d
-		jr   z,c2v_end
+		xor	 a				; There is rest?
+		cp	 b
+		jr	 z, .c2v_loop1	; ...if no, skip the rest bytes send
 
-	c2v_loop1:
-		otir
-		dec  d
-		jp   nz,c2v_loop1
+	.c2v_loop0:
+		otir				; Send rest bytes
+		cp   d				; There is blocks of 256 bytes?
+		ret  z				; ...return if not
 
-	c2v_end:
+	.c2v_loop1:
+		otir				; Send block of 256 bytes
+		dec  d				; Decrement blocks counter
+		jp   nz, .c2v_loop1	; ...more?
 		ret

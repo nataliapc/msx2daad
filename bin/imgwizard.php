@@ -95,7 +95,7 @@
 	define('COMP_NAME', 3);
 
 	if (!extension_loaded('gd')) {
-		die("\nERROR: The PHP \"gd\" extension must be installed...\n\n");
+		die("\nERROR: The PHP \"gd/gd2\" extension must be installed...\n\n");
 	}
 
 	$appname = basename($argv[0]);

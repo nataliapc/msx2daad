@@ -3,7 +3,7 @@
 ; based in DZX7 "Turbo"
 ;
 ; Adapted to MSX2 by Natalia Pujol
-; Size: 131 bytes
+; Size: ¿131 bytes?
 
 	; global from this code
 	;================
