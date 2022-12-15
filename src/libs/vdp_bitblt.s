@@ -7,11 +7,4 @@ _bitBlt::
 		ld      hl,#2
 		add     hl,sp
 
-		ld 		de, #BLT_SX
-		ld      bc, #15
-		ldir
-
-		ld      hl, #BLT_SX
-		call    fastVCopy
-
-		ret
+		jp      fastVCopy

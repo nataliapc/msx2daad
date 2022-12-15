@@ -47,5 +47,6 @@ uint32_t fseek (char fp, uint32_t offset, char origin)
     } else {
         die("fseek fail!");
     }
+    return fcb->rndRecord;
 }
 #endif
