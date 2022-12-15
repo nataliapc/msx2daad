@@ -3,11 +3,12 @@
 #define __VDP_H__
 
 
-
-#if SCREEN==8 || SCREEN==7
-	#define VRAM_PAGE1   0x10000
-#else
-	#define VRAM_PAGE1   0x08000
+#ifdef V9958
+	#if SCREEN==8 || SCREEN==7
+		#define VRAM_PAGE1   0x10000
+	#else
+		#define VRAM_PAGE1   0x08000
+	#endif
 #endif
 
 // BitBlt commands
@@ -93,4 +94,4 @@ void waitVDPready();
 
 
 
-#endif //__VDP_H__
+#endif//__VDP_H__

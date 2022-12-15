@@ -13,31 +13,34 @@
 			You can change the next constants:
 
 			SCREEN
-					5: 256x212 16col (Paletted GRB332)
+					5: 256x212 16 col (Paletted GRB332)
 							Color 0: Always PAPER (default: black)
 							Color 1-14: For bitmap images
 							Color 15: Always INK (default: white)
 							INK/PAPER changes, will change the 0/15 color palette for all the text/background.
 							
-					6: 512x212 4col  (Paletted GRB332)
+					6: 512x212 4 col  (Paletted GRB332)
 							Color 0: Always PAPER (default: black)
 							Color 1-2: For bitmap images
 							Color 3: Always INK (default: white)
 							INK/PAPER changes, will change the 0/3 color palette for all the text/background.
 
-					7: 512x212 16col (Paletted GRB332)
+					7: 512x212 16 col (Paletted GRB332)
 							Color 0: Always PAPER (default: black)
 							Color 1-14: For bitmap images
 							Color 15: Always INK (default: white)
 							INK/PAPER changes, will change the 0/15 color palette for all the text/background.
 
-					8: 256x212 256col (fixed palette GRB332) [**DEFAULT MODE**]
+					8: 256x212 256 col (fixed palette GRB332) [**DEFAULT MODE**]
 							Bitmap mode with fixed palette (0-255)
 							PAPER/INK color changes will change color to write new text or clear screen. Old text remains unchanged.
 
-					12: 256x212 19268col (fixed palette YJK. Y vary each pixel, J & K remains each 4 pixels ~RGB555)
+					12: 256x212 19268 col (fixed palette YJK. Y vary each pixel, J & K remains each 4 pixels ~RGB555)
 							Bitmap mode with fixed palette (0-19268)
 							PAPER/INK changes don't have effect. INK is always white and PAPER is always black.
+
+					B3:	GFX9000 512x212 32768 col (GRB555)
+							Bitmap mode with 15bpp (2 bytes per pixel)
 
 			SCREEN_HEIGHT
 					212: Default (26 rows)
@@ -55,23 +58,31 @@
 #ifndef  __PLATFORM_MSX2_H__
 #define  __PLATFORM_MSX2_H__
 
+#include "gfx9000.h"
+
+
 // ========================================================
 // Values to customize the MSX2 program
+
 
 #ifndef VERSION
 	#define VERSION				1.5
 #endif
 #ifndef SCREEN
-	#define SCREEN 				8	// Screen 5/6/7/8/10/12
+	#define SCREEN 				G9K_B3_BD8i	// Screen 5/6/7/8/10/12 / V9990_modes
 #endif
 #ifndef SCREEN_HEIGHT
-	#define SCREEN_HEIGHT		212	// Screen height in pixels: 192 or 212. MSX2 VDP can toggle it.
+	#if SCREEN==G9K_B3_BD8i
+		#define SCREEN_HEIGHT	424
+	#else
+		#define SCREEN_HEIGHT	212	// Screen height in pixels: 192 or 212. MSX2 VDP can toggle it.
+	#endif
 #endif
 #ifndef FONTWIDTH
-	#define FONTWIDTH       	6	// 6/8px
+	#define FONTWIDTH       	8	// 6/8px
 #endif
 #ifndef FONTHEIGHT
-	#define FONTHEIGHT       	8	// Always 8px unless you know what you are doing :)
+	#define FONTHEIGHT       	16	// Always 8px unless you know what you are doing :)
 #endif
 
 #ifndef RAM_MAPPER
@@ -80,6 +91,20 @@
 #ifndef DISABLE_GFXCHAR_COLOR
 	//#define DISABLE_GFXCHAR_COLOR	// Disable ink/paper with upper gfx chars (>=128)
 									// This is used if you create multicolor object icons in the upper charset
+#endif
+
+#if SCREEN>=5 && SCREEN<=12
+	#define V9958
+#endif
+#if SCREEN>=G9K_B1_BD8
+	#define V9990
+#endif
+#if SCREEN==G9K_B1_BD16 || SCREEN==G9K_B2_BD16 || SCREEN==G9K_B3_BD16
+	#define G9K_BD16
+#elif SCREEN==G9K_B1_BD8 || SCREEN==G9K_B2_BD8 || SCREEN==G9K_B3_BD8 || SCREEN==G9K_B3_BD8i
+	#define G9K_BD8
+#else
+	#error "G9K Mode not defined"
 #endif
 
 
@@ -95,40 +120,81 @@
 #define VERSION_STR			"MSX2DAAD v"STRINGIFY(VERSION)"#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
 
 // SCREEN_WIDTH
-#if SCREEN==6 || SCREEN==7
+#if SCREEN==6 || SCREEN==7 || SCREEN==G9K_B3_BD16 || SCREEN==G9K_B3_BD8 || SCREEN==G9K_B3_BD8i
 	#define SCREEN_WIDTH    512
+#elif SCREEN==G9K_B2_BD16 || SCREEN==G9K_B2_BD8
+	#define SCREEN_WIDTH    384
 #else
 	#define SCREEN_WIDTH    256
 #endif
 
-// BYTESxLINE
-#if SCREEN >= 7
-	#define BYTESxLINE		256		// Screen 7, 8, 10, 12
+// BACK_Y (Back screen Y coordinate)
+#ifdef V9958
+	#define BACK_Y			256
 #else
-	#define BYTESxLINE		128		// Screen 5, 6
+	#define BACK_Y			SCREEN_HEIGHT
+#endif
+
+// BYTESxLINE
+#ifdef V9958
+	#if SCREEN >= 7
+		#define BYTESxLINE		256		// Screen 7, 8, 10, 12
+	#else
+		#define BYTESxLINE		128		// Screen 5, 6
+	#endif
+#endif
+#ifdef V9990
+	#if defined(G9K_BD8)
+		#define BYTESxLINE		(SCREEN_WIDTH * 1)
+	#elif defined(G9K_BD16)
+		#define BYTESxLINE		(SCREEN_WIDTH * 2)
+	#else
+		#error "BYTESxLINE not defined"
+	#endif
 #endif
 
 // PIXELSxBYTE
-#if SCREEN >= 8
-	#define PIXELSxBYTE 	1		// Screen 8, 10, 12
-#elif SCREEN ==6
-	#define PIXELSxBYTE 	4		// Screen 6
-#else
-	#define PIXELSxBYTE		2		// Screen 5, 7
+#ifdef V9958
+	#if SCREEN >= 8
+		#define PIXELSxBYTE 	1		// Screen 8, 10, 12
+	#elif SCREEN ==6
+		#define PIXELSxBYTE 	4		// Screen 6
+	#else
+		#define PIXELSxBYTE		2		// Screen 5, 7
+	#endif
+#endif
+#ifdef V9990
+	#if defined(G9K_BD16)
+		#define PIXELSxBYTE		0.5
+	#elif defined(G9K_BD8)
+		#define PIXELSxBYTE		1
+	#else
+		#error "G9K mode not defined"
+	#endif
 #endif
 
 
 // FONT VRAM Location
-#define FONTINITY			212
-#define FONTTEMPY			(FONTINITY + 32)
+#ifdef V9958
+	#define FONTINITY			SCREEN_HEIGHT
+#else
+	#define FONTINITY			848
+#endif
+#define FONTTEMPY			(FONTINITY + (128*FONTWIDTH/SCREEN_WIDTH)*FONTHEIGHT)
 
 // SCREEN_CHAR
 #if SCREEN==10
 	#define SCREEN_CHAR     STRINGIFY(A)
+	#define SCREEN_FILEEXT  "IMA"
 #elif SCREEN==12
 	#define SCREEN_CHAR     STRINGIFY(C)
+	#define SCREEN_FILEEXT  "IMC"
+#elif defined(V9990)
+	#define SCREEN_CHAR     STRINGIFY(G)
+	#define SCREEN_FILEEXT  "IMG"
 #else
 	#define SCREEN_CHAR     STRINGIFY(SCREEN)
+	#define SCREEN_FILEEXT  "IM"SCREEN_CHAR
 #endif
 
 #ifndef FONTWIDTH
@@ -147,8 +213,8 @@
 	#error "SCREEN must be defined!"
 #endif
 
-#if SCREEN_HEIGHT!=192 && SCREEN_HEIGHT!=212
-	#error "SCREEN_HEIGHT must be 192 or 212!"
+#if SCREEN_HEIGHT!=192 && SCREEN_HEIGHT!=212 && SCREEN_HEIGHT!=424
+	#error "SCREEN_HEIGHT must be 192 or 212 or 424!"
 #endif
 
 #define MAX_COLUMNS		((int)(SCREEN_WIDTH/FONTWIDTH))
@@ -222,6 +288,10 @@ volatile __at (JIFFY)  uint16_t varJIFFY;
 #define IMG_CHUNK_CLS		17		// Clear Window (CLS)
 #define IMG_CHUNK_SKIP		18		// Skip VRAM bytes (SKIP)
 #define IMG_CHUNK_PAUSE		19		// Pause in 1/50 sec units (PAUSE)
+#define IMG_CHUNK_G9K_CMD	32		// (V9990) Send a BitBlt Command
+#define IMG_CHUNK_G9K_RAW	33		// (V9990) Send Raw data to Command Port (P#2)
+#define IMG_CHUNK_G9K_RLE	34		// (V9990) Send RLE data to Command Port (P#2)
+#define IMG_CHUNK_G9K_PLETTER 35	// (V9990) Send Pletter data to Command Port (P#2)
 
 typedef struct {
 	char     magic[3];				// Magic text: "IMG".

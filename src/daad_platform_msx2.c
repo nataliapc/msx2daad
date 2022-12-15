@@ -15,6 +15,7 @@
 #include <string.h>
 #include "daad_condacts.h"
 #include "daad_platform_msx2.h"
+#include "daad_platform_msx2aux.h"
 #include "daad.h"
 #include "vdp.h"
 #include "dos.h"
@@ -32,11 +33,11 @@ static const char FILES_BIN[] = "FILES.BIN\0  ";
 
 //Default FILES.BIN content (overwrited if a FILES.BIN exists)
 static const char FILES[] = 
-	"FONT    IM"SCREEN_CHAR"\n"		// Filename for Font file
+	"FONT    "SCREEN_FILEEXT"\n"	// Filename for Font file
 	"DAAD    DDB\n"					// Filename for DDB file
 	"TEXTS   XDB\n"					// Filename with externalized texts (XMES/XMESSAGE)
-	"LOADING IM"SCREEN_CHAR"\n"		// Filename for loading screen
-	"000     IM"SCREEN_CHAR"\n";	// Buffer to fill with the image to load (XPICTURE)
+	"LOADING "SCREEN_FILEEXT"\n"	// Filename for loading screen
+	"000     "SCREEN_FILEEXT"\n";	// Buffer to fill with the image to load (XPICTURE)
 
 #define FILE_FONT	&FILES[0]
 #define FILE_DDB	&FILES[12]
@@ -229,7 +230,7 @@ inline void safeMemoryDeallocate(void *pointer)
  */
 uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size)
 {
-	uint16_t fp = fopen(filename, O_RDONLY);
+	FILEH fp = fopen(filename, O_RDONLY);
 	uint16_t len;
 	char *error;
 	if (fp & 0xff00) {
@@ -313,8 +314,8 @@ void loadFilesBin(int argc, char **argv)
 void loadExtendedTexts(char *filename)
 {
 	uint16_t toRead = 16384, 
-			 size,
-			 fp;
+			 size;
+	FILEH    fp;
 	uint8_t  page = 0;
 
 	size = filesize(filename);
@@ -363,7 +364,7 @@ void printXMES(uint16_t address) __z88dk_fastcall
 	#endif //RAM_MAPPER
 	{
 		//Print from file
-		uint16_t fp = fopen(FILE_XDB, O_RDONLY);
+		FILEH fp = fopen(FILE_XDB, O_RDONLY);
 		if (fp < 0xff00) {
 			fseek(fp, address, SEEK_SET);
 			fread((char*)heap_top, 512, fp);
@@ -388,12 +389,15 @@ void printXMES(uint16_t address) __z88dk_fastcall
 	#define COLOR_PAPER		(cw->paper)
 #endif
 
-#if SCREEN == 8
+#if SCREEN==8 || SCREEN==V9K_B1_BD8 || SCREEN==V9K_B2_BD8 || SCREEN==V9K_B3_BD8
 	#define COLOR_BLACK 	0x00
 	#define COLOR_WHITE 	0xff
-#elif SCREEN == 10
+#elif SCREEN==10
 	#define COLOR_BLACK 	0x08
 	#define COLOR_WHITE 	0xf8
+#elif SCREEN==V9K_B1_BD16 || SCREEN==V9K_B2_BD16 || SCREEN==V9K_B3_BD16
+	#define COLOR_BLACK 	0x0000
+	#define COLOR_WHITE 	0x7fff
 #else
 	#define COLOR_BLACK 	0x00
 	#define COLOR_WHITE 	0x0f
@@ -407,22 +411,22 @@ void printXMES(uint16_t address) __z88dk_fastcall
 	#define AUX_HMMV		CMD_HMMV
 #endif
 
-#if SCREEN == 8		//SCREEN 8 fixed colors
+#if SCREEN==8 || defined(G9K_BD8)			//SCREEN 8 fixed colors
 	static const uint8_t colorTranslationSC8[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
 	//  000   006   600   606   060   066   260   666   222   447   733   737   373   377   773   777      (GGGRRRBBB) 9bits color guide
 		0x00, 0x02, 0xc0, 0xc3, 0x18, 0x1b, 0x58, 0xdb, 0x49, 0x93, 0xed, 0xef, 0x7d, 0x7f, 0xfd, 0xff	// (GGGRRRBB) 8bits real color used
 	};
 #endif
 #if SCREEN == 6	//SCREEN 6 paletted colors
-	static const uint16_t colorTranslation[] = {	// Amber Palette -> MSX grb
+	const uint16_t colorTranslation[] = {	// Amber Palette -> MSX grb333
 		0x000, // 0: 000 black
 		0x230, // 1: 320 dark amber
 		0x450, // 2: 540 medium amber
 		0x670, // 3_ 760 light amber
 		0,0,0,0, 0,0,0,0, 0,0,0,0
 	};
-#else										//Paletted colors
-	static const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb
+#elif defined(V9958) || defined(G9K_BD8)	// Paletted colors
+	const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb333
 		0x000, // 0: 000 black
 		0x006, // 1: 006 blue
 		0x600, // 2: 060 green
@@ -440,9 +444,30 @@ void printXMES(uint16_t address) __z88dk_fastcall
 		0x773, //14: 773 yellow
 		0x777  //15: 777 white
 	};
+#elif defined(G9K_BD16)
+	const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb555
+		0x0000, // 0: 000 black
+		0x001b, // 1: 006 blue
+		0x6c00, // 2: 060 green
+		0x6c1b, // 3_ 066 dark cyan
+		0x0360, // 4: 600 red
+		0x037b, // 5: 606 dark purple
+		0x241b, // 6: 620 orange
+		0x6f7b, // 7: 666 light gray
+		0x2529, // 8: 222 dark gray
+		0x4a5f, // 9: 447 light blue
+		0x7dad, //10: 373 light green
+		0x7dbf, //11: 377 light cyan
+		0x37ed, //12: 733 light red
+		0x27ff, //13: 727 light purple
+		0x7fed, //14: 773 yellow
+		0x7fff  //15: 777 white
+	};
+#else
+	#error "No color table defined"
 #endif
 
-uint8_t getColor(uint8_t col)
+uint16_t getColor(uint8_t col)
 {
 	col;
 	#if SCREEN == 6
@@ -455,6 +480,11 @@ uint8_t getColor(uint8_t col)
 		return colorTranslationSC8[col % 16];
 	#elif SCREEN == 10
 		return col << 4 | 8;
+	#elif defined(G9K_BD8)
+		uint16_t aux = colorTranslationSC8[col % 16];
+		return aux | (aux << 8);
+	#elif defined(G9K_BD16)
+		return colorTranslation[col];
 	#else
 		return 0;
 	#endif
@@ -472,54 +502,14 @@ void gfxSetScreen()
 	//Set Color 15,0,0
 	setColor(15, 0, 0);
 	//Set SCREEN mode with interslot BIOS call
-	#if SCREEN <= 8
-		__asm
-			ld   a,#SCREEN
-			ld   iy,(#EXPTBL)
-			ld   ix,#0x5f
-			call CALSLT
-		__endasm;
-	#else
-		__asm
-			ld   a,#8
-			ld   iy,(#EXPTBL)
-			ld   ix,#0x5f
-			call CALSLT
-		#if SCREEN==10
-			ld   bc,#0x1899		; enable YJK colors + Palette mixed mode
-		#elif SCREEN==12
-			ld   bc,#0x0899		; enable YJK colors
-		#endif
-			out  (c),b
-			out  (c),c
-		__endasm;
-	#endif
+	gfxAux_setScreen();
 
-	//Change screen settings
-	disableInterlacedLines();
-	#if SCREEN_HEIGHT==192
-		enable192lines();
-	#elif SCREEN_HEIGHT==212
-		enable212lines();
-	#endif
-
-	//Clear VRAM page 2
-	gfxRoutines(GFX_CLEAR_BACK, 0);	// Clear Back screen
-
-	//Disable hardware sprites
-	disableSPR();
-
-	//Set screen adjust
-	setRegVDP8(18, ADDR_POINTER_BYTE(0xFFF1));
-
-	//Set Palette
-	#if SCREEN!=8 && SCREEN!=12
-		setPalette(colorTranslation);
-	#endif
+	//Init SCREEN parameters
+	gfxAux_initScreen();
 
 	//Disable keys typing sound
 //	ADDR_POINTER_BYTE(CLIKSW) = 0;
-	
+
 	//Set Function keys with basic orders
 	uint8_t *fk = (void*)FNKSTR;
 	memset(fk, 0, 160);
@@ -570,14 +560,22 @@ void gfxSetScreen()
  * 				7 - Mono character only
  * 				13 - EGA or VGA
  * 			On MSX2:
+ * 				Bit 5: Is a GFX9000 (V9990) mode
  * 				Bit 4: Is a MSX/MSX2 mode
  * 				Bits 0-3: Screen mode
- * 					16|5  - SCREEN 5
- * 					16|6  - SCREEN 6
- * 					16|7  - SCREEN 7
- * 					16|8  - SCREEN 8
- * 					16|10 - SCREEN 10
- * 					16|12 - SCREEN 12
+ * 					16|5    - SCREEN 5
+ * 					16|6    - SCREEN 6
+ * 					16|7    - SCREEN 7
+ * 					16|8    - SCREEN 8
+ * 					16|10   - SCREEN 10
+ * 					16|12   - SCREEN 12
+ * 					32|4|0|0  - #10100 V9990 B1 (256x212) BD8 (256 colors)
+ * 					32|4|2|0  - #10116 V9990 B1 (256x212) BD16 (32768 colors)
+ * 					32|8|0|0  - #10200 V9990 B2 (384x290) BD8 (256 colors)
+ * 					32|8|2|0  - #10216 V9990 B2 (384x290) BD16 (32768 colors)
+ * 					32|12|0|0 - #10316 V9990 B3 (512x212) BD8 (256 colors)
+ * 					32|12|2|0 - #10300 V9990 B3 (512x212) BD16 (32768 colors)
+ * 					32|12|0|1 - #10317 V9990 B3 (512x424i) BD8 (256 colors)
  * 
  * @return		Return the value to be assigned to the flag
  */
@@ -585,7 +583,13 @@ void gfxSetScreenModeFlags()
 {
 	// Set Graphics & ScreenMode flag
 	flags[fGFlags] = 0b10000000;
+#ifdef V9958
 	flags[fScMode] = 16|SCREEN;
+#elif defined(V9990)
+	flags[fScMode] = 32|((SCREEN/100-100)<<2)|(((SCREEN%100)&16)>>4)|((SCREEN%2));
+#else
+	#error "No video chipset defined"
+#endif
 }
 
 /*
@@ -601,9 +605,7 @@ void gfxSetScreenModeFlags()
  */
 void gfxClearScreenBlock(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
 {
-	static uint16_t w2;
-	w2 = w<MAX_COLUMNS ? w*FONTWIDTH : SCREEN_WIDTH;
-	bitBlt(0, 0, x*FONTWIDTH, y*FONTHEIGHT, w2, h*FONTHEIGHT, COLOR_PAPER, 0, CMD_HMMV);
+	gfxAux_clearScreenBlock(x, y, w, h);
 }
 
 /*
@@ -641,7 +643,7 @@ inline void gfxScrollUp()
 {
 	ASM_HALT;
 	if (cw->winH > 1) {
-		bitBlt(cw->winX*FONTWIDTH, (cw->winY+1)*FONTHEIGHT, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_HMMM);
+		gfxAux_copyScrollUp();
 	}
 	gfxClearScreenBlock(cw->winX, (cw->winY+cw->winH-1), cw->winW, 1);
 }
@@ -657,8 +659,8 @@ inline void gfxScrollUp()
 inline void gfxSetPaperCol(uint8_t col)
 {
 	col;
-	#if SCREEN < 12
-		COLOR_PAPER = getColor(col);
+	#if SCREEN != 12
+		COLOR_PAPER = getColor(col);	
 	#endif
 }
 
@@ -673,7 +675,7 @@ inline void gfxSetPaperCol(uint8_t col)
 inline void gfxSetInkCol(uint8_t col)
 {
 	col;
-	#if SCREEN < 12
+	#if SCREEN != 12
 		COLOR_INK = getColor(col);
 	#endif
 }
@@ -717,40 +719,7 @@ inline void gfxSetGraphCharset(bool value)
  */
 static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 {
-	c -= 16;
-	uint16_t sx = (c*8)%SCREEN_WIDTH,
-	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY;
-
-	if ((cw->mode & MODE_FORCEGCHAR) || offsetText) sy += (256+8);
-
-	#if SCREEN <= 10
-		#ifdef DISABLE_GFXCHAR_COLOR
-			if (c>=128-16) {
-				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);
-			} else
-		#endif
-		if (COLOR_PAPER==COLOR_BLACK) {
-			bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);							// Paint char in white
-			if (COLOR_INK!=COLOR_WHITE) {
-				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);			// Paint char INK foreground
-			}
-		} else {
-			//Use VRAM like TEMP working space to avoid glitches
-			if (COLOR_INK==COLOR_BLACK) {
-				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 255, 0, AUX_HMMV);					// Paint white background destination
-				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
-				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);	// Paint PAPER background destination
-				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Copy TEMP char to destination
-			} else {
-				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, AUX_HMMV);				// Paint PAPER background destination
-				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Paint TEMP char in white
-				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);	// Paint TEMP INK color foreground
-				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TIMP);		// Copy TEMP char to destination
-			}
-		}
-	#else
-		bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);								// Copy char in white
-	#endif
+	gfxAux_putChPixels(c, dx, dy);
 }
 
 /*
@@ -799,7 +768,7 @@ inline void gfxPutInputEcho(char c, bool keepPos)
  */
 inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
 {
-	setColorPal(index%16, (((uint16_t)red & 0b11100000)<<3) | ((green & 0b11100000)>>1) | ((blue & 0b11100000)>>5));
+	gfxAux_setPalette(index, red, green, blue);
 }
 
 /*
@@ -835,7 +804,7 @@ bool gfxPicturePrepare(uint8_t location)
  */
 inline bool gfxPictureShow()
 {
-	uint16_t fp;
+	FILEH fp;
 	IMG_CHUNK *chunk = (IMG_CHUNK*)heap_top;
 
 	fp = fopen(FILE_IMG, O_RDONLY);
@@ -879,26 +848,12 @@ inline bool gfxPictureShow()
 			//=============================================
 			// Load image palette
 			if (chunk->type==IMG_CHUNK_PALETTE) {
-				#if SCREEN!=8 && SCREEN!=12
-					size = fread(chunk->data, 32, fp);
-					if (!(size & 0xff00))
-						setPalette(chunk->data);
-				#else
-					fseek(fp, 32, SEEK_CUR);
-				#endif
+				size = gfxAux_chunkSetPalette(fp, size, chunk);
 			} else {
 				//=============================================
 				// Picture data chunks
 				fread(chunk->data, chunk->chunkSize, fp);
-				if (chunk->type==IMG_CHUNK_RAW) {		// Show RAW data
-					copyToVRAM((uint16_t)chunk->data, posVRAM, chunk->chunkSize);
-				} else
-				if (chunk->type==IMG_CHUNK_RLE) {		// Show RLE data
-					unRLE_vram(chunk->data, posVRAM);
-				} else
-				if (chunk->type==IMG_CHUNK_PLETTER) {	// Show Pletter5 data
-					pletter2vram(chunk->data, posVRAM);
-				}
+				gfxAux_paintDataChunk(chunk);
 				posVRAM += chunk->auxData;	//OutSize
 			}
 		} while (!(size & 0xff00));
@@ -922,17 +877,16 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 {
 	value;
 	uint16_t page_offset = 0;
-	uint16_t cwX, cwY, cwY2;
 
 	switch (routine) {
 #ifndef DISABLE_GFX
 		//=================== Copy BACK->PHYS (0)
 		case GFX_FULL_COPY_TO_PHYS:
-			bitBlt(0, 256, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMM); // Copy screen
+			gfxAux_copyBackToPhys();
 			break;
 		//=================== Copy PHYS->BACK (1)
 		case GFX_FULL_COPY_TO_BACK:
-			bitBlt(0, 0, 0, 256, SCREEN_WIDTH, SCREEN_HEIGHT, 0x00, 0, CMD_HMMM); // Copy screen
+			gfxAux_copyPhysToBack();
 			break;
 		//=================== Swap PHYS<->BACK (2)
 		case GFX_SWAP_PHYS_BACK:
@@ -961,13 +915,7 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 		case GFX_CURRENT_WIN_TO_PHYS:
 		//=================== Copy current Window PHYS->BACK (129)
 		case GFX_CURRENT_WIN_TO_BACK:
-			cwX = cw->winX*FONTWIDTH;
-			cwY = cwY2 = cw->winY*FONTHEIGHT;
-			if (routine==GFX_CURRENT_WIN_TO_PHYS)
-				cwY += 256;
-			else
-				cwY2 += 256;
-			bitBlt(cwX, cwY, cwX, cwY2, cw->winW*FONTWIDTH, cw->winH*FONTHEIGHT, 0, 0, CMD_HMMM);	// Copy current Window
+			gfxAux_copyCurrentWindowTo(routine);
 			break;
 #endif//DISABLE_GFX
 		//=================== Clear Back (6)
@@ -975,7 +923,7 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 			page_offset = 256l;
 		//=================== Clear Phys (5)
 		case GFX_CLEAR_PHYS:
-			bitBlt(0, 0, 0, page_offset, SCREEN_WIDTH, SCREEN_HEIGHT, getColor(0), 0, CMD_HMMV);
+			gfxAux_clearPhys(page_offset);
 			break;
 	}
 }
@@ -1125,4 +1073,4 @@ void sfxTone(uint8_t duration, uint8_t tone) __naked
 }
 #endif //DISABLE_BEEP
 
-
+#include "daad_platform_msx2aux.c"

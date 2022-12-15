@@ -44,10 +44,11 @@ LIB_GUARD=@mkdir -p $(LIBDIR)
 
 EMUSCRIPTS = -script ./emulation/boot.tcl -script ./emulation/info_daad.tcl
 
-LIBS := dos.lib vdp.lib utils.lib
+LIBS := dos.lib vdp.lib gfx9000.lib utils.lib
 REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel daad.rel \
 								daad_global_vars.rel daad_condacts.rel \
-								daad_platform_msx2.rel) $(addprefix $(LIBDIR), $(LIBS))
+								daad_platform_msx2.rel) \
+			$(addprefix $(LIBDIR), $(LIBS))
 
 PROGRAMS = msx2daad.com
 
@@ -81,6 +82,11 @@ $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos
 	@$(AR) $(LDFLAGS) $@ $^
 
 $(LIBDIR)vdp.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)vdp_*))
+	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
+	@$(LIB_GUARD)
+	@$(AR) $(LDFLAGS) $@ $^
+
+$(LIBDIR)gfx9000.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)g9k_*))
 	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
 	@$(AR) $(LDFLAGS) $@ $^
@@ -131,6 +137,8 @@ ES_SC10:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=10 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC12:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=12 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+ES_B3:
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_ES -DSCREEN=B3 -DFONTWIDTH=6 -DVERSION=$(VERSION) $(FULLOPT)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 EN_SC8_TR:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DTRANSCRIPT -DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=8 -DFONTWIDTH=6 -DVERSION=$(VERSION $(FULLOPT))" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC8_TR:
@@ -158,7 +166,7 @@ test: all
 #		openmsx -machine Philips_NMS_8245 -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 #		openmsx -machine turbor -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
 #		openmsx -machine Sony_HB-F1XD -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
-		openmsx -machine msx2plus -ext debugdevice -diska dsk/ $(EMUSCRIPTS) \
+		openmsx -machine msx2plus -ext debugdevice -ext gfx9000 -diska dsk/ $(EMUSCRIPTS) \
 	; fi'
 
 

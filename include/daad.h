@@ -150,8 +150,8 @@ typedef struct {
 	uint8_t  cursorX;
 	uint8_t  cursorY;
 	uint8_t  mode;					// See MODE condact
-	uint8_t  paper;
-	uint8_t  ink;
+	uint16_t paper;
+	uint16_t ink;
 	uint16_t lastPicLocation;		// Last pictured drawed.
 } Window;
 

@@ -66,7 +66,54 @@
 		0x0003  2    Uncompressed data length in bytes
 		---data---
 		0x0005 ...   Image data (1-2043 bytes length)
+
+	Chunk V9990 BitBlt:
+		Offset Size  Description
+		--header--
+		0x0000  1    Chunk type  (32)
+		0x0001  2    Chunk data length (always 21 bytes)
+		0x0003  2    Empty chunk header (0x0000)
+		---data---
+		0x0005 ...   RAW VDP Command data (21 bytes length)
+
+	Chunk V9990 Command Data RAW:
+		Offset Size  Description
+		--header--
+		0x0000  1    Chunk type  (33)
+		0x0001  2    Chunk data length (max: 2043 bytes)
+		0x0003  2    Uncompressed data length in bytes
+		---data---
+		0x0005 ...   Image data (1-2043 bytes length)
+
 */
+	//=================================================================================
+	interface InterfaceGRB {
+		function toRaw($rgb24) : String;
+		function getBPP() : Int;
+	}
+
+	class GRB8 implements InterfaceGRB {
+		function toRaw($rgb24) : String {
+			$r = round((($rgb24 >> 16) & 0xff) * 7 / 255);
+			$g = round((($rgb24 >> 8) & 0xff) * 7 / 255);
+			$b = round(($rgb24 & 0xff) * 3 / 255);
+			$grb = ($g << 5) | ($r << 2) | $b;
+			return pack("C", $grb & 0xff);
+		}
+		function getBPP() : Int { return 8; }
+	}
+
+	class GRB16 implements InterfaceGRB {
+		function toRaw($rgb24) : String {
+			$r = round((($rgb24 >> 16) & 0xff) * 31 / 255);
+			$g = round((($rgb24 >> 8) & 0xff) * 31 / 255);
+			$b = round(($rgb24 & 0xff) * 31 / 255);
+			$grb = ($g << 10) | ($r << 5) | $b;
+			return pack("v", $grb);
+		}
+		function getBPP() : Int { return 16; }
+	}
+
 
 	define('CHUNK_HEAD', 5);
 	define('CHUNK_SIZE', 2043);
@@ -80,11 +127,15 @@
 	define('CHUNK_CLS',     17);
 	define('CHUNK_SKIP',    18);
 	define('CHUNK_PAUSE',   19);
+	define('CHUNK_G9K_CMD', 32);
+	define('CHUNK_G9K_RAW', 33);
+	define('CHUNK_G9K_RLE', 34);
+	define('CHUNK_G9K_PLETTER', 35);
 
 	$compressors = array(
-		array("raw", "raw", CHUNK_RAW, "RAW"),
-		array("rle", "rle", CHUNK_RLE, "RLE"),
-		array("pletter", "plet5", CHUNK_PLETTER, "PLETTER"),
+		array("raw", "raw", CHUNK_RAW, "RAW", CHUNK_G9K_RAW),
+		array("rle", "rle", CHUNK_RLE, "RLE", CHUNK_G9K_RLE),
+		array("pletter", "plet5", CHUNK_PLETTER, "PLETTER", CHUNK_G9K_PLETTER),
 	);
 	define('RAW', 0);
 	define('RLE', 1);
@@ -93,6 +144,7 @@
 	define('COMP_EXT',  1);
 	define('COMP_ID',   2);
 	define('COMP_NAME', 3);
+	define('COMP_ID_G9K',   4);
 
 	if (!extension_loaded('gd')) {
 		die("\nERROR: The PHP \"gd/gd2\" extension must be installed...\n\n");
@@ -162,6 +214,24 @@
 		}
 		echo "### Compressor: RLE (forced)\n";
 		compressRectangle($fileIn, $x, $y, $w, $h, $transparent);
+		exit;
+	}
+
+	if ($cmd == 'gs' && ($argc==3 || $argc==3+6)) {
+		$fileIn = $argv[2];
+		echo "### Loading $fileIn\n";
+		if (!is_numeric($argv[3]) || !is_numeric($argv[4]) || !is_numeric($argv[5]) || !is_numeric($argv[6]) || !is_numeric($argv[7]) || !is_numeric($argv[8])) {
+			echo "ERROR: sx, sy, dx, dy, nx, ny must be numeric and greater or equal to zero...\n";
+			exit;
+		}
+		//Coords
+		$sx = intval($argv[3]);
+		$sy = intval($argv[4]);
+		$dx = intval($argv[5]);
+		$dy = intval($argv[6]);
+		$nx = intval($argv[7]);
+		$ny = intval($argv[8]);
+		G9k_createRectangle($fileIn, $sx, $sy, $dx, $dy, $nx, $ny);
 		exit;
 	}
 
@@ -311,6 +381,8 @@
 			 "    $appname c[l] <fileIn.SC?> <lines> [compressor | transparent_color]\n\n".
 			 "S) Create an image from a rectangle:\n".
 			 "    $appname s <fileIn.SC?> <x> <y> <w> <h> [transparent_color]\n\n".
+			 "GS) Create a V9990 image from a rectangle:\n".
+			 "    $appname gs <fileIn.PNG> [<sx> <sy> <dx> <dy> <nx> <ny>]\n\n".
 			 "R) Create a location redirection:\n".
 			 "    $appname r <fileOut.IM?> <target_loc>\n\n".
 			 "D) Remove a CHUNK from an image:\n".
@@ -358,6 +430,9 @@
 		global $magic;
 
 		echo "### Reading file $fileIn\n";
+		if (!file_exists($fileIn)) {
+			die("ERROR: file not exists...\n");
+		}
 		$in = file_get_contents($fileIn);
 
 		//Magic & Screen type
@@ -369,11 +444,16 @@
 
 		//Screen mode
 		$scr = strtoupper(substr($in, 3, 1));
-		if (($scr<'5' || $scr>'8') && $scr!='A' && $scr!='C') {
+		if (($scr<'5' || $scr>'8') && $scr!='A' && $scr!='C' && $scr!='G') {
 			echo "ERROR: bad screen mode ['$scr']...\n";
 			exit;
 		}
-		echo "### Mode SCREEN ".hexdec($scr)."\n";
+		if ($scr == 'G') {
+			$scrTxt = "V9990 Bitmap";
+		} else {
+			$scrTxt = hexdec($scr);
+		}
+		echo "### Mode SCREEN ".$scrTxt."\n";
 
 		// Chunks
 		$pos = 4;
@@ -382,6 +462,7 @@
 		$id = 1;
 		while ($pos < strlen($in)) {
 			list($type,$sin,$sout) = array_values(unpack('cType/vSizeOut/vSizeIn', substr($in, $pos, 5)));
+			$data = substr($in, $pos + 5);
 			$size = 5;
 			switch ($type) {
 				case CHUNK_REDIRECT:
@@ -401,6 +482,25 @@
 					break;
 				case CHUNK_PLETTER:
 					echo "    CHUNK $id: PLETTER Data: $sout bytes ($sin bytes compressed) [".number_format($sin/$sout*100,1,'.','')."%]\n";
+					$size += $sin;
+					break;
+				case CHUNK_G9K_CMD:
+					list($sx,$sy,$dx,$dy,$nx,$ny,$arg,$log,$msk,$fc,$bc,$cmd) = 
+						array_values(unpack("vsx/vsy/vdx/vdy/vnx/vny/Carg/Clog/vmsk/vfc/vbc/Ccmd", $data));
+					echo "    CHUNK $id: G9K_CMD Data: $sout bytes\n";
+					echo "             sx:$sx sy:$sy dx:$dx dy:$dy nx:$nx ny:$ny arg:$arg log:$log mask:$msk fc:$fc bc:$bc cmd:$cmd\n";
+					$size += $sin;
+					break;
+				case CHUNK_G9K_RAW:
+					echo "    CHUNK $id: G9K_RAW Data: $sout bytes\n";
+					$size += $sin;
+					break;
+				case CHUNK_G9K_RLE:
+					echo "    CHUNK $id: G9K_RLE Data: $sout bytes\n";
+					$size += $sin;
+					break;
+				case CHUNK_G9K_PLETTER:
+					echo "    CHUNK $id: G9K_PLETTER Data: $sout bytes\n";
 					$size += $sin;
 					break;
 				case CHUNK_RESET:
@@ -618,6 +718,125 @@
 			exit;
 		}
 		return $transparent;
+	}
+
+	//=================================================================================
+	function G9k_createRectangle($fileName, $sx, $sy, $dx, $dy, $nx, $ny, $bpp=16, $compressor=NULL)
+	{
+		define("CHUNKMAX", 2043);
+		global $magic;
+		global $compressors;
+		$tmp = tempnam(sys_get_temp_dir(), 'imgwiz');
+		$rgb = new GRB8();
+		$outRawSize = $nx * $ny * ($rgb->getBPP()/8) + 21;
+		$id = 1;
+
+		// RGB Data
+		$png = @imageCreateFromPng($fileName);
+		if ($png == null) {
+			die("\nERROR: Error loading PNG image...\n\n");
+		}
+		if (!imageIsTrueColor($png)) {
+			$png = @imagePaletteToTrueColor($png);
+		}
+		$bmpData = "";
+		for ($y = 0; $y < $ny; $y++) {
+			for ($x = 0; $x < $nx; $x++) {
+				$rgb24 = imagecolorat($png, $sx+$x, $sy+$y);
+				$bmpData .= $rgb->toRaw($rgb24);
+			}
+		}
+
+		if ($compressor==NULL) {
+			$compressor = $compressors[PLETTER];
+		}
+
+		// LMMC Command
+		$out = $magic."G";
+		$cmdData = pack("vvvvvvCCvvvC", 0, 0, $dx, $dy, $nx, $ny, 0, 12, 0xffff, 0, 0, 0x10);
+		$out .= pack("cvv", CHUNK_G9K_CMD, 21, 21).$cmdData;
+		echo "    #CHUNK ".strpad($id,2)." G9K_CMD size: ".strlen($cmdData)." bytes\n";
+
+		while (($size = strlen($bmpData)) > 0) {
+			$id++;
+
+			// RAW
+			if ($compressor==$compressors[RAW]) {
+				if ($size > 2043) {
+					$tmpSize = 2043;
+				} else {
+					$tmpSize = $size;
+				}
+//				$size -= $tmpSize;
+				$tmpData = substr($bmpData, 0, $tmpSize);
+				$outSize = $tmpSize;
+			} else
+			// RLE
+			if ($compressor==$compressors[RLE]) {
+				$tmpSize = 2040;
+				if ($tmpSize > $size) { $tmpSize = $size; }
+				do {
+					$tmpData = rle_encode(substr($bmpData, 0, $tmpSize), false, NULL, true);
+					if (strlen($tmpData) <= 2043 && $tmpSize!=$size) {
+						$tmpSize += 10;
+					}
+					echo "\r\x1b[2K    #CHUNK ".strpad($id,2)." sizeIn: $tmpSize bytes (out: ".strlen($tmpData)." bytes)";
+				} while(strlen($tmpData) <= 2043 && $tmpSize<$size);
+				while(strlen($tmpData) > 2043 || $tmpSize>$size) {
+					$tmpSize--;
+					$tmpData = rle_encode(substr($bmpData, 0, $tmpSize), false, NULL, true);
+					echo "\r\x1b[2K    #CHUNK ".strpad($id,2)." sizeIn: $tmpSize bytes (out: ".strlen($tmpData)." bytes)";
+				}
+				$outSize = strlen($tmpData);
+			} else
+			// EXTERNAL COMPRESSORS (PLETTER, etc...)
+			{
+				$tmpSize = CHUNKMAX;
+				$outSize = $oldOutSize = 0;
+				if ($tmpSize > $size) { $tmpSize = $size; }
+				do {
+					$oldOutSize = $outSize;
+					$outSize = compress($tmp, $bmpData, 0, $tmpSize, $compressor);
+					$tmpData = file_get_contents($tmp.'.'.$compressor[COMP_EXT]);
+					if ($outSize <= CHUNKMAX && $tmpSize!=$size) {
+						if ($outSize == $oldOutSize) {
+							$tmpSize += 500;
+						} else {
+							$tmpSize += 10;
+						}
+					}
+					echo "\r\x1b[2K    #CHUNK ".strpad($id,2)." sizeIn: $tmpSize bytes (out: $outSize bytes)";
+				} while($outSize <= CHUNKMAX && $tmpSize<$size);
+				while($outSize > CHUNKMAX || $tmpSize>$size) {
+					if ($tmpSize > $size) {
+						$tmpSize = $size;
+					} else {
+						$tmpSize -= 10;
+					}
+					$outSize = compress($tmp, $bmpData, 0, $tmpSize, $compressor);
+					if ($outSize < CHUNKMAX-3 && $tmpSize!=$size) {
+						$tmpSize += 9;
+						$outSize = compress($tmp, $bmpData, 0, $tmpSize, $compressor);
+					}
+					$tmpData = file_get_contents($tmp.'.'.$compressor[COMP_EXT]);
+					echo "\r\x1b[2K    #CHUNK ".strpad($id,2)." sizeIn: $tmpSize bytes (out: $outSize bytes)";
+				}
+			}
+
+			$bmpData = substr($bmpData, $tmpSize);
+			$out .= pack("Cvv", $compressor[COMP_ID_G9K], $outSize, $tmpSize).$tmpData;
+			echo "\r\x1b[2K    #CHUNK ".strpad($id,2)." G9K_".$compressor[COMP_NAME]." sizeIn: $tmpSize  (out: ".strlen($tmpData)." bytes)\n";
+		}
+
+		// Show result
+		echo "    In: ".$outRawSize." bytes\n    Out: ".strlen($out)." bytes [".number_format(strlen($out)/$outRawSize*100,1,'.','')."%]\n";
+		$fileBaseName = basename($fileName);
+		$fileOut = substr(basename($fileBaseName), 0, strlen($fileBaseName)-3)."IMG";
+
+		// Write put file
+		echo "### Writing $fileOut\n";
+		file_put_contents($fileOut, $out);
+		echo "### Done\n\n";
 	}
 
 	//=================================================================================
@@ -859,8 +1078,9 @@
 			if ($j>3 || ord($v)==$mark || ord($v)==$transparent) {
 				if ($j>255) $j=255;
 				if (ord($v)==$transparent) {
-					$out .= chr($mark).chr(1).chr($j);	//Transparent compression
+					$out .= chr($mark).chr(2).chr($j);	//Transparent compression
 				} else {
+					if (ord($v)==$mark && $j<=3) $j=1;
 					$out .= chr($mark).chr($j).$v;		//Normal compression
 				}
 				$i += $j-1;
