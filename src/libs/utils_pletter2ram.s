@@ -24,17 +24,17 @@
 _pletter2ram::
 
 	push ix
-	ld ix,#0
+	ld ix,#4
 	add ix,sp
 	push af
 	push bc
 	push de
 	push hl
 	push iy
-	ld l, 4(ix)
-	ld h, 5(ix)
-	ld e, 6(ix)
-	ld d, 7(ix)
+	ld l, 0(ix)
+	ld h, 1(ix)
+	ld e, 2(ix)
+	ld d, 3(ix)
 	call unpack
 	pop iy
 	pop hl

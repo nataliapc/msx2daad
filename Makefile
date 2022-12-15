@@ -1,9 +1,13 @@
 .PHONY: clean test release
 
-AS = sdasz80
-AR = sdar
-CC = sdcc
+SDCC_SRV := sdcc380
+DOCKER_RUN = docker-compose run --rm -u $(shell id -u):$(shell id -g) $(SDCC_SRV)
+
+AS = $(DOCKER_RUN) sdasz80
+AR = $(DOCKER_RUN) sdar
+CC = $(DOCKER_RUN) sdcc
 HEX2BIN = hex2bin
+MAKE = make -s --no-print-directory
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -22,12 +26,12 @@ ifndef CXXFLAGS
 	CXXFLAGS := -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSXDOS1 -DMSX2
 endif
 LDFLAGS := -rc
-OPFLAGS := --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0
-WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84
+OPFLAGS := --less-pedantic --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0
+WRFLAGS := --disable-warning 196 --disable-warning 84
 CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
 
 MAKEFLAGS = --no-print-directory
-FULLOPT :=  --max-allocs-per-node 20000
+FULLOPT =  --max-allocs-per-node 2000000
 
 SRCDIR = src/
 SRCLIB = $(SRCDIR)libs/
