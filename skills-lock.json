@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "mcp-openmsx-usage": {
+      "source": "nataliapc/mcp-openmsx",
+      "sourceType": "github",
+      "computedHash": "1187547b055e4c87d0e825e7132265eee221f5cd3777d185567cbb14d81beae5"
+    }
+  }
+}
