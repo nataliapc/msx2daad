@@ -1,7 +1,8 @@
 .PHONY: clean test release
 
-SDCC_SRV := sdcc380
-DOCKER_RUN = docker-compose run --rm -u $(shell id -u):$(shell id -g) $(SDCC_SRV)
+SDCC_VER := 4.1.0
+DOCKER_IMG = nataliapc/sdcc:$(SDCC_VER)
+DOCKER_RUN = docker run -i --rm -u $(shell id -u):$(shell id -g) -v .:/src -w /src $(DOCKER_IMG)
 
 AS = $(DOCKER_RUN) sdasz80
 AR = $(DOCKER_RUN) sdar
@@ -56,45 +57,45 @@ all: $(PROGRAMS) bin/testdaad
 
 $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
-	@echo "$(COL_BLUE)#### ASM $@$(COL_RESET)"
+	@echo "$(COL_BLUE)#### ASM $^$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(AS) -go $@ $^
+	@$(AS) -go $@ $^ ;
 
 $(OBJDIR)%.rel: $(SRCDIR)%.c
-	@echo "$(COL_BLUE)#### CC $@$(COL_RESET)"
+	@echo "$(COL_BLUE)#### CC $^$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^ ;
 
 $(OBJDIR)%.c.rel: $(SRCLIB)%.c
-	@echo "$(COL_BLUE)#### CC $@$(COL_RESET)"
+	@echo "$(COL_BLUE)#### CC $^$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^ ;
 
 $(OBJDIR)%.s.rel: $(SRCLIB)%.s
-	@echo "$(COL_BLUE)#### ASM $@$(COL_RESET)"
+	@echo "$(COL_BLUE)#### ASM $^$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(AS) -go $@ $^
+	@$(AS) -go $@ $^ ;
 
 $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos_*))
 	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
-	@$(AR) $(LDFLAGS) $@ $^
+	@$(AR) $(LDFLAGS) $@ $^ ;
 
 $(LIBDIR)vdp.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)vdp_*))
 	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
-	@$(AR) $(LDFLAGS) $@ $^
+	@$(AR) $(LDFLAGS) $@ $^ ;
 
 $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)utils_*))
 	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
-	@$(AR) $(LDFLAGS) $@ $^
+	@$(AR) $(LDFLAGS) $@ $^ ;
 
 
 msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
 	@echo "$(COL_YELLOW)######## Compiling $@$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) $(FULLOPT) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^)
+	@$(CC) $(CCFLAGS) $(FULLOPT) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^) ;
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
 	@echo "**** Copying .COM files to DSK/"
 	@cp *.com dsk/
@@ -139,7 +140,7 @@ _package_single: msx2daad.com
 	@echo "$(COL_YELLOW)####################### $(OUTFILE)$(COL_RESET)"
 	@mkdir -p $(PKGDIR)
 	$(MAKE) clean
-	$(MAKE) msx2daad.com -j
+	$(MAKE) msx2daad.com
 	@cp msx2daad.com $(PKGDIR)$(OUTFILE)
 package: EN_SC5 EN_SC6 EN_SC7 EN_SC8 EN_SC10 EN_SC12 \
          ES_SC5 ES_SC6 ES_SC7 ES_SC8 ES_SC10 ES_SC12 \

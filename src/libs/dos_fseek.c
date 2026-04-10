@@ -44,8 +44,10 @@ uint32_t fseek (char fp, uint32_t offset, char origin)
     } else
     if (origin==SEEK_CUR) {
         fcb->rndRecord += offset;
+    } else if (origin==SEEK_END) {
+        fcb->rndRecord = fcb->fileSize + offset;
     } else {
-        die("fseek fail!");
+        return -1L;   // Devuelve error en vez de die()
     }
     return fcb->rndRecord;
 }

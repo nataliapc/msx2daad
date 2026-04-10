@@ -29,7 +29,9 @@ uint8_t fclose(char fp) __naked
   __asm
     ld      de,#SYSFCB
     ld      c,#FCLOSE
+    push ix
     DOSCALL
+    pop  ix
 
     ld h,#0x00
     ld l,a

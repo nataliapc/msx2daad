@@ -6,7 +6,9 @@ int getchar(void) __naked {
   __asm
 
     ld c,#INNOE
+    push ix
     DOSCALL
+    pop  ix
     ld h, #0x00
 
     ret

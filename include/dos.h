@@ -72,6 +72,9 @@
 #define RDDRV   0x73
 #define WRDRV   0x74
 
+/* Maximum path size in MSX-DOS */
+#define MAX_PATH_SIZE   64
+
 /* MSX DOS versions from dosver() */
 #define VER_UNKNOWN     0
 #define VER_MSXDOS1x    1
@@ -224,7 +227,7 @@ int  kbhit(void);
 
 char  get_current_drive(void);
 char  get_current_directory(char drive, char *path);
-char* get_program_path();
+char* getProgramPath(char *path);
 char  get_drive_params(char drive, DPARM_info *param);
 
 uint16_t fopen(char *fn, char mode);

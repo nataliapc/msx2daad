@@ -21,11 +21,13 @@ char dosver(void) __naked {
   check_dos2$:
     ld  a,b
     cp  #2
-    jr  z,check_nextor$
+    jr  nc,check_nextor$
     ld  b,#1          ; is MSX-DOS 1
 
   check_nextor$:
-    ld  a,i           ; Nextor: IXh must contain '1'
+    push ix          ; Nextor: IXh must contain '1'
+    pop  hl
+    ld   a, h
     dec a
     jr  nz,ret_version$ 
     ld  b,#3          ; is NextorDOS

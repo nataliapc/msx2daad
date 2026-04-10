@@ -1,13 +1,23 @@
+#include <string.h>
 #include "dos.h"
 #include "heap.h"
 
 
-char* get_program_path()
+char* getProgramPath(char *path)
 {
-	char *result = malloc(MAX_PATH);
-	if (get_env("PROGRAM", result, MAX_PATH)) {
-		free(MAX_PATH);
-		return NULL;
-	}
-	return result;
+    switch (dosver()) {
+        case VER_MSXDOS1x:
+            strcpy(path, "A:\\");
+            path[0] = get_current_drive() + 'A';
+            break;
+        case VER_MSXDOS2x:
+        case VER_NextorDOS:
+            if (get_env("PROGRAM", path, MAX_PATH_SIZE)) {
+                return NULL;
+            }
+            break;
+        default:
+            return NULL;
+    }
+    return path;
 }
