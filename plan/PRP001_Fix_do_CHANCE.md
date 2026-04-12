@@ -5,6 +5,7 @@
 - **Fichero afectado**: [src/daad_condacts.c:548](../src/daad_condacts.c#L548)
 - **Severidad**: BUG (crítico funcionalmente, trivial de corregir)
 - **Fecha**: 2026-04-12
+- **Estado**: Finalizado ✅
 
 ---
 

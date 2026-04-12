@@ -1068,11 +1068,14 @@ void do_TAKEOUT()	// objno locno
 #ifndef DISABLE_DROPALL
 void do_DROPALL()
 {
-	int i=0;
-	do {
-		if (objects[i].location==LOC_CARRIED || objects[i].location==LOC_WORN)
-			objects[i].location = flags[fPlayer];
-	} while(i++ < hdr->numObjDsc);
+	Object *obj = objects;
+	uint8_t loc = flags[fPlayer];
+	uint8_t n = hdr->numObjDsc;
+	while (n--) {
+		if (obj->location==LOC_CARRIED || obj->location==LOC_WORN)
+			obj->location = loc;
+		obj++;
+	}
 	flags[fNOCarr] = 0;
 }
 #endif
