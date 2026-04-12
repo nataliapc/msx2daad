@@ -5468,7 +5468,7 @@ void test_BEEP_success()
 
 int main(char** argv, int argc)
 {
-	cputs("### UNIT TESTS of MSX2DAAD ###");
+	cputs("### UNIT TESTS of MSX2DAAD ###\n\r");
 
 	beforeAll();
 

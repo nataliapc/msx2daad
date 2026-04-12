@@ -112,7 +112,7 @@ bool initDAAD(int argc, char **argv)
 
 	//Get memory for RAMSAVE
 	ramsave = (char*)malloc(512);	// 256 bytes for Flags + 256 bytes for Objects location
-	memset(ramsave, 0, 1+256+sizeof(Object)*hdr->numObjDsc);
+	memset(ramsave, 0, 512);
 	//Get memory for objects
 	objects = (Object*)malloc(sizeof(Object)*hdr->numObjDsc);
 	nullObject = (Object *) nullObjFake;
