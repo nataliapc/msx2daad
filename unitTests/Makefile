@@ -51,7 +51,7 @@ $(OBJDIR)condacts.com: $(REL_LIBS) $(SRCDIR)tests_condacts.c
 	@cp $@ dsk/
 
 clean:
-	@rm -f dsk/tests.com
+	@rm -f dsk/condacts.com dsk/tests.txt
 	@rm -f *.com *.asm *.lst *.sym *.bin *.ihx *.lk *.map *.noi *.rel
 	@rm -rf $(OBJDIR)
 
