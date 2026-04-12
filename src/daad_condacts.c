@@ -545,7 +545,7 @@ void do_ADJECT2()	// word
 #ifndef DISABLE_CHANCE
 void do_CHANCE()	// percent
 {
-	checkEntry = (rand()%100)+1 < getValueOrIndirection();
+	checkEntry = (rand()%100) < getValueOrIndirection();
 }
 #endif
 

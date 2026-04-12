@@ -11,11 +11,11 @@ Any change to the repository that affects build commands, project structure, con
 
 ## Build & toolchain
 
-- **Compiler**: SDCC 4.1.0 (`sdasz80`, `sdar`, `sdcc`) — runs inside Docker via `docker-compose run`.
-- **Docker service**: `sdcc410` (image `nataliapc/sdcc:4.1.0`). Other versions available: `sdcc380`, `sdcc390`, `sdcc400`, `sdcc420`.
+- **Compiler**: SDCC 4.1.0 (`sdasz80`, `sdar`, `sdcc`) — runs inside Docker via `docker run`.
+- **Docker image**: `nataliapc/sdcc:4.1.0`. The Makefile defines `DOCKER_RUN` which mounts the project root at `/src`. Change `SDCC_VER` in the Makefile to use other SDCC versions.
 - **Post-link**: `hex2bin` converts `.ihx` → `.com`; binary is copied to `dsk/`.
 - **Host tools**: `gcc` (for `bin/testdaad`), `php` (for `bin/precomp.php`, `bin/imgwizard.php`).
-- Docker must be running before any `make` target.
+- Docker must be running before any `make` target. No `docker-compose` is used — the Makefile calls `docker run` directly.
 
 ### Key commands
 
@@ -136,3 +136,9 @@ emulation/                  # openMSX Tcl scripts (boot.tcl, info_daad.tcl)
 - `include/daad_defines.h` is auto-generated — do not edit manually; run `make precomp` after changing `dsk/DAAD.DDB`.
 - Release builds (`make package`) produce 14 `.com` variants in `package/` — this takes a long time.
 - The current version is `1.5.1` (set in `Makefile` line 23).
+
+---
+
+## Agent skills
+
+- **`daad-system`** (`.agents/skills/daad-system/SKILL.md`): Technical reference for the DAAD adventure authoring system. Covers DDB binary format, all 128 condacts, system flags, object model, DSF source format, DRC compiler, MALUVA extensions, and engine architecture. Load this skill when working on interpreter logic, condact behaviour, DDB parsing, or adventure source code.
