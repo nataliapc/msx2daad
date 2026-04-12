@@ -1845,16 +1845,35 @@ void test_CHANCE_indirection()
 {
 	const char *_func = __func__;
 	beforeEach();
-	
+
 	//BDD given flag 150 with value 255
 	flags[150] = 255;
 
 	//BDD when checking CHANCE @150
 	static const char proc[] = { _CHANCE|IND, 150, 255 };
 	do_action(proc);
-	
+
 	//BDD then succes
 	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Regression test for PRP001 (do_CHANCE off-by-one).
+// CHANCE 100 must always succeed (100% probability). The old buggy version
+// used '<' instead of '<=' and failed ~1% of the time. Run many iterations;
+// the fixed code is deterministic (always true), the buggy one would fail
+// as soon as rand()%100 returns 99.
+void test_CHANCE_100_always_succeeds()
+{
+	const char *_func = __func__;
+	uint16_t n;
+	beforeEach();
+
+	static const char proc[] = { _CHANCE, 100, 255 };
+	for (n=0; n<256; n++) {
+		do_action(proc);
+		ASSERT(checkEntry, ERROR);
+	}
 	SUCCEED();
 }
 
@@ -1883,28 +1902,26 @@ void test_ISDONE_success()
 	static const char proc[] = { _ISDONE, 255 };
 	do_action(proc);
 
-	//BDD then fails
+	//BDD then succes
 	ASSERT(checkEntry, ERROR);
-	//SUCCEED();
-	TODO("Mock DONE");
+	SUCCEED();
 }
 
 void test_ISDONE_fails()
 {
 	const char *_func = __func__;
 	beforeEach();
-	
+
 	//BDD given last table not executed at least one action
 	isDone = 0;
 
 	//BDD when checking ISDONE
 	static const char proc[] = { _ISDONE, 255 };
 	do_action(proc);
-	
-	//BDD then succes
+
+	//BDD then fails
 	ASSERT(!checkEntry, ERROR);
-	//SUCCEED();
-	TODO("Mock NOTDONE");
+	SUCCEED();
 }
 
 // =============================================================================
@@ -3244,6 +3261,31 @@ void test_DROPALL_success()
 	ASSERT_EQUAL(objects[3].location, 1, ERROR_OBJLOC);
 	ASSERT_EQUAL(flags[fNOCarr], 0, ERROR_CARROBJNUM);
 	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Regression test for PRP002 (do_DROPALL off-by-one).
+// The old buggy loop iterated 0..numObjDsc (inclusive), reading one byte past
+// the objects array. beforeAll() allocates windows[] immediately after
+// objects[] via the bump allocator, so windows[0].winX physically overlaps
+// where objects[MOCK_NUM_OBJECTS].location would be. Placing LOC_CARRIED
+// there triggers the buggy overwrite; the fixed loop stops at numObjDsc-1
+// and leaves the canary intact.
+void test_DROPALL_no_overflow()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given player at loc 7 and a canary just past the objects array
+	flags[fPlayer] = 7;
+	windows[0].winX = LOC_CARRIED;
+
+	//BDD when executing DROPALL
+	static const char proc[] = { _DROPALL, 255 };
+	do_action(proc);
+
+	//BDD then the canary is untouched
+	ASSERT_EQUAL(windows[0].winX, LOC_CARRIED, "DROPALL iterated past numObjDsc");
 	SUCCEED();
 }
 
@@ -5038,6 +5080,30 @@ void test_RAMSAVE_success()
 	SUCCEED();
 }
 
+// Regression test for PRP003 (do_RAMSAVE hardcoded 256-object loop).
+// The old buggy version iterated 256 objects regardless of numObjDsc, writing
+// bytes read from past the objects[] array into ramsave[256+numObjDsc..511].
+// Place a canary in that trailing region and verify RAMSAVE leaves it intact.
+void test_RAMSAVE_no_overflow()
+{
+	const char *_func = __func__;
+	uint16_t i;
+	beforeEach();
+
+	//BDD given a canary in the unused tail of ramsave
+	for (i=256+MOCK_NUM_OBJECTS; i<512; i++) ramsave[i] = 0xAA;
+	for (i=0; i<MOCK_NUM_OBJECTS; i++) objects[i].location = i;
+
+	//BDD when executing RAMSAVE
+	static const char proc[] = { _RAMSAVE, 255 };
+	do_action(proc);
+
+	//BDD then the canary is untouched
+	for (i=256+MOCK_NUM_OBJECTS; i<512; i++)
+		ASSERT_EQUAL(ramsave[i], 0xAA, "RAMSAVE wrote past numObjDsc");
+	SUCCEED();
+}
+
 // =============================================================================
 // Tests RAMSAVE <flagno>
 /*	This action is the counterpart of RAMSAVE and allows the saved buffer to be 
@@ -5309,7 +5375,20 @@ void test_EXIT_success()
 
 void test_DONE_success()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given no DOALL active and isDone false
+	isDone = false;
+	currProc->condactDOALL = NULL;
+
+	//BDD when executing DONE
+	static const char proc[] = { _DONE, 255 };
+	do_action(proc);
+
+	//BDD then isDone is true (signals the table ran at least one action)
+	ASSERT(isDone, ERROR_ISDONE);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -5323,7 +5402,20 @@ void test_DONE_success()
 
 void test_NOTDONE_success()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given no DOALL active and isDone pre-set to true
+	isDone = true;
+	currProc->condactDOALL = NULL;
+
+	//BDD when executing NOTDONE
+	static const char proc[] = { _NOTDONE, 255 };
+	do_action(proc);
+
+	//BDD then isDone is reset to false
+	ASSERT(!isDone, ERROR_ISDONE);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -5332,7 +5424,22 @@ void test_NOTDONE_success()
 
 void test_OK_success()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given no DOALL active and isDone false
+	isDone = false;
+	currProc->condactDOALL = NULL;
+	fake_lastSysMesPrinted = -1;
+
+	//BDD when executing OK
+	static const char proc[] = { _OK, 255 };
+	do_action(proc);
+
+	//BDD then SM15 ("OK") is printed and isDone becomes true (OK == DONE after printing)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 15, ERROR_SYSMES);
+	ASSERT(isDone, ERROR_ISDONE);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -5504,6 +5611,7 @@ int main(char** argv, int argc)
 	test_ADJECT2_success(); test_ADJECT2_fails(); test_ADJECT2_indirection();
 
 	test_CHANCE_0_fails(); test_CHANCE_255_success(); test_CHANCE_indirection();
+	test_CHANCE_100_always_succeeds();
 
 	test_ISDONE_success(); test_ISDONE_fails();
 	test_ISNDONE_success(); test_ISNDONE_fails();
@@ -5527,7 +5635,7 @@ int main(char** argv, int argc)
 	test_PUTIN_worn(); test_PUTIN_here(); test_PUTIN_notHere(); test_PUTIN_success(); test_PUTIN_indirection();
 	test_TAKEOUT_carried(); test_TAKEOUT_worn(); test_TAKEOUT_here(); test_TAKEOUT_notHere(); test_TAKEOUT_maxWeight();
 		test_TAKEOUT_maxObjs(); test_TAKEOUT_success(); test_TAKEOUT_indirection();
-	test_DROPALL_success();
+	test_DROPALL_success(); test_DROPALL_no_overflow();
 	test_AUTOG_carried(); test_AUTOG_worn(); test_AUTOG_success();
 	test_AUTOD_success();
 	test_AUTOW_success();
@@ -5587,7 +5695,7 @@ int main(char** argv, int argc)
 	test_LISTAT_success(); test_LISTAT_none();
 
 	test_SAVE_LOAD_success();
-	test_RAMSAVE_success();
+	test_RAMSAVE_success(); test_RAMSAVE_no_overflow();
 	test_RAMLOAD_success();
 
 	test_ANYKEY_success();

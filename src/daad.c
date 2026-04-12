@@ -152,14 +152,12 @@ void initFlags()
 
 	//Initialize DAAD windows
 	windows = malloc(sizeof(Window)*WINDOWS_NUM);
-	memset(windows, 0, sizeof(windows)*WINDOWS_NUM);
+	memset(windows, 0, sizeof(Window)*WINDOWS_NUM);
 	flags[fCurWin] = 0;
 	for (i=0; i<WINDOWS_NUM; i++) {
 		cw = &windows[i];
-		cw->winX = cw->winY = 0;
 		cw->winW = MAX_COLUMNS;
 		cw->winH = MAX_LINES;
-		cw->mode = 0;
 		cw->lastPicLocation = 256;
 		gfxSetPaperCol(0);
 		gfxSetInkCol(15);
