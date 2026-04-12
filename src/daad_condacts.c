@@ -2002,9 +2002,14 @@ void do_LOAD()		// opt
 #ifndef DISABLE_RAMSAVE
 void do_RAMSAVE()
 {
+	Object *obj = objects;
+	char *dst = ramsave + 256;
+	uint8_t n = hdr->numObjDsc;
 	memcpy(ramsave, flags, 256);
-	for (int i=0; i<256; i++)
-		*(ramsave+256+i) = objects[i].location;
+	while (n--) {
+		*dst++ = obj->location;
+		obj++;
+	}
 }
 #endif
 
@@ -2024,10 +2029,15 @@ void do_RAMSAVE()
 void do_RAMLOAD()	// flagno
 {
 	uint8_t flagno = getValueOrIndirection();
+	Object *obj = objects;
+	char *src = ramsave + 256;
+	uint8_t n = hdr->numObjDsc;
 
 	memcpy(flags, ramsave, flagno+1);
-	for (int i=0; i<256; i++)
-		objects[i].location = *(ramsave+256+i);
+	while (n--) {
+		obj->location = *src++;
+		obj++;
+	}
 }
 #endif
 
