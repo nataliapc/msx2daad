@@ -49,7 +49,8 @@ EMUSCRIPTS = -script ./emulation/boot.tcl -script ./emulation/info_daad.tcl
 LIBS := dos.lib vdp.lib utils.lib daad.lib
 REL_LIBS := $(addprefix $(LIBDIR), $(LIBS)) \
 			$(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel \
-									daad.rel daad_condacts.rel \
+									daad_parser.rel \
+									daad_condacts.rel \
 									daad_platform_msx2.rel \
 									msx2daad.rel)
 

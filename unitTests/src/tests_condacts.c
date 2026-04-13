@@ -4499,7 +4499,7 @@ void test_WINDOW_success()
 	beforeEach();
 
 	//BDD given current windows is 0
-	cw = &windows[0];
+	cw = windows;
 
 	//BDD when checking WINDOW 1
 	static const char proc[] = { _WINDOW, 1, 255 };
@@ -4517,7 +4517,7 @@ void test_WINDOW_indirection()
 	beforeEach();
 
 	//BDD given current windows is 0, and flag 75 w/value 1
-	cw = &windows[0];
+	cw = windows;
 	flags[75] = 1;
 
 	//BDD when checking WINDOW @75
