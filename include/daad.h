@@ -245,12 +245,17 @@ extern char       *ramsave;			// Memory to store ram save
 
 extern PROCstack  *currProc;		// Pointer to current active condact.
 
+extern const Object  *nullObject;
+
 extern char       *tmpMsg;			// MAX_TEXT_LEN
+extern char       *tmpTok;			// Token temp buffer
+extern uint8_t     doingPrompt;		// True while a prompt is being rendered
 extern uint8_t     flags[256];		// DAAD flags (256 bytes)
 
 extern Window     *windows;			// 0-7 windows definitions
 extern Window     *cw;				// Pointer to current active window
-extern uint8_t 	   printedLines;	// To know how many lines is printed at one time ("More..." feature)
+extern uint8_t     printedLines;	// To know how many lines is printed at one time ("More..." feature)
+extern bool        checkPrintedLines_inUse;
 #ifndef DISABLE_SAVEAT
 extern uint8_t     savedPosX;		// For SAVEAT/BACKAT
 extern uint8_t     savedPosY;		//  "    "      "

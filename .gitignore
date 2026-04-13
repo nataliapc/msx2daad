@@ -1,4 +1,5 @@
 .vscode/
+.claude
 libs/
 obj/
 img/

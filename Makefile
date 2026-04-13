@@ -29,13 +29,14 @@ endif
 LDFLAGS := -rc
 OPFLAGS := --less-pedantic --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0
 WRFLAGS := --disable-warning 196 --disable-warning 84
-CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
+CCFLAGS := --code-loc 0x0178 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
 
 MAKEFLAGS = --no-print-directory
 FULLOPT =  --max-allocs-per-node 2000000
 
 SRCDIR = src/
 SRCLIB = $(SRCDIR)libs/
+DAADLIB = $(SRCDIR)daad/
 LIBDIR = libs/
 INCDIR = include/
 OBJDIR = obj/
@@ -45,14 +46,16 @@ LIB_GUARD=@mkdir -p $(LIBDIR)
 
 EMUSCRIPTS = -script ./emulation/boot.tcl -script ./emulation/info_daad.tcl
 
-LIBS := dos.lib vdp.lib utils.lib
-REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel daad.rel \
-								daad_global_vars.rel daad_condacts.rel \
-								daad_platform_msx2.rel) $(addprefix $(LIBDIR), $(LIBS))
+LIBS := dos.lib vdp.lib utils.lib daad.lib
+REL_LIBS := $(addprefix $(LIBDIR), $(LIBS)) \
+			$(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel \
+									daad.rel daad_condacts.rel \
+									daad_platform_msx2.rel \
+									msx2daad.rel)
 
-PROGRAMS = msx2daad.com
+PROGRAM = msx2daad
 
-all: $(PROGRAMS) bin/testdaad
+all: $(OBJDIR)$(PROGRAM).com bin/testdaad
 
 
 $(OBJDIR)%.rel: $(SRCDIR)%.s
@@ -76,6 +79,16 @@ $(OBJDIR)%.s.rel: $(SRCLIB)%.s
 	@$(DIR_GUARD)
 	@$(AS) -go $@ $^ ;
 
+$(OBJDIR)%.c.rel: $(DAADLIB)%.c
+	@echo "$(COL_BLUE)#### CC $^$(COL_RESET)"
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^ ;
+
+$(LIBDIR)daad.lib: $(patsubst $(DAADLIB)%, $(OBJDIR)%.rel, $(wildcard $(DAADLIB)daad_*))
+	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
+	@$(LIB_GUARD)
+	@$(AR) $(LDFLAGS) $@ $^ ;
+
 $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos_*))
 	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
@@ -92,17 +105,17 @@ $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)u
 	@$(AR) $(LDFLAGS) $@ $^ ;
 
 
-msx2daad.com: $(REL_LIBS) $(SRCDIR)msx2daad.c
+$(OBJDIR)$(PROGRAM).com: $(REL_LIBS) $(wildcard $(INCDIR)/*.h)
 	@echo "$(COL_YELLOW)######## Compiling $@$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) $(FULLOPT) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^) ;
+	@$(CC) $(CCFLAGS) $(FULLOPT) -I$(INCDIR) -L$(LIBDIR) $(REL_LIBS) -o $(subst .com,.ihx,$@) ;
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
 	@echo "**** Copying .COM files to DSK/"
-	@cp *.com dsk/
+	@cp $(OBJDIR)$(PROGRAM).com dsk/
 
 
 clean:
-	@rm -f dsk/msx2daad.com
+	@rm -f dsk/$(PROGRAM).com
 	@rm -f *.com *.asm *.lst *.sym *.bin *.ihx *.lk *.map *.noi *.rel
 	@rm -f $(OBJDIR)/*
 	@rm -f $(addprefix $(LIBDIR), $(LIBS))
@@ -180,4 +193,4 @@ release: all
 	@echo "**** Copying .COM files to DSK/"
 	@cp *.com dsk/
 #	@echo "**** Updating .COM files in 'test.dsk'"
-#	@dsktool a test.dsk $(PROGRAMS) > /dev/null
+#	@dsktool a test.dsk $(OBJDIR)$(PROGRAM).com > /dev/null
