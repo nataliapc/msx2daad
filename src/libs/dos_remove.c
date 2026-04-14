@@ -3,22 +3,18 @@
 
 uint16_t remove(char *file) __naked
 {
-  file;
-  __asm
-    push ix
-    ld ix,#4
-    add ix,sp
+	file;		// HL
+	__asm
+		push ix
+		ex de, hl
 
-    ld e,0(ix)
-    ld d,1(ix)
+		ld c,#DELETE
+		DOSCALL
 
-    ld c,#DELETE
-    DOSCALL
+		ld d, #0xff
+		ld e, a
 
-    ld h, #0xff
-    ld l, a
-
-    pop ix
-    ret
-  __endasm;
+		pop ix
+		ret
+	__endasm;
 }

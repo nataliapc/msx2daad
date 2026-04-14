@@ -6,7 +6,8 @@
      Results:       A = Error. If there are no more matching entries then a NOFIL error is returned
                  (IX) = Filled in with next matching entry 
 */
-uint16_t findnext(FFBLK *ffblk ) __naked
+#ifdef MSXDOS2
+uint16_t findnext(FFBLK *ffblk ) __naked SDCC_STACKCALL
 {
 	ffblk;
 	__asm
@@ -27,10 +28,13 @@ uint16_t findnext(FFBLK *ffblk ) __naked
 		ld l, a
 		jr z, fnext_noerror$
 		jr fnext_error$
+
 	fnext_noerror$:
 		inc h
+
 	fnext_error$:
 		pop  ix
 		ret
 	__endasm;
 }
+#endif

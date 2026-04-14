@@ -17,15 +17,15 @@ static void _logAppend(char *s, uint16_t len)
 	if (!len) return;
 
 	if (!logFileCreated) {
-		fh = fcreate((char*)LOG_FILE, O_RDWR, ATTR_NONE);
+		fh = fcreate((char*)LOG_FILE);
 		if (fh < 0xff00) logFileCreated = true;
 	} else {
-		fh = fopen((char*)LOG_FILE, O_RDWR);
-		if (fh < 0xff00) fseek((char)fh, 0L, SEEK_END);
+		fh = fopen((char*)LOG_FILE);
+		if (fh < 0xff00) fseek(0L, SEEK_END);
 	}
 	if (fh < 0xff00) {
-		fwrite(s, len, (char)fh);
-		fclose((char)fh);
+		fwrite(s, len);
+		fclose();
 	}
 }
 

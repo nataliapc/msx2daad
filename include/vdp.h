@@ -2,6 +2,8 @@
 #ifndef __VDP_H__
 #define __VDP_H__
 
+#include "sdcc_compat.h"
+
 
 
 #if SCREEN==8 || SCREEN==7
@@ -57,7 +59,7 @@ void setRegVDP8(char reg, char value);
 void setVDP_Read(uint32_t vram);
 void setVDP_Write(uint32_t vram);
 
-void copyToVRAM(uint16_t source, uint32_t vram, uint16_t size);
+void copyToVRAM(uint16_t source, uint32_t vram, uint16_t size) SDCC_STACKCALL;
 
 void enableVDP();
 void disableVDP();
@@ -77,18 +79,18 @@ void disableInterlacedLines();
 void setVPage(uint8_t page);
 
 void setPalette(char *paletteAddress);
-void setColorPal(uint8_t colIndex, uint16_t grb);	// grb bitfield: 00000GGG.0RRR0BBB
+void setColorPal(uint8_t colIndex, uint16_t grb);		// grb bitfield: 00000GGG.0RRR0BBB
 
-void setColor(char forecolor, char background, char border);
+void setColor(char forecolor, char background, char border) SDCC_STACKCALL;
 void setBorder(char border);
 
 void clearSC5();
-void clearSC5lines(uint16_t startline, uint16_t numLines);
+void clearSC5lines(uint16_t startline, uint16_t numlines);
 void clearSC7();
-void clearSC7lines(uint16_t startline, uint16_t numLines);
+void clearSC7lines(uint16_t startline, uint16_t numlines);
 
-void bitBlt(uint16_t sx, uint16_t sy, uint16_t dx, uint16_t dy, uint16_t nx, uint16_t ny, uint8_t col, uint8_t arg, uint8_t cmd);
-void fastVCopy(char *bitbltData);
+void bitBlt(uint16_t sx, uint16_t sy, uint16_t dx, uint16_t dy, uint16_t nx, uint16_t ny, uint8_t col, uint8_t arg, uint8_t cmd) SDCC_STACKCALL;
+void fastVCopy(char *bitbltData) SDCC_STACKCALL;
 void waitVDPready();
 
 

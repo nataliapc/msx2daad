@@ -9,7 +9,8 @@
      Results:       A = Error
                  (IX) = Filled in with matching entry
 */
-uint16_t findfirst(const char *pathname, FFBLK *ffblk, uint8_t attrib) __naked
+#ifdef MSXDOS2
+uint16_t findfirst(const char *pathname, FFBLK *ffblk, uint8_t attrib) __naked SDCC_STACKCALL
 {
 	pathname, ffblk, attrib;
 	__asm
@@ -33,10 +34,13 @@ uint16_t findfirst(const char *pathname, FFBLK *ffblk, uint8_t attrib) __naked
 		or a
 		jr z, ffirst_noerror$
 		jr ffirst_error$
+
 	ffirst_noerror$:
 		inc h
+
 	ffirst_error$:
 		pop  ix
 		ret
 	__endasm;
 }
+#endif

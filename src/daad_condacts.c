@@ -1957,11 +1957,11 @@ void do_LISTAT()	// locno+
 void do_SAVE()		// opt
 {
 	//TODO SAVE get the filename from the player
-	FILEH fh = fcreate(SAVEGAME, O_WRONLY, ATTR_ARCHIVE);
+	FILEH fh = fcreate(SAVEGAME);
 	if (fh<0xff00) {
-		fwrite((char*)flags, 256, fh);
-		fwrite((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
-		fclose(fh);
+		fwrite((char*)flags, 256);
+		fwrite((char*)objects, sizeof(Object)*hdr->numObjDsc);
+		fclose();
 	}
 	pPROC++;
 }
@@ -1978,11 +1978,11 @@ void do_SAVE()		// opt
 void do_LOAD()		// opt
 {
 	//TODO LOAD get the filename from the player
-	uint16_t fh = fopen(SAVEGAME, O_RDONLY);
+	uint16_t fh = fopen(SAVEGAME);
 	if (fh<0xff00) {
-		fread((char*)flags, 256, fh);
-		fread((char*)objects, sizeof(Object)*hdr->numObjDsc, fh);
-		fclose(fh);
+		fread((char*)flags, 256);
+		fread((char*)objects, sizeof(Object)*hdr->numObjDsc);
+		fclose();
 	} else {
 		printSystemMsg(57);
 		flags[fPlayer] = 0;

@@ -5,13 +5,7 @@
 ;
 .include "vdp.s"
 
-_setBorder::
-		pop de
-		pop bc
-		push bc
-		push de
-		ld  a,c
-
+_setBorder::	; A = border
 setBorder::
 		out (0x99),a
 		ld  a,#0x87

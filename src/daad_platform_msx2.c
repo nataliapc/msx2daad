@@ -170,12 +170,9 @@ void setTime(uint16_t time) __naked __z88dk_fastcall
  * 
  * @return			Return the system time in 1/50 sec fragments.
  */
-uint16_t getTime() __naked
+uint16_t getTime()
 {
-	__asm
-		ld hl,(#JIFFY)
-		ret
-	__endasm;
+	return varJIFFY;
 }
 
 uint16_t checkKeyboardBuffer()
@@ -229,18 +226,16 @@ inline void safeMemoryDeallocate(void *pointer)
  */
 uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size)
 {
-	uint16_t fp = fopen(filename, O_RDONLY);
+	uint16_t fp = fopen(filename);
 	uint16_t len;
-	char *error;
 	if (fp & 0xff00) {
 		len = 0;
 		if ((uint8_t)fp != 0xd7) {
-			explain(error, (uint8_t)fp);
-			die(error);
+			die("file error");
 		}
 	} else {
-		len = fread(destaddress, size, fp);
-		fclose(fp);
+		len = fread(destaddress, size);
+		fclose();
 	}
 	return len;
 }
@@ -363,11 +358,11 @@ void printXMES(uint16_t address) __z88dk_fastcall
 	#endif //RAM_MAPPER
 	{
 		//Print from file
-		uint16_t fp = fopen(FILE_XDB, O_RDONLY);
+		uint16_t fp = fopen(FILE_XDB);
 		if (fp < 0xff00) {
-			fseek(fp, address, SEEK_SET);
-			fread((char*)heap_top, 512, fp);
-			fclose(fp);
+			fseek(address, SEEK_SET);
+			fread((char*)heap_top, 512);
+			fclose();
 			printMsg((char*)heap_top, true);
 		}
 	}
@@ -838,19 +833,19 @@ inline bool gfxPictureShow()
 	uint16_t fp;
 	IMG_CHUNK *chunk = (IMG_CHUNK*)heap_top;
 
-	fp = fopen(FILE_IMG, O_RDONLY);
+	fp = fopen(FILE_IMG);
 	if (fp<0xff00) {
 		uint16_t size;
 
-		fseek(fp, 4, SEEK_SET);							// Skip IMAGE_MAGIC "IMGx"
+		fseek(4, SEEK_SET);								// Skip IMAGE_MAGIC "IMGx"
 		do {
-			size = fread((char*)chunk, 5, fp);			// Read next chunk type
+			size = fread((char*)chunk, 5);				// Read next chunk type
 			if (size & 0xff00) continue;
 
 			//=============================================
 			// Redirect to another picture
 			if (chunk->type==IMG_CHUNK_REDIRECT) {
-				fclose(fp);
+				fclose();
 				gfxPicturePrepare(chunk->chunkSize);
 				return gfxPictureShow();
 			} else
@@ -884,12 +879,12 @@ inline bool gfxPictureShow()
 					if (!(size & 0xff00))
 						setPalette(chunk->data);
 				#else
-					fseek(fp, 32, SEEK_CUR);
+					fseek(32, SEEK_CUR);
 				#endif
 			} else {
 				//=============================================
 				// Picture data chunks
-				fread(chunk->data, chunk->chunkSize, fp);
+				fread(chunk->data, chunk->chunkSize);
 				if (chunk->type==IMG_CHUNK_RAW) {		// Show RAW data
 					copyToVRAM((uint16_t)chunk->data, posVRAM, chunk->chunkSize);
 				} else
@@ -903,7 +898,7 @@ inline bool gfxPictureShow()
 			}
 		} while (!(size & 0xff00));
 
-		fclose(fp);
+		fclose();
 		return true;
 	}
 	return false;
@@ -1038,17 +1033,12 @@ void sfxInit() __naked
  */
 void sfxWriteRegister(uint8_t reg, uint8_t value) __naked
 {
-	reg, value;
+	reg;		// A
+	value;		// L
 	#ifndef DISABLE_SFX
 	__asm
-		pop  af
-		pop  bc
-		push bc
-		push af
-
-		ld  a,c
 		out (0xa0),a
-		ld  a,b
+		ld  a,l
 		out (0xa1),a
 		ret
 	__endasm;
@@ -1065,18 +1055,14 @@ void sfxWriteRegister(uint8_t reg, uint8_t value) __naked
  * @return			none.
  */
 #ifndef DISABLE_BEEP
-void sfxTone(uint8_t duration, uint8_t tone) __naked
+void sfxTone(uint8_t tone, uint8_t duration) __naked
 {
-	duration, tone;
+	tone;		// A
+	duration;	// L
 	__asm
 		push ix
-		ld   ix,#4
-		add  ix,sp
-
-		xor  a
-		ld   d,a				; DE=tone
-		ld   e,0(ix)
-		ld   l,1(ix)			; L=duration
+		ld   e,a				; E=tone
+		ld   d,#0				; DE=0|tone
 
 		ld   ix,#_sfxFreqPSG-48	; DE=get frequency from tone table
 		add  ix,de

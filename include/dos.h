@@ -2,6 +2,7 @@
 #define ____DOS_H____
 
 #include <stdint.h>
+#include "sdcc_compat.h"
 
 
 #define DOSCALL  call 5
@@ -223,38 +224,25 @@ int  getchar(void);
 int  putchar(int c);
 void cputs(char *s);
 int  cprintf(const char *format, ...);
-int  kbhit(void);
+uint8_t kbhit(void);
 
-char  get_current_drive(void);
-char  get_current_directory(char drive, char *path);
-char* getProgramPath(char *path);
-char  get_drive_params(char drive, DPARM_info *param);
-
-uint16_t fopen(char *fn, char mode);
-uint8_t  fclose(char fp);
-uint16_t fcreate(char *fn, char mode, char attributes);
+uint16_t fopen(char *fn);
+uint8_t  fclose();
+uint16_t fcreate(char *fn);
 uint16_t remove(char *file);
-uint16_t fread(char* buf, uint16_t size, char fp);
-uint16_t fwrite(char* buf, uint16_t size, char fp);
-uint16_t fputs(char* str, char fp);
-uint16_t fgets(char* bug, uint16_t size, uint16_t fh);
-uint32_t fseek (char fp, uint32_t offset, char origin);
+uint16_t fread(char* buf, uint16_t size);
+uint16_t fwrite(char* buf, uint16_t size);
+uint16_t fputs(char* str);
+uint16_t fgets(char* str, uint16_t size);
+uint32_t fseek (uint32_t offset, char origin);
 uint16_t filesize(char *fn);
 char     fileexists(char *fn);
 
 char dosver(void);
-int  parse_pathname(char volume_name_flag, char* s);
-void exit(int code);
 void exit0();
-void explain(char* buffer, char error_code);
-char get_env(char* name, char* buffer, char buffer_size);
 
-void set_transfer_address(uint8_t *memaddress);
-char read_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
-char write_abs_sector_drv(uint8_t drv, uint32_t startsec, uint8_t nsec);
-
-void initializeMapper();
-void setMapperPage2(uint8_t page);
-void restoreMapperPage2();
+void initializeMapper() SDCC_STACKCALL;
+void setMapperPage2(uint8_t page) SDCC_STACKCALL;
+void restoreMapperPage2() SDCC_STACKCALL;
 
 #endif //____DOS_H____

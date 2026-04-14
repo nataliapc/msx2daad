@@ -1,43 +1,46 @@
 #include "dos.h"
 
 
-char dosver(void) __naked {
-  __asm
-    push ix
+char dosver(void) __naked
+{
+	__asm
+		push ix
 
-    ld b,  #0x5A      ; magic numbers to detect Nextor
-    ld hl, #0x1234
-    ld de, #0xABCD
-    ld ix, #0
+		ld b,  #0x5A			; magic numbers to detect Nextor
+		ld hl, #0x1234
+		ld de, #0xABCD
+		ld ix, #0
 
-    ld c,#DOSVER
-    DOSCALL
+		ld c,#DOSVER
+		call 0xF37D				; BDOS (upper memory DOSCALL)
 
-    or  a
-    jr  z,check_dos2$
-    ld  b,#0          ; unknown DOS
-    jr  ret_version$
+		or  a
+		jr  z,check_dos1$
+		xor a					; BDOS (upper memory DOSCALL)
+		jr  ret_version$
 
-  check_dos2$:
-    ld  a,b
-    cp  #2
-    jr  nc,check_nextor$
-    ld  b,#1          ; is MSX-DOS 1
+	check_dos1$:
+		ld  a,b					; B<2 --> MSX-DOS 1
+		cp  #2
+		jr  nc,check_dos2nextor$
+		ld  b,#VER_MSXDOS1x		; A = VER_MSXDOS1x (is MSX-DOS 1)
+		jr  ret_version$
 
-  check_nextor$:
-    push ix          ; Nextor: IXh must contain '1'
-    pop  hl
-    ld   a, h
-    dec a
-    jr  nz,ret_version$ 
-    ld  b,#3          ; is NextorDOS
+	check_dos2nextor$:
+		push ix					; Nextor: IXh must contain '1'
+		pop  hl
+		ld   a, h
+		dec a
+		jr  z,is_nextor$
+		ld  a,#VER_MSXDOS2x		; A = VER_MSXDOS2x (is MSXDOS 2)
+		jr  ret_version$
 
-  ret_version$:
-    ld h, #0x00
-    ld l, b
+	is_nextor$:
+		ld  a,#VER_NextorDOS	; A = VER_NextorDOS (is NextorDOS)
 
-    pop ix
-    ret
-  __endasm;
+	ret_version$:
+		pop ix
+		ret
+	__endasm;
 }
 

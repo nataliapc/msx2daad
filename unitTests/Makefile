@@ -1,9 +1,13 @@
 .PHONY: clean test legacy
 
-AS = sdasz80
-AR = sdar
-CC = sdcc
-HEX2BIN = hex2bin
+SDCC_VER := 4.5.0
+DOCKER_IMG = nataliapc/sdcc:$(SDCC_VER)
+DOCKER_RUN = docker run -i --rm -u $(shell id -u):$(shell id -g) -v $(realpath $(CURDIR)/..):/src -w /src/unitTests $(DOCKER_IMG)
+
+AS = $(DOCKER_RUN) sdasz80
+AR = $(DOCKER_RUN) sdar
+CC = $(DOCKER_RUN) sdcc
+HEX2BIN = $(DOCKER_RUN) hex2bin
 
 CXXFLAGS := -DUNIT_TESTS -DLANG_ES -DMSXDOS1 -DMSX2
 OPFLAGS := --opt-code-size
@@ -17,36 +21,37 @@ INCDIR = ../include/
 OBJDIR = ./obj/
 DIR_GUARD=@mkdir -p $(OBJDIR)
 
-EMUSCRIPTS = -script ../emulation/boot.tcl
+EMUSCRIPTS = -script ./emulation/boot.tcl
 
 LIBS := dos.lib vdp.lib utils.lib
-REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel assert.rel daad_condacts.rel) $(addprefix $(LIBDIR), $(LIBS))
+REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel assert.rel daad_condacts.rel) \
+			$(addprefix $(LIBDIR), $(LIBS))
 
-PROGRAMS = $(OBJDIR)condacts.com
+PROGRAMS = condacts.com
 
-all: $(PROGRAMS)
+all: $(addprefix $(OBJDIR), $(PROGRAMS))
 
 $(OBJDIR)%.rel: $(SRCDIR)%.s
 	@echo $(DOS_LIB_SRC)
 	@echo "#### ASM $@"
 	@$(DIR_GUARD)
-	@$(AS) -g -o $@ $^
+	@$(AS) -g -o $@ $^ ;
 
 $(OBJDIR)%.rel: $(SRCDIR)%.c
 	@echo "#### CC $@"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^ ;
 
 $(OBJDIR)%.rel: $(DAADSRCDIR)%.c
 	@echo "#### CC $@"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^ ;
 
 $(OBJDIR)condacts.com: $(REL_LIBS) $(SRCDIR)tests_condacts.c
 	@echo "######## Compiling $@"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^) -o $(subst .com,.ihx,$@)
-	@$(HEX2BIN) -e com $(subst .com,.ihx,$@)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^) -o $(subst .com,.ihx,$@) ;
+	@$(HEX2BIN) -e com $(subst .com,.ihx,$@) ;
 	@echo "**** Copying .COM files to DSK/"
 	@cp $@ dsk/
 

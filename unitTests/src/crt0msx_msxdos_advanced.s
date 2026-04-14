@@ -1,15 +1,18 @@
-	;--- crt0.asm for MSX-DOS - by Konami Man, 11/2004
+	;--- crt0.asm for MSX-DOS - by Konamiman, 11/2004
 	;    Advanced version: allows "int main(char** argv, int argc)",
 	;    the returned value will be passed to _TERM on DOS 2,
 	;    argv is always 0x100 (the startup code memory is recycled).
-	;    Overhead: 120 bytes.
 	;
-	;    Compile programs with --code-loc 0x178 --data-loc X
+	;    Compile programs with --code-loc 0x180 --data-loc X
 	;    X=0  -> global vars will be placed immediately after code
 	;    X!=0 -> global vars will be placed at address X
 	;            (make sure that X>0x100+code size)
 
 	.globl	_main
+
+	.globl  l__INITIALIZER
+	.globl  s__INITIALIZED
+	.globl  s__INITIALIZER
 
 	.area _HEADER (ABS)
 
@@ -18,6 +21,8 @@
 	;--- Step 1: Initialize globals
 
 init:
+	call    gsinit
+
 	;--- Step 2: Build the parameter pointers table on 0x100,
 	;    and terminate each parameter with 0.
 	;    MSX-DOS places the command line length at 0x80 (one byte),
@@ -125,8 +130,7 @@ cont:
 	ld (_heap_top),de
 	pop de
 
-	call gsinit
-	call _main
+	call    _main
 
 	;--- Step 4: Program termination.
 	;    Termination code for DOS 2 was returned on L.
@@ -143,51 +147,31 @@ _crt_exit::
 	;* Place data after program code, and data init code after data
 
 	.area	_CODE
-	.area	_INITIALIZER
-	.area   _GSINIT
-	.area   _GSFINAL
-
+	.area	_HOME
 	.area	_DATA
-	.area	_INITIALIZED
 _heap_top::
 	.dw 0
 
-.area   _GSINIT
-gsinit::
-	; Default-initialized global variables.
-	ld   bc, #l__DATA
-	ld   a, b
-	or   a, c
-	jr   Z, zeroed_data
-	ld   hl, #s__DATA
-	ld   (hl), #0x00
-	dec  bc
-	ld   a, b
-	or   a, c
-	jr   Z, zeroed_data
-	ld   e, l
-	ld   d, h
-	inc  de
-	ldir
-zeroed_data:
-	; Explicitly initialized global variables.
-;	ld   bc, #l__INITIALIZER
-;	ld   a, b
-;	or   a, c
-;	jr   Z, gsinit_next
-;	ld   de, #s__INITIALIZED
-;	ld   hl, #s__INITIALIZER
-;	ldir
-gsinit_next:
-.area   _GSFINAL
-	ret
+	.area	_INITIALIZED
 
+	.area	_HEAP
+_HEAP_start::
+
+	.area	_INITIALIZER
+	.area   _GSINIT
+gsinit::
+	ld	bc,#l__INITIALIZER
+	ld	a,b
+	or	a,c
+	jp	z,gsinext
+	ld	de,#s__INITIALIZED
+	ld	hl,#s__INITIALIZER
+	ldir
+gsinext:
+	.area   _GSFINAL
+	ret
 
 	;* These doesn't seem to be necessary... (?)
 
 	;.area  _OVERLAY
-	;.area	_HOME
 	;.area  _BSS
-	.area	_HEAP
-
-_HEAP_start::

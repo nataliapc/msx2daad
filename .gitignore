@@ -1,6 +1,7 @@
-.vscode/
+.vscode
 .claude
-libs/
+.codex
+libs/*.lib
 obj/
 img/
 otros/
@@ -17,7 +18,7 @@ dsk/*.DDB
 dsk/savegame.*
 dsk/LOADING.IM*
 dsk_orig/*.*
-msx2daad.*
+dsk/msx2daad.*
 dskdos/*.*
 *.BAT
 *.SCE

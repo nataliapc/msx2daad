@@ -6,44 +6,34 @@
 ; In:   A+DE    VRAM address
 ; Used: A,C,D
 ;
-_setVDP_Read::
-        pop     af
-        pop     bc
-        pop     de
-        push    de
-        push    bc
-        push    af
-        ld      a,c
+_setVDP_Read::	; IN: HL+DE -> VRAM address (32 bits)
+	ld      a, e
+	ex      de, hl
 setVDP_Read::
-        ld      c,#0
-        jr      .jmp1
-        
-_setVDP_Write::
-        pop     af
-        pop     bc
-        pop     de
-        push    de
-        push    bc
-        push    af
-        ld      a,c
+	ld      c,#0
+	jr      .jmp1
+	
+_setVDP_Write::	; IN: HL+DE -> VRAM address (32 bits)
+	ld      a, e
+	ex      de, hl
 setVDP_Write::
-        ld      c,#64
+	ld      c,#64
 .jmp1:
-        rlc     d
-        rla
-        rlc     d
-        rla
-        srl     d
-        srl     d
-        di
-        out     (0x99), a
-        ld      a,#(14+128)
-        out     (0x99), a
-        ld      a,e
-        nop
-        out     (0x99),a
-        ld      a,d
-        or      c
-        ei
-        out     (0x99),a
-        ret
+	rlc     d
+	rla
+	rlc     d
+	rla
+	srl     d
+	srl     d
+	di
+	out     (0x99), a
+	ld      a,#(14+128)
+	out     (0x99), a
+	ld      a,e
+	nop
+	out     (0x99),a
+	ld      a,d
+	or      c
+	ei
+	out     (0x99),a
+	ret

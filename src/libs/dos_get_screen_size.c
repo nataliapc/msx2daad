@@ -1,7 +1,8 @@
 #include "dos.h"
 
 
-char get_screen_size(void) __naked {
+char get_screen_size(void) __naked
+{
   __asm
     push ix
 
@@ -9,8 +10,8 @@ char get_screen_size(void) __naked {
 
     ld c,#IOCTL
     DOSCALL
-    ld l, e
 
+    ld a, e
     pop ix
     ret
   __endasm;

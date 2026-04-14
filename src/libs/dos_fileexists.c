@@ -3,9 +3,9 @@
 
 char fileexists(char *filename)
 {
-	uint16_t fp = fopen(filename, O_RDONLY);
+	uint16_t fp = fopen(filename);
 	if (fp<0xff00) {
-		fclose(fp);
+		fclose();
 		return 1;
 	}
 	return 0;

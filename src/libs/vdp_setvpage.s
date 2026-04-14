@@ -6,12 +6,7 @@
 .include "vdp.s"
 
 _setVPage::
-		pop  af
-		pop  bc
-		push bc
-		push af
-		ld   a,c
-
+		; A = page
 setVPage::
 		sla  a
 		sla  a

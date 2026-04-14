@@ -1,18 +1,15 @@
 #include "dos.h"
 
 
-int kbhit(void) __naked
+uint8_t kbhit(void) __naked
 {
-  __asm
-	push af
-	push bc
+	__asm
+		push bc
 
-	ld c,#CONST
-	DOSCALL
-	ld h,#0
-
-	pop bc
-	pop af
-	ret
-  __endasm;
+		ld c,#CONST
+		DOSCALL
+		
+		pop bc
+		ret
+	__endasm;
 }

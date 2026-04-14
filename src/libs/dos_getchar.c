@@ -1,27 +1,22 @@
 #include "dos.h"
 
-
-int getchar(void) __naked {
-#ifdef MSX2
+/*
+    sdcccall(1)
+    IN:  none
+    OUT: DE
+*/
+int getchar(void) __naked
+{
   __asm
+    push ix
 
     ld c,#INNOE
-    push ix
     DOSCALL
+
     pop  ix
-    ld h, #0x00
+    ld d, #0x00
+    ld e, l
 
     ret
   __endasm;
-#endif
-#ifdef CPM
-  __asm
-
-    ld c,#CONIN
-    DOSCALL
-    ld h, #0x00
-
-    ret
-  __endasm;
-#endif
 }

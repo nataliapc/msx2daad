@@ -1,20 +1,21 @@
 #include "dos.h"
 
-
-int putchar(int c) __naked {
+/*
+    sdcccall(1)
+    IN:  HL
+    OUT: DE
+*/
+int putchar(int c) __naked __sdcccall(1)
+{
   c;
   __asm
-    pop af
-    pop de
-    push de
-    push af
+    push hl
+    ld e,l
+    ld c,#CONOUT
 
     ld a,e
     cp #0x0a
-    
-    ld c,#CONOUT
     jp nz,jumpPutchar$
-
 
 #if defined(DEBUG) || defined(TEST)
     push af            ; to use with openmsx and '-ext debugdevice' extension
@@ -39,6 +40,7 @@ jumpPutchar$:
     pop af
 #endif
 
+    pop  de
     ret
   __endasm;
 }
