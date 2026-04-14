@@ -6,14 +6,24 @@ uint16_t remove(char *file) __naked
 	file;		// HL
 	__asm
 		push ix
-		ex de, hl
+		push hl
+		call dos_initializeFCB
 
-		ld c,#DELETE
+		pop  de
+		call dos_copyFilenameToFCB
+
+		ld   de,#SYSFCB
+		ld   c,#FDEL
 		DOSCALL
 
-		ld d, #0xff
+		ld de, #0					; Default return value OK
+		or a
+		jr z,remove_cont$
+
+		dec d						; Return ERR result
 		ld e, a
 
+	remove_cont$:
 		pop ix
 		ret
 	__endasm;

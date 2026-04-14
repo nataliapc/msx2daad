@@ -20,8 +20,9 @@ uint16_t filesize(char *fn) __naked
 
 		or a                          ; Return result
 		jr z,fsize_noerror$
-		ld hl, #0xffd7                ; Set return value ERR
+		ld de, #0xffd7                ; Set return value ERR
 		jp fsize_cont$
+
 	fsize_noerror$:
 		ld hl,(SYSFCB+16)             ; Set return value OK with filesize
 		push hl

@@ -5,23 +5,21 @@
 
 
 static const char LOG_FILE[] = "tests.txt";
-static bool  logFileCreated;
 static char *_writePtr;
 
 
-// Append [s, s+len) to tests.txt on the current drive. First call creates the
-// file (truncating any previous one); subsequent calls open and seek to end.
+// Append [s, s+len) to tests.txt on the current drive.
+// Tries fopen first (append to existing file); falls back to fcreate if not found.
 static void _logAppend(char *s, uint16_t len)
 {
 	uint16_t fh;
 	if (!len) return;
 
-	if (!logFileCreated) {
-		fh = fcreate((char*)LOG_FILE);
-		if (fh < 0xff00) logFileCreated = true;
+	fh = fopen((char*)LOG_FILE);
+	if (fh < 0xff00) {
+		fseek(0L, SEEK_END);
 	} else {
-		fh = fopen((char*)LOG_FILE);
-		if (fh < 0xff00) fseek(0L, SEEK_END);
+		fh = fcreate((char*)LOG_FILE);
 	}
 	if (fh < 0xff00) {
 		fwrite(s, len);

@@ -32,7 +32,7 @@
 
 #define FOPEN   0x0F		// Open file (FCB)				CPM MSX1
 #define FCLOSE  0x10		// Close file (FCB)				CPM MSX1
-#define FDELETE 0x13		// Delete file (FCB)			CPM MSX1
+#define FDEL    0x13		// Delete file (FCB)			CPM MSX1
 #define RDSEQ   0x14		// Sequential read (FCB)		CPM MSX1
 #define WRSEQ   0x15		// Sequential write FCB)		CPM MSX1
 #define FMAKE   0x16		// Create file (FCB)			CPM MSX1

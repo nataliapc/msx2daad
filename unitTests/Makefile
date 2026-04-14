@@ -24,10 +24,12 @@ DIR_GUARD=@mkdir -p $(OBJDIR)
 EMUSCRIPTS = -script ./emulation/boot.tcl
 
 LIBS := dos.lib vdp.lib utils.lib
-REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel assert.rel daad_condacts.rel) \
-			$(addprefix $(LIBDIR), $(LIBS))
+REL_LIBS     := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel assert.rel daad_condacts.rel) \
+                $(addprefix $(LIBDIR), $(LIBS))
+DOS_REL_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel assert.rel) \
+                $(addprefix $(LIBDIR), $(LIBS))
 
-PROGRAMS = condacts.com
+PROGRAMS = condacts.com dos.com
 
 all: $(addprefix $(OBJDIR), $(PROGRAMS))
 
@@ -55,8 +57,16 @@ $(OBJDIR)condacts.com: $(REL_LIBS) $(SRCDIR)tests_condacts.c
 	@echo "**** Copying .COM files to DSK/"
 	@cp $@ dsk/
 
+$(OBJDIR)dos.com: $(DOS_REL_LIBS) $(SRCDIR)tests_dos.c
+	@echo "######## Compiling $@"
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(subst .com,.c,$^) -o $(subst .com,.ihx,$@) ;
+	@$(HEX2BIN) -e com $(subst .com,.ihx,$@) ;
+	@echo "**** Copying .COM files to DSK/"
+	@cp $@ dsk/
+
 clean:
-	@rm -f dsk/condacts.com dsk/tests.txt
+	@rm -f dsk/condacts.com dsk/dos.com dsk/tests.txt
 	@rm -f *.com *.asm *.lst *.sym *.bin *.ihx *.lk *.map *.noi *.rel
 	@rm -rf $(OBJDIR)
 
