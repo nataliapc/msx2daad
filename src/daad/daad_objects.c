@@ -25,8 +25,8 @@ uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
 		if (noun!=NULLWORD && objects[i].nounId==noun && 
 		   (adjc==NULLWORD || objects[i].adjectiveId==adjc) && 							// If 'adjc' not needed or 'adjc' matchs
 		   ((location==LOC_HERE || objects[i].location==location) ||					// It's in anywhere or placed in 'location'...
-		    (location==LOC_CONTAINER && location<hdr->numObjDsc && 
-										objects[location].attribs.mask.isContainer)))	// ...or if it's in a container
+		    (location==LOC_CONTAINER && objects[i].location<hdr->numObjDsc &&
+										objects[objects[i].location].attribs.mask.isContainer)))	// ...or if it's inside a container
 		{
 			return i;
 		}

@@ -1,4 +1,13 @@
-del TESTS.TXT
 ccc /r
+del tests.txt
 dos
-condacts
+condact1
+condact2
+condact3
+condact4
+condact5
+condact6
+objwght
+daadobjs
+gettoken
+initobj

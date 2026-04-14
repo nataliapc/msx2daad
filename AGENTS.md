@@ -1,7 +1,7 @@
 # AGENTS.md — MSX2DAAD
 
 > DAAD text-adventure interpreter for MSX2/MSX2+, written in C and Z80 assembly.
-> Compiled with SDCC 4.1.0 running inside Docker. Target: MSX-DOS `.com` executables.
+> Compiled with SDCC 4.5.0 running inside Docker. Target: MSX-DOS `.com` executables.
 
 ## Self-maintenance rule
 
@@ -11,8 +11,9 @@ Any change to the repository that affects build commands, project structure, con
 
 ## Build & toolchain
 
-- **Compiler**: SDCC 4.1.0 (`sdasz80`, `sdar`, `sdcc`) — runs inside Docker via `docker run`.
-- **Docker image**: `nataliapc/sdcc:4.1.0`. The Makefile defines `DOCKER_RUN` which mounts the project root at `/src`. Change `SDCC_VER` in the Makefile to use other SDCC versions.
+- **Compiler**: SDCC 4.5.0 (`sdasz80`, `sdar`, `sdcc`) — runs inside Docker via `docker run`.
+- **Docker image**: `nataliapc/sdcc:4.5.0`. The Makefile defines `DOCKER_RUN` which mounts the **project root** (`msx2_daad/`) at `/src` with working directory set to the relevant subdirectory. Change `SDCC_VER` in the Makefile to use other SDCC versions.
+- **Calling convention**: SDCC 4.5.0 uses `__sdcccall(1)` by default — 8-bit return in `A`, 16-bit in `DE`, `uint32_t` in `E:D:L:H`. All `__naked` functions in `src/libs/` have been rewritten for this convention (see PRP007).
 - **Post-link**: `hex2bin` converts `.ihx` → `.com`; binary is copied to `dsk/`.
 - **Host tools**: `gcc` (for `bin/testdaad`), `php` (for `bin/precomp.php`, `bin/imgwizard.php`).
 - Docker must be running before any `make` target. No `docker-compose` is used — the Makefile calls `docker run` directly.
@@ -31,11 +32,12 @@ make bin/testdaad       # Compile the host-side integration test tool (GCC)
 ### Unit tests
 
 ```bash
-cd unitTests && make all    # Compile condact unit tests (requires SDCC locally, not Dockerized)
-cd unitTests && make test   # Run tests in openMSX (machine: turbor)
+cd unitTests && make all    # Compile all 11 test .com binaries (via Docker)
+cd unitTests && make test   # Run tests in openMSX (machine: turbor), then print summary
+cd unitTests && make clean  # Remove obj/, dsk/*.com, dsk/tests.txt
 ```
 
-**Gotcha**: The `unitTests/Makefile` invokes `sdcc`/`sdasz80` directly (not via Docker), so SDCC must be available in `$PATH` for unit test builds.
+`unitTests/Makefile` uses Docker (same `DOCKER_RUN` pattern as the main Makefile). No local SDCC install required.
 
 ---
 
@@ -50,7 +52,7 @@ Almost everything is selected via `-D` flags in `CXXFLAGS`. The Makefile default
 | Flag | Purpose |
 |------|---------|
 | `-DMSX2` / `-DCPM` / `-DPC_TXT` | Target platform (mutually exclusive) |
-| `-DMSXDOS1` / `-DMSXDOS2` | MSX-DOS version |
+| `-DMSXDOS1` | MSX-DOS version (MSXDOS2 removed — FCB/DOS1 API only) |
 | `-DLANG_EN` / `-DLANG_ES` | Language (English or Spanish) |
 | `-DSCREEN=5\|6\|7\|8\|10\|12` | MSX screen mode (default 8) |
 | `-DFONTWIDTH=6\|8` | Font width in pixels |
@@ -69,7 +71,6 @@ Override at invocation: `make CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=5" c
 
 ```
 src/msx2daad.c              # Entry point: main()
-src/daad.c                  # Core engine: init, main loop, parser, text rendering
 src/daad_condacts.c         # All 128 DAAD condacts (dispatch table + implementations)
 src/daad_global_vars.c      # Global state definitions
 src/daad_platform_msx2.c    # MSX2 platform layer (GFX, SFX, filesystem, keyboard)
@@ -77,23 +78,61 @@ src/daad_platform_pctxt.c   # PC text-mode platform (host debugging)
 src/daad_platform_cpm.c     # CP/M platform
 src/heap.c                  # Linear bump allocator (custom malloc/free for Z80)
 src/crt0msx_msxdos_advanced.s  # CRT0 startup (Z80 asm, code at 0x0180)
+src/daad/                   # Engine split into testable translation units
+    daad_condacts.c         #   (symlink/copy, same as src/daad_condacts.c)
+    daad_getObjectWeight.c  #   getObjectWeight() — pure logic, no platform calls
+    daad_getToken.c         #   getToken() — DDB token decompression
+    daad_global_vars.c      #   Global state definitions
+    daad_init.c             #   initDAAD(), initFlags(), initObjects()
+    daad_mainLoop.c         #   mainLoop() — game loop entry point
+    daad_msg.c              #   Message extraction and printing
+    daad_objects.c          #   getObjectId(), referencedObject()
+    daad_parser_sentences.c #   parser(), populateLogicalSentence(), etc.
+    daad_print.c            #   printChar(), printMsg(), printOutMsg(), etc.
+    daad_prompt.c           #   prompt() — user input handler
+    daad_transcript.c       #   transcript_flush(), transcript_char()
+    daad_utils.c            #   errorCode(), waitForTimeout()
 src/libs/                   # Low-level libraries → compiled into dos.lib, vdp.lib, utils.lib
-    dos_*.c / dos_*.s       #   MSX-DOS file operations
+    dos_*.c / dos_*.s       #   MSX-DOS file operations (FCB/DOS1 API only)
     vdp_*.c / vdp_*.s       #   VDP (TMS9938) BitBlt, palette, screen ops
     utils_*.c / utils_*.s   #   Decompression (Pletter/RLE/ZX7), string ops, mouse
 
 include/                    # Headers
     daad.h                  #   Core types: DDB_Header, PROCstack, Window, Object, flags[256]
     daad_platform_api.h     #   Platform selector (#ifdef → includes correct platform header)
-    daad_condacts.h         #   Condact function declarations
+    daad_condacts.h         #   Condact function declarations + NUM_PROCS
     daad_defines.h          #   Auto-generated by precomp.php (condact exclusion #defines)
     dos.h, vdp.h, heap.h   #   Library APIs
     msx_const.h             #   MSX BIOS constants (~1700 lines)
+    sdcc_compat.h           #   SDCC 4.5.0 compatibility helpers
 
-unitTests/                  # Condact unit tests (SDCC → openMSX)
+unitTests/                  # Unit test suite — 11 .com binaries, 323 tests
+    Makefile                #   Dockerized build; produces .com → dsk/
+    dsk/                    #   Test disk image: AUTOEXEC.BAT + .com files + tests.txt output
+    src/
+        condacts_stubs.h/c  #   Shared stubs for condact tests (globals + platform mocks)
+        daad_stubs.h/c      #   Shared stubs for daad engine tests
+        tests_dos.c         #   23 tests for dos.lib
+        tests_condacts1.c   #   36 tests: location + object location condacts
+        tests_condacts2.c   #   61 tests: flag/parser/misc conditions
+        tests_condacts3.c   #   62 tests: object manipulation condacts
+        tests_condacts4.c   #   44 tests: object data + flag ops + movement
+        tests_condacts5.c   #   22 tests: window + display condacts
+        tests_condacts6.c   #   17 tests: I/O + control flow condacts
+        tests_daad_getObjectWeight.c  # 5 tests: weight logic incl. containers
+        tests_daad_objects.c          # 8 tests: getObjectId + referencedObject
+        tests_daad_getToken.c         # 3 tests: DDB token decompression
+        tests_daad_init.c             # 6 tests: initObjects + initFlags
+
+docs/                       # DAAD official documentation (markdown)
+    DAAD_Manual_1991.md     #   Original manual — definitive condact spec
+    DAAD_Manual_2018.md     #   2018 revision (tools/distribution focus)
+    Flags_for_Quill_PAWS_SWAN_and_DAAD.md  # System flag reference
+
 bin/                        # Tools: imgwizard.php, precomp.php, testdaad.c, dsktool, dsk2rom
 dsk/                        # Runtime disk image contents (DAAD.DDB, fonts, images, MSX-DOS)
 emulation/                  # openMSX Tcl scripts (boot.tcl, info_daad.tcl)
+plan/                       # PRP planning documents (PRP001–PRP008)
 ```
 
 ---
@@ -105,6 +144,7 @@ emulation/                  # openMSX Tcl scripts (boot.tcl, info_daad.tcl)
 - **Memory model**: Code starts at `0x0180`, data at `0`. Custom CRT0 (no standard C library). Custom linear bump allocator in `heap.c` — no realloc, no free list.
 - **Image format**: Custom `.IMx` chunked format (palette, raw, RLE, Pletter compressed). Created by `bin/imgwizard.php`.
 - **`#ifdef` heavy**: Nearly every source file uses conditional compilation for platform, screen mode, language, and debug features. Be careful with changes — test the specific variant you're modifying.
+- **MSX-DOS1 only**: `MSXDOS2` support was removed in PRP007. All filesystem calls use FCB-based DOS1 API.
 
 ---
 
@@ -120,10 +160,39 @@ emulation/                  # openMSX Tcl scripts (boot.tcl, info_daad.tcl)
 
 ## Testing
 
-- **Unit tests**: `unitTests/src/tests_condacts.c` (~5600 lines) tests every condact with mock DDB data. Custom assertion framework (`assert.h`). Compiled for Z80, run on openMSX (turbor machine).
-- **Integration tests**: `bin/testdaad` (host C program) communicates with openMSX via pipes using script files with `>` (send) and `<` (expect) directives. Requires `-DTEST` build.
-- **Manual testing**: `make test` boots openMSX with `dsk/` as disk A. The emulator runs `AUTOEXEC.BAT` which launches `msx2daad`.
-- There is no CI pipeline. All testing is local.
+### Unit tests (primary)
+
+**11 binaries, 323 tests, run on openMSX (turbor machine):**
+
+| Binary | Tests | Coverage |
+|--------|-------|----------|
+| `dos.com` | 23 | dos.lib file I/O (MSX-DOS1 FCB API) |
+| `condact1–6.com` | 242 | All 128 condacts (292 OK, 31 TODO, 0 FAIL) |
+| `objwght.com` | 5 | `getObjectWeight()` incl. container + magic bag |
+| `daadobjs.com` | 8 | `getObjectId()`, `referencedObject()` |
+| `gettoken.com` | 3 | `getToken()` DDB token decompression |
+| `initobj.com` | 6 | `initObjects()`, `initFlags()` |
+
+Results are written to `unitTests/dsk/tests.txt`. The Makefile prints a summary after openMSX exits:
+```
+OK: 292 / 323  |  FAIL: 0 / 323  |  TODO: 31 / 323
+```
+
+**Stubs architecture**: Two independent stubs pairs:
+- `condacts_stubs.h/c` — for condact tests; links real `daad_objects.rel` + `daad_getObjectWeight.rel`
+- `daad_stubs.h/c` — for engine function tests; no `daad_condacts.rel` (avoids circular deps)
+
+All tests validated against `docs/DAAD_Manual_1991.md`, `docs/Flags_for_Quill_PAWS_SWAN_and_DAAD.md`, and `wiki/MSX2DAAD-Wiki:-DAAD-Condacts:-a-quick-reference.md`.
+
+### Integration tests
+
+`bin/testdaad` (host C program) communicates with openMSX via pipes using script files with `>` (send) and `<` (expect) directives. Requires `-DTEST` build.
+
+### Manual testing
+
+`make test` boots openMSX with `dsk/` as disk A. The emulator runs `AUTOEXEC.BAT` which launches `msx2daad`.
+
+There is no CI pipeline. All testing is local.
 
 ---
 
@@ -136,9 +205,38 @@ emulation/                  # openMSX Tcl scripts (boot.tcl, info_daad.tcl)
 - `include/daad_defines.h` is auto-generated — do not edit manually; run `make precomp` after changing `dsk/DAAD.DDB`.
 - Release builds (`make package`) produce 14 `.com` variants in `package/` — this takes a long time.
 - The current version is `1.5.1` (set in `Makefile` line 23).
+- `unitTests/dsk/tests.txt` uses `\n\r` line endings (MSX output). Grep patterns must NOT use `^` anchor for lines after the first — use bare patterns like `### TODO:` not `^### TODO:`.
 
 ---
 
-## Agent skills
+## Known bugs / limitations
 
-- **`daad-system`** (`.agents/skills/daad-system/SKILL.md`): Technical reference for the DAAD adventure authoring system. Covers DDB binary format, all 128 condacts, system flags, object model, DSF source format, DRC compiler, MALUVA extensions, and engine architecture. Load this skill when working on interpreter logic, condact behaviour, DDB parsing, or adventure source code.
+- **`AUTOT` container search** was broken until PRP008: `getObjectId(LOC_CONTAINER=256)` always failed because `256 < numObjDsc` (uint8) is always false. Fixed in `src/daad/daad_objects.c` — now checks `objects[i].location < numObjDsc` instead.
+- **`PAUSE`, `END`, `EXIT 0`** are not unit-testable: PAUSE loops on `getTime()` (always 0 in stubs), END/EXIT 0 call `die()` which terminates the process.
+- **`DOALL`** requires a real process table to test meaningfully.
+- **`MOVE`** requires Verbs/Connections DDB tables to be mocked.
+
+---
+
+## DAAD knowledge sources
+
+When working on interpreter logic, condact behaviour, DDB format, flags, or adventure authoring, consult these sources in order of authority:
+
+### Primary spec (definitive)
+| File | Content |
+|------|---------|
+| `docs/DAAD_Manual_1991.md` | Original DAAD manual — authoritative spec for all 128 condacts, system messages, flag semantics, object model, process tables |
+| `docs/Flags_for_Quill_PAWS_SWAN_and_DAAD.md` | Complete flag reference (0–255): name, initial value, purpose for every system flag |
+| `docs/DAAD_Manual_2018.md` | 2018 revision by Tim Gilberts & Stefan Vogt — tool workflows, platform notes, known issues; condact spec unchanged from 1991 |
+
+### MSX2-specific wiki
+| File | Content |
+|------|---------|
+| `wiki/MSX2DAAD-Wiki:-DAAD-Condacts:-a-quick-reference.md` | Quick reference for all condacts with MSX2 notes; use to cross-check 1991 manual |
+| `wiki/MSX2DAAD-Wiki:-Understanding-DSF-file-format.md` | DDB binary format: header layout, section offsets, object attributes, token encoding |
+| `wiki/MSX2DAAD-Wiki:-About-DAAD.md` | Project overview and architecture |
+| `wiki/MSX2DAAD-Wiki:-Using-DRC.md` | DRC compiler usage |
+| `wiki/MSX2DAAD-Wiki:-MSX2DAAD features-and-limits.md` | MSX2-specific extensions and limits |
+
+### Agent skill
+- **`daad-system`** (`.agents/skills/daad-system/SKILL.md`): Structured technical reference — DDB binary format, all 128 condacts, system flags, object model, DSF source format, DRC compiler, MALUVA extensions, engine architecture. Load this skill for any task involving interpreter logic, condact behaviour, DDB parsing, or adventure source code.
