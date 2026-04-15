@@ -5,7 +5,8 @@
 - **Ficheros afectados**: `unitTests/src/tests_condacts1.c`, `unitTests/src/tests_condacts3.c`, `unitTests/src/tests_condacts4.c`, `unitTests/src/tests_daad_getObjectWeight.c`
 - **Severidad**: Mejora de calidad — sin cambios en producción
 - **Fecha**: 2026-04-15
-- **Estado**: Pendiente ⏳
+- **Estado**: Completado ✅
+- **Commits**: `8e2e6bd` (+48 tests), staged (+2 tests WEIGH)
 
 ---
 
@@ -203,7 +204,10 @@ Cada condact AUTO* solo tiene test del primer caso en su orden de prioridad. Fal
 | `tests_condacts3.c` | 2 | AUTOR: carried (no worn), no encontrado |
 | `tests_condacts3.c` | 2 | AUTOP: worn, here |
 | `tests_condacts3.c` | 2 | AUTOT: worn, here |
-| **Total** | **37** | |
+| `tests_condacts4.c` | 6 | WEIGH: container+contents, cap 255, empty container, NOT_CREATED, nested, location irrelevant |
+| `tests_condacts4.c` | 2 | WEIGH (adicionales): container inside NOT_CREATED outer container, worn object |
+| `tests_daad_getObjectWeight.c` | 5 | getObjectWeight: NULLWORD vacío, NULLWORD+container, magic bag, empty container, nested |
+| **Total** | **50** | |
 
 ---
 
@@ -259,7 +263,7 @@ void test_PRESENT_not_created()
 
     // BDD given player at loc 5 and object 1 does not exist
     flags[fPlayer] = 5;
-    objects[1].location = LOC_NOT_CREATED;
+    objects[1].location = LOC_NOTCREATED;
 
     // BDD when checking PRESENT 1
     static const char proc[] = { _PRESENT, 1, 255 };
@@ -355,7 +359,7 @@ void test_ABSENT_not_created()
     beforeEach();
 
     flags[fPlayer] = 5;
-    objects[1].location = LOC_NOT_CREATED;
+    objects[1].location = LOC_NOTCREATED;
 
     static const char proc[] = { _ABSENT, 1, 255 };
     do_action(proc);
@@ -408,7 +412,7 @@ void test_WORN_not_created()
     const char *_func = __func__;
     beforeEach();
 
-    objects[1].location = LOC_NOT_CREATED;
+    objects[1].location = LOC_NOTCREATED;
 
     static const char proc[] = { _WORN, 1, 255 };
     do_action(proc);
@@ -437,7 +441,7 @@ void test_NOTWORN_not_created()
     const char *_func = __func__;
     beforeEach();
 
-    objects[1].location = LOC_NOT_CREATED;
+    objects[1].location = LOC_NOTCREATED;
 
     static const char proc[] = { _NOTWORN, 1, 255 };
     do_action(proc);
@@ -470,7 +474,7 @@ void test_CARRIED_not_created()
     const char *_func = __func__;
     beforeEach();
 
-    objects[1].location = LOC_NOT_CREATED;
+    objects[1].location = LOC_NOTCREATED;
 
     static const char proc[] = { _CARRIED, 1, 255 };
     do_action(proc);
@@ -499,7 +503,7 @@ void test_NOTCARR_not_created()
     const char *_func = __func__;
     beforeEach();
 
-    objects[1].location = LOC_NOT_CREATED;
+    objects[1].location = LOC_NOTCREATED;
 
     static const char proc[] = { _NOTCARR, 1, 255 };
     do_action(proc);
@@ -546,9 +550,9 @@ void test_ISAT_loc_not_created()
     const char *_func = __func__;
     beforeEach();
 
-    objects[1].location = LOC_NOT_CREATED;
+    objects[1].location = LOC_NOTCREATED;
 
-    static const char proc[] = { _ISAT, 1, LOC_NOT_CREATED, 255 };
+    static const char proc[] = { _ISAT, 1, LOC_NOTCREATED, 255 };
     do_action(proc);
 
     ASSERT(checkEntry, ERROR);
@@ -1055,6 +1059,8 @@ La implementación (`do_WEIGH`) delega en `getObjectWeight(objno, false)` y alma
 | `test_WEIGH_not_created_object` | Objeto con `location=NOT_CREATED`, peso=7 → `flagno=7` | L.1447: _"The true weight of Object objno. is calculated"_ — el campo `.weight` existe independientemente del estado de creación |
 | `test_WEIGH_nested_containers` | A(w=2) → B dentro de A(w=2, contenedor) → C dentro de B(w=2) → `flagno=6` | L.1448: _"nested containers stop adding their contents after **ten levels**"_ |
 | `test_WEIGH_location_irrelevant` | Objeto portado (`LOC_CARRIED`, w=5) → `flagno=5` | L.1447: WEIGH calcula el peso del objeto, no considera su localización |
+| `test_WEIGH_container_inside_notcreated_container` | Contenedor (w=50) cuyo `.location` apunta a índice de un contenedor NOT_CREATED, con item dentro (w=1) → `flagno=51` | L.1447: WEIGH no filtra por `.location` del objeto raíz; gap detectado revisando DSF real (ver escenario screenshot) |
+| `test_WEIGH_worn_object` | Objeto worn (`LOC_WORN`, w=7) → `flagno=7` | L.1447: `.location` irrelevante; complementa `test_WEIGH_location_irrelevant` que solo cubría `LOC_CARRIED` |
 
 #### En `tests_daad_getObjectWeight.c` — función `getObjectWeight`
 
@@ -1154,7 +1160,7 @@ void test_WEIGH_not_created_object()
     // BDD given obj3 with location=NOT_CREATED but weight field=7
     // Spec does not filter by location; WEIGH reads the weight field directly.
     // A destroyed object still has its weight in the object table.
-    objects[3].location = LOC_NOT_CREATED;
+    objects[3].location = LOC_NOTCREATED;
     objects[3].attribs.mask.weight = 7;
 
     // BDD when WEIGH 3 100
@@ -1376,23 +1382,28 @@ void test_getObjectWeight_nested_containers()
 
 ---
 
-## 7. Impacto esperado
+## 7. Resultado final
 
-| Fichero | Tests actuales | Tests nuevos | Total esperado |
-|---------|---------------|-------------|----------------|
+| Fichero | Tests base | Tests añadidos | Total real |
+|---------|-----------|---------------|------------|
 | `condact1.com` | 36 | +25 | **61** |
 | `condact3.com` | 62 | +12 | **74** |
-| `condact4.com` | 44 | +6 | **50** |
+| `condact4.com` | 44 | +6 +2 | **52** |
 | `objwght.com` | 5 | +5 | **10** |
-| **Suite total** | **323** | **+48** | **~371** |
+| **Suite total** | **323** | **+50** | **373** |
 
-No se espera ningún cambio en el código de producción. Si algún test falla, señalará un bug en la implementación del condact correspondiente.
+```
+OK:    342 / 373
+FAIL:    0 / 373
+TODO:   31 / 373
+```
+
+Los 2 tests adicionales de WEIGH (`test_WEIGH_container_inside_notcreated_container` y `test_WEIGH_worn_object`) se añadieron tras identificar gaps adicionales al revisar un DSF real que usaba WEIGH sobre un contenedor anidado dentro de un contenedor NOT_CREATED y sobre un objeto worn.
 
 ---
 
 ## 8. Notas de implementación
 
-- La constante `LOC_NOT_CREATED` debe estar disponible en `condacts_stubs.h` (verificar que `NOT_CREATED=252` está definido o usar el valor numérico directamente).
 - En los tests de contenedor, `objects[0]` se evita como contenedor porque `daad_beforeEach()` inicializa todas las `.location` a 0, lo que haría que todos los objetos parecieran estar dentro de obj0. Usar `objects[1]` o superior.
 - El test `test_AUTOG_priority_here_over_carried` necesita dos objetos con el mismo `nounId`; verificar que `getObjectId` con prioridad HERE los distingue correctamente (cobertura del bug fix de PRP008).
 - Los mensajes SM esperados para AUTO* se verifican consultando la tabla de mensajes del sistema en la spec (sección "System Messages").

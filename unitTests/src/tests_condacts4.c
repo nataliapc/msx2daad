@@ -1126,6 +1126,67 @@ void test_WEIGH_location_irrelevant()
 	SUCCEED();
 }
 
+// Tests WEIGH - container inside NOT_CREATED outer container, with item inside
+// Mirrors the screenshot DSF test scenario:
+//   obj1 (outer container, NOT_CREATED, w=1)
+//   obj3 (inner container, location=1=inside obj1, w=50) <- object being weighed
+//   obj0 (item, location=3=inside obj3, w=1)
+//   WEIGH 3 -> 51  (obj3.w + obj0.w, regardless of obj3 being inside NOT_CREATED container)
+// Spec (Manual 1991 L.1447): "The true weight of Object objno. is calculated
+//   (i.e. if it is a container, any objects inside have their weight added)"
+//   WEIGH does not filter by the weighed object's own .location.
+void test_WEIGH_container_inside_notcreated_container()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given:
+	//   obj1 = outer container, LOC_NOTCREATED (invisible in game world), weight=1
+	//   obj3 = inner container, location=1 (inside obj1), weight=50
+	//   obj0 = item, location=3 (inside obj3), weight=1
+	objects[1].location = LOC_NOTCREATED;
+	objects[1].attribs.mask.isContainer = 1;
+	objects[1].attribs.mask.weight = 1;
+	objects[3].location = 1;	// inside NOT_CREATED container obj1
+	objects[3].attribs.mask.isContainer = 1;
+	objects[3].attribs.mask.weight = 50;
+	objects[0].location = 3;	// inside container obj3
+	objects[0].attribs.mask.weight = 1;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 51 (obj3.weight=50 + obj0.weight=1)
+	//     obj3.location=1 (inside NOT_CREATED container) is irrelevant to WEIGH (Manual L.1447)
+	ASSERT_EQUAL(flags[100], 51, "WEIGH must sum container+contents even when the container is inside a NOT_CREATED outer container");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Tests WEIGH - worn object: location LOC_WORN does not affect the result
+// Complements test_WEIGH_location_irrelevant (which only covers LOC_CARRIED).
+// Mirrors the second WEIGH in the screenshot: obj2 worn, weight=1 -> flag=1.
+// Spec (Manual 1991 L.1447): WEIGH reads .weight field; no location filtering.
+void test_WEIGH_worn_object()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj3 worn (LOC_WORN), weight=7
+	objects[3].location = LOC_WORN;
+	objects[3].attribs.mask.weight = 7;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 7 (LOC_WORN does not affect WEIGH result) (Manual L.1447)
+	ASSERT_EQUAL(flags[100], 7, "WEIGH result must be independent of worn status");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
 // =============================================================================
 // Tests WHATO - search priority: CARRIED before HERE
 void test_WHATO_priority_carried_over_here()
@@ -1328,6 +1389,8 @@ int main(char** argv, int argc)
 	test_WEIGH_not_created_object();
 	test_WEIGH_nested_containers();
 	test_WEIGH_location_irrelevant();
+	test_WEIGH_container_inside_notcreated_container();
+	test_WEIGH_worn_object();
 
 	test_SET_success(); test_SET_indirection();
 	test_CLEAR_success(); test_CLEAR_indirection();
