@@ -1026,7 +1026,7 @@ void sfxInit() __naked
 	__asm
 		ld   a,#7				; REG#7 Mixer disable ChannelA
 		out  (0xa0),a
-		ld   a,#0b00111111
+		ld   a,#0b10111111		; 0xBF: bit7=1,bit6=0 required (PSG I/O port dirs), bits5-0=all muted
 		out  (0xa1),a
 
 		ld   a,#8				; REG#8 ChannelA initialize Volume to 8
@@ -1052,10 +1052,17 @@ void sfxWriteRegister(uint8_t reg, uint8_t value) __naked
 {
 	reg;		// A
 	value;		// L
+	// NOTE: Do not call with reg=7. PSG register 7 requires bit7=1, bit6=0 at all times.
+	//       Use sfxInit()/sfxTone() for mixer control.
 	#ifndef DISABLE_SFX
 	__asm
 		out (0xa0),a
+		cp #7
 		ld  a,l
+		jr nz,keep_mixer$
+		and #0b00111111		; Mask value to 6 bits (PSG registers are 6 bits wide)
+		or  #0b10000000		; Set bit7=1, bit6=0 required (PSG I/O port dirs)
+	keep_mixer$:
 		out (0xa1),a
 		ret
 	__endasm;
@@ -1095,7 +1102,7 @@ void sfxTone(uint8_t tone, uint8_t duration) __naked
 		out  (0xa0),a
 		out  (c),d
 
-		ld   e,#0b00111110		; Mixer enable ChannelA
+		ld   e,#0b10111110		; 0xBE: bit7=1,bit6=0 required, ChannelA tone enabled
 		call mixer$
 
 	silence$:
@@ -1112,7 +1119,7 @@ void sfxTone(uint8_t tone, uint8_t duration) __naked
 		djnz loop0$
 
 	disablepsg$:
-		ld   e,#0b00111111		; Mixer disable ChannelA
+		ld   e,#0b10111111		; 0xBF: bit7=1,bit6=0 required, all channels muted
 		call mixer$
 
 		pop  ix
