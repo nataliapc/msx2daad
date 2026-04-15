@@ -1487,6 +1487,328 @@ void test_AUTOT_success()
 
 
 // =============================================================================
+// PRP009 — Tests AUTOG: priority and not-found cases
+// Spec (Manual 1991 L.1306): "in order of location priority; here, carried, worn"
+
+void test_AUTOG_priority_here_over_carried()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 carried nounId=10, obj2 HERE nounId=10
+	//     AUTOG priority is here > carried, so obj2 must be picked up
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	flags[fNOCarr] = 1;
+	flags[fMaxCarr] = 4;
+	flags[fStrength] = 20;
+	objects[1].location = LOC_CARRIED;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+	objects[1].attribs.mask.weight = 1;
+	objects[2].location = 5;	// HERE
+	objects[2].nounId = 10;
+	objects[2].adjectiveId = NULLWORD;
+	objects[2].attribs.mask.weight = 1;
+
+	static const char proc[] = { _AUTOG, 255 };
+	do_action(proc);
+
+	//BDD then obj2 (here) is carried, obj1 still carried (Manual L.1306)
+	ASSERT_EQUAL(objects[2].location, LOC_CARRIED, "AUTOG must pick up obj HERE before CARRIED");
+	ASSERT_EQUAL(objects[1].location, LOC_CARRIED, "already-carried obj must stay carried");
+	ASSERT_EQUAL(flags[fNOCarr], 2, ERROR_CARROBJNUM);
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_AUTOG_not_found()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 exists at loc 3 (not here/carried/worn); player at loc 5
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[1].location = 3;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+
+	static const char proc[] = { _AUTOG, 255 };
+	do_action(proc);
+
+	//BDD then SM26 "There isn't one of those here." (Manual L.1311)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 26, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// PRP009 — Tests AUTOD: worn and not-found cases
+// Spec (Manual 1991 L.1320): "in order of location priority; carried, worn, here"
+
+void test_AUTOD_worn()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 worn nounId=10; AUTOD finds it via worn, calls DROP
+	//     DROP on worn object -> SM24 "I can't. I'm wearing the _." (Manual L.1147)
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[1].location = LOC_WORN;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+	objects[1].attribs.mask.isWareable = 1;
+
+	static const char proc[] = { _AUTOD, 255 };
+	do_action(proc);
+
+	//BDD then SM24 (Manual L.1320 + L.1147)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 24, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_AUTOD_not_found()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 exists at loc 3 (not carried/worn/here); player at loc 5
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[1].location = 3;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+
+	static const char proc[] = { _AUTOD, 255 };
+	do_action(proc);
+
+	//BDD then SM28 "I don't have one of those." (Manual L.1324)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// PRP009 — Tests AUTOW: worn and here cases
+// Spec (Manual 1991 L.1333): "in order of location priority; carried, worn, here"
+
+void test_AUTOW_worn()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 already worn nounId=10; AUTOW finds it via worn, calls WEAR
+	//     WEAR on worn object -> SM29 "I'm already wearing the _." (Manual L.1168)
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[1].location = LOC_WORN;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+	objects[1].attribs.mask.isWareable = 1;
+
+	static const char proc[] = { _AUTOW, 255 };
+	do_action(proc);
+
+	//BDD then SM29 (Manual L.1333 + L.1168)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 29, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_AUTOW_here()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 HERE (at player's loc, not carried, not worn) nounId=10
+	//     AUTOW finds it via here, calls WEAR
+	//     WEAR on obj at current loc (not carried/worn) -> SM49 "I don't have the _."
+	//     Note: SM49, NOT SM28. SM28 is for objects not at current loc AND not carried.
+	//     (Manual L.1164: "at the current location (but not carried or worn) SM49")
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[1].location = 5;	// at player's location, not carried
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+	objects[1].attribs.mask.isWareable = 1;
+
+	static const char proc[] = { _AUTOW, 255 };
+	do_action(proc);
+
+	//BDD then SM49 (Manual L.1333 + L.1164)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// PRP009 — Tests AUTOR: carried and not-found cases
+// Spec (Manual 1991 L.1346): "in order of location priority; worn, carried, here"
+
+void test_AUTOR_carried()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 carried nounId=10; AUTOR finds it via carried, calls REMOVE
+	//     REMOVE on carried obj -> SM50 "I'm not wearing the _." (Manual L.1183)
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	flags[fNOCarr] = 1;
+	objects[1].location = LOC_CARRIED;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+	objects[1].attribs.mask.isWareable = 1;
+
+	static const char proc[] = { _AUTOR, 255 };
+	do_action(proc);
+
+	//BDD then SM50 (Manual L.1346 + L.1183)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 50, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_AUTOR_not_found()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 exists at loc 3 (not worn/carried/here); player at loc 5
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[1].location = 3;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+
+	static const char proc[] = { _AUTOR, 255 };
+	do_action(proc);
+
+	//BDD then SM23 "I'm not wearing one of those." (Manual L.1350)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 23, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// PRP009 — Tests AUTOP: worn and here cases
+// Spec (Manual 1991 L.1359): "in order of location priority; carried, worn, here"
+
+void test_AUTOP_worn()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 worn nounId=10; container obj0; AUTOP finds obj1 via worn, calls PUTIN
+	//     PUTIN on worn object -> SM24 "I can't. I'm wearing the _." (Manual L.1235)
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[0].attribs.mask.isContainer = 1;
+	objects[1].location = LOC_WORN;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+
+	static const char proc[] = { _AUTOP, 0, 255 };
+	do_action(proc);
+
+	//BDD then SM24 (Manual L.1359 + L.1235)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 24, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_AUTOP_here()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 HERE nounId=10; container obj0; AUTOP finds obj1 via here, calls PUTIN
+	//     PUTIN on obj at current loc (not carried) -> SM49 "I don't have the _." (Manual L.1238)
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[0].attribs.mask.isContainer = 1;
+	objects[1].location = 5;	// here
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+
+	static const char proc[] = { _AUTOP, 0, 255 };
+	do_action(proc);
+
+	//BDD then SM49 (Manual L.1359 + L.1238)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 49, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
+// PRP009 — Tests AUTOT: worn and here cases
+// Spec (Manual 1991 L.1373): "in order of location priority; in container, carried, worn, here"
+
+void test_AUTOT_worn()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 worn nounId=10; container obj0
+	//     AUTOT: container (fails, obj1 not inside), carried (fails), worn (found!)
+	//     Calls TAKEOUT; TAKEOUT on worn -> SM25 "I already have the _." (Manual L.1252)
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[0].attribs.mask.isContainer = 1;
+	objects[1].location = LOC_WORN;
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+
+	static const char proc[] = { _AUTOT, 0, 255 };
+	do_action(proc);
+
+	//BDD then SM25 (Manual L.1373 + L.1252)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 25, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_AUTOT_here()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 HERE nounId=10; container obj0 also here
+	//     AUTOT: container (fails, obj1 not inside obj0), carried (fails), worn (fails), here (found!)
+	//     Calls TAKEOUT; TAKEOUT on obj at current loc -> SM45 "The _ isn't in the" (Manual L.1255)
+	flags[fPlayer] = 5;
+	flags[fNoun1] = 10;
+	flags[fAdject1] = NULLWORD;
+	objects[0].attribs.mask.isContainer = 1;
+	objects[0].location = 5;	// container also here
+	objects[1].location = 5;	// obj1 here, not inside container
+	objects[1].nounId = 10;
+	objects[1].adjectiveId = NULLWORD;
+
+	static const char proc[] = { _AUTOT, 0, 255 };
+	do_action(proc);
+
+	//BDD then SM45 (Manual L.1373 + L.1255)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 45, ERROR_SYSMES);
+	ASSERT(!checkEntry, ERROR);
+	SUCCEED();
+}
+
+// =============================================================================
 // Tests GET - magic bag weight (zero-weight container contents don't count)
 void test_GET_magic_bag_weight()
 {
@@ -1637,12 +1959,13 @@ int main(char** argv, int argc)
 	test_TAKEOUT_weight_from_container();
 	test_DROPALL_success(); test_DROPALL_no_overflow();
 	test_AUTOG_carried(); test_AUTOG_worn(); test_AUTOG_success();
-	test_AUTOD_success();
-	test_AUTOW_success();
-	test_AUTOR_success();
-	test_AUTOP_success();
-	test_AUTOT_carried();
-	test_AUTOT_success();
+	test_AUTOG_priority_here_over_carried(); test_AUTOG_not_found();
+	test_AUTOD_success(); test_AUTOD_worn(); test_AUTOD_not_found();
+	test_AUTOW_success(); test_AUTOW_worn(); test_AUTOW_here();
+	test_AUTOR_success(); test_AUTOR_carried(); test_AUTOR_not_found();
+	test_AUTOP_success(); test_AUTOP_worn(); test_AUTOP_here();
+	test_AUTOT_carried(); test_AUTOT_success();
+	test_AUTOT_worn(); test_AUTOT_here();
 
 	return 0;
 }

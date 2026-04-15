@@ -130,6 +130,7 @@ test: all
 		FAIL=$$(grep -c "### Assert failed" dsk/tests.txt || true) ; \
 		TODO=$$(grep -c "### TODO:" dsk/tests.txt || true) ; \
 		TOTAL=$$((OK + FAIL + TODO)) ; \
+		{ \
 		echo "" ; \
 		echo "========================================" ; \
 		echo " Test results  (dsk/tests.txt)" ; \
@@ -138,6 +139,7 @@ test: all
 		echo "   TODO:  $$TODO / $$TOTAL" ; \
 		echo "   TOTAL: $$TOTAL" ; \
 		echo "========================================" ; \
+		} | tee -a dsk/tests.txt ; \
 	else \
 		echo "**** dsk/tests.txt not found" ; \
 	fi

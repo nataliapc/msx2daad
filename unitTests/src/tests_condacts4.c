@@ -959,6 +959,11 @@ void test_ABILITY_indirection()
 
 
 // =============================================================================
+// PRP009 — Tests WEIGH: additional edge cases
+// Spec (Manual 1991 L.1447): "if it is a container, any objects inside have their weight added"
+// Spec (Manual 1991 L.1450): "maximum value of 255 which will not be exceeded"
+// Spec (Manual 1991 L.1451): "container of zero weight, Flag flagno. will be cleared"
+
 // Tests WEIGH - zero-weight container clears the flag
 void test_WEIGH_zero_weight_container()
 {
@@ -978,6 +983,145 @@ void test_WEIGH_zero_weight_container()
 
 	//BDD then flags[100] = 0 (zero-weight container -> flag cleared)
 	ASSERT_EQUAL(flags[100], 0, "WEIGH zero-weight container must set flag to 0");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Tests WEIGH - container with non-zero weight and contents
+void test_WEIGH_container_with_contents()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj3 = non-zero container (w=5), obj4 inside (w=3)
+	objects[3].attribs.mask.isContainer = 1;
+	objects[3].attribs.mask.weight = 5;
+	objects[4].location = 3;	// inside container obj3
+	objects[4].attribs.mask.weight = 3;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 8 (5 + 3) (Manual L.1447)
+	ASSERT_EQUAL(flags[100], 8, "WEIGH container must include contents weight (5+3=8)");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Tests WEIGH - result capped at 255
+void test_WEIGH_cap_at_255()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj3 = container (w=63), objs 4-7 inside (w=63 each)
+	//     63 + 4*63 = 315 > 255 -> must be capped at 255 (Manual L.1450)
+	objects[3].attribs.mask.isContainer = 1;
+	objects[3].attribs.mask.weight = 63;
+	objects[4].location = 3; objects[4].attribs.mask.weight = 63;
+	objects[5].location = 3; objects[5].attribs.mask.weight = 63;
+	objects[6].location = 3; objects[6].attribs.mask.weight = 63;
+	objects[7].location = 3; objects[7].attribs.mask.weight = 63;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 255 (capped)
+	ASSERT_EQUAL(flags[100], 255, "WEIGH must cap result at 255");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Tests WEIGH - empty container (no contents)
+void test_WEIGH_empty_container()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj3 = non-zero container (w=10) with no objects inside
+	objects[3].attribs.mask.isContainer = 1;
+	objects[3].attribs.mask.weight = 10;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 10 (container own weight only, no contents to add)
+	ASSERT_EQUAL(flags[100], 10, "WEIGH empty container must return only its own weight");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Tests WEIGH - NOT_CREATED object: location does not affect weight field
+void test_WEIGH_not_created_object()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj3 with location=LOC_NOTCREATED but weight field=7
+	//     WEIGH reads .weight directly; .location is irrelevant (Manual L.1447)
+	objects[3].location = LOC_NOTCREATED;
+	objects[3].attribs.mask.weight = 7;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 7 (weight field is independent of creation status)
+	ASSERT_EQUAL(flags[100], 7, "WEIGH must return weight regardless of object location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Tests WEIGH - nested containers: recursive weight accumulation
+void test_WEIGH_nested_containers()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given:
+	//   obj3 = container, weight=2
+	//   obj4 = inside obj3, container, weight=2
+	//   obj5 = inside obj4, plain object, weight=2
+	//   Expected: 2 (obj3) + 2 (obj4) + 2 (obj5) = 6
+	//   Spec: "nested containers stop adding their contents after ten levels" (Manual L.1448)
+	objects[3].attribs.mask.isContainer = 1;
+	objects[3].attribs.mask.weight = 2;
+	objects[4].location = 3;	// inside obj3
+	objects[4].attribs.mask.isContainer = 1;
+	objects[4].attribs.mask.weight = 2;
+	objects[5].location = 4;	// inside obj4
+	objects[5].attribs.mask.weight = 2;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 6 (recursive sum: 2 + 2 + 2)
+	ASSERT_EQUAL(flags[100], 6, "WEIGH nested containers must accumulate weights recursively (2+2+2=6)");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// Tests WEIGH - object location (CARRIED/WORN) does not affect result
+void test_WEIGH_location_irrelevant()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj3 carried (LOC_CARRIED), weight=5
+	//     WEIGH reads the .weight field; .location is irrelevant (Manual L.1447)
+	objects[3].location = LOC_CARRIED;
+	objects[3].attribs.mask.weight = 5;
+
+	//BDD when WEIGH 3 100
+	static const char proc[] = { _WEIGH, 3, 100, 255 };
+	do_action(proc);
+
+	//BDD then flags[100] = 5 (same as if obj3 were at any location)
+	ASSERT_EQUAL(flags[100], 5, "WEIGH result must be independent of object location");
 	ASSERT(checkEntry, ERROR);
 	SUCCEED();
 }
@@ -1178,6 +1322,12 @@ int main(char** argv, int argc)
 	test_SETCO_success(); test_SETCO_indirection();
 	test_WEIGH_success(); test_WEIGH_indirection();
 	test_WEIGH_zero_weight_container();
+	test_WEIGH_container_with_contents();
+	test_WEIGH_cap_at_255();
+	test_WEIGH_empty_container();
+	test_WEIGH_not_created_object();
+	test_WEIGH_nested_containers();
+	test_WEIGH_location_irrelevant();
 
 	test_SET_success(); test_SET_indirection();
 	test_CLEAR_success(); test_CLEAR_indirection();
