@@ -168,8 +168,8 @@ void processPROC()
 //cputs("processPROC()\n");
 //cprintf("    Pos: %p\n",((char*)currProc->entryIni) - ddb);
 //#endif
-	static CondactStruct *currCondact;
-	static uint8_t temp;
+	CondactStruct *currCondact;
+	uint8_t temp;
 
 	//Initialize & Clear ISDONE flags
 	checkEntry = isDone = false;
@@ -189,8 +189,9 @@ void processPROC()
 ///*********************************/cprintf(" [isDone:%d last:%d]",isDone,lastIsDone);
 //cputs("\n");
 //#endif
-			condactList[currCondact->condact].function();
-			isDone |= condactList[currCondact->condact].flag;
+			const CONDACT_LIST *ce = &condactList[currCondact->condact];
+			ce->function();
+			isDone |= ce->flag;
 		}
 
 		//Search the first entry that complain VERB + NOUN
@@ -231,9 +232,7 @@ void processPROC()
 //===============================================
 static uint8_t getValueOrIndirection()
 {
-	static uint8_t value;
-	value = *pPROC++;
-
+	uint8_t value = *pPROC++;
 	return indirection ? flags[value] : value;
 }
 
@@ -545,7 +544,7 @@ void do_ADJECT2()	// word
 #ifndef DISABLE_CHANCE
 void do_CHANCE()	// percent
 {
-	checkEntry = (rand()%100) < getValueOrIndirection();
+	checkEntry = ((uint8_t)rand() % 100) < getValueOrIndirection();
 }
 #endif
 
@@ -585,7 +584,7 @@ void do_ISNDONE()
 static void _internal_hasat(uint8_t value, bool negate)
 {
 	uint8_t bit, flagValue;
-	bit = 1 << (value % 8);
+	bit = 1 << (value & 7);	// 1 << (value % 8)
 	flagValue = flags[(fCOAtt+1)-(value>>3)] & bit;
 
 	if (negate) flagValue = !flagValue;
@@ -1425,9 +1424,10 @@ void do_LET()		// flagno value
 void do_PLUS()		// flagno value
 {
 	uint8_t flagno = getValueOrIndirection();
-	uint16_t value = (uint16_t)flags[flagno] + *pPROC++;
-	if (value>255) value = 255;
-	flags[flagno] = (uint8_t)value;
+	uint8_t addend = *pPROC++;
+	uint8_t result = flags[flagno] + addend;
+	if (result < flags[flagno]) result = 255;	// carry: overflow → saturate
+	flags[flagno] = result;
 }
 #endif
 
@@ -1451,10 +1451,11 @@ void do_MINUS()		// flagno value
 #ifndef DISABLE_ADD
 void do_ADD()		// flagno1 flagno2
 {
-	uint16_t sum = flags[getValueOrIndirection()];
+	uint8_t addend = flags[getValueOrIndirection()];
 	uint8_t flagno2 = *pPROC++;
-	sum += flags[flagno2];
-	flags[flagno2] = sum>255 ? 255 : (uint8_t)sum;
+	uint8_t result = flags[flagno2] + addend;
+	if (result < flags[flagno2]) result = 255;	// carry: overflow → saturate
+	flags[flagno2] = result;
 }
 #endif
 
@@ -1500,7 +1501,7 @@ void do_COPYBF()	// flagno1 flagno2
 #ifndef DISABLE_RANDOM
 void do_RANDOM()	// flagno
 {
-	flags[getValueOrIndirection()] = (rand()%100)+1;
+	flags[getValueOrIndirection()] = ((uint8_t)rand() % 100) + 1;
 }
 #endif
 
@@ -1898,14 +1899,15 @@ void do_DPRINT()	// flagno
 #if !defined(DISABLE_LISTOBJ) || !defined(DISABLE_LISTAT)
 static void _internal_listat(uint8_t loc, bool listobj) {
 	uint8_t lastFound = NULLWORD;
+	uint8_t n = hdr->numObjDsc;
 	flags[fOFlags] &= (F53_LISTED ^ 255);
-	for (int i=0; i<=hdr->numObjDsc; i++) {
-		if (i==hdr->numObjDsc || objects[i].location == loc) {
+	for (uint8_t i=0; i<=n; i++) {
+		if (i==n || objects[i].location == loc) {
 			if (lastFound!=NULLWORD) {
 				if (listobj && !(flags[fOFlags] & F53_LISTED))
 					printSystemMsg(1);
 				if (flags[fOFlags] & F53_LISTED) {
-					if (i<hdr->numObjDsc)
+					if (i<n)
 						printSystemMsg(46);	//", "
 					else
 						printSystemMsg(47);	//" y "
@@ -1914,7 +1916,7 @@ static void _internal_listat(uint8_t loc, bool listobj) {
 				flags[fOFlags] |= F53_LISTED;
 			}
 			lastFound = i;
-		} 
+		}
 	}
 }
 #endif
@@ -2190,17 +2192,19 @@ static void _internal_doall() {
 	if (*(currProc->condactDOALL - 2) > 127) locno = flags[locno];
 	if (locno==LOC_HERE) locno = flags[fPlayer];
 
-	while (objects[objno].location!=locno || (objects[objno].nounId==flags[fNoun2] && objects[objno].adjectiveId==flags[fAdject2])) {
+	Object *obj = &objects[objno];
+	while (obj->location!=locno || (obj->nounId==flags[fNoun2] && obj->adjectiveId==flags[fAdject2])) {
 		objno++;
 		if (objno >= hdr->numObjDsc) {
 			currProc->condactDOALL = NULL;
 			do_DONE();
 			return;
 		}
+		obj = &objects[objno];
 	}
-	flags[fDAObjNo] = objno++;
-	flags[fNoun1] = objects[flags[fDAObjNo]].nounId;
-	flags[fAdject1] = objects[flags[fDAObjNo]].adjectiveId;
+	flags[fDAObjNo] = objno;
+	flags[fNoun1] = obj->nounId;
+	flags[fAdject1] = obj->adjectiveId;
 	pPROC = currProc->condactDOALL;
 	currProc->entry = currProc->entryDOALL;
 }
