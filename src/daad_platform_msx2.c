@@ -730,18 +730,35 @@ static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);			// Paint char INK foreground
 			}
 		} else {
-			//Use VRAM like TEMP working space to avoid glitches
+	#if SCREEN == 10
+			// Screen 10 (YJK): !COLOR_WHITE(0xF8)=0x07 ≠ COLOR_BLACK(0x08), TNOT unusable
+			// Use VRAM like TEMP working space to avoid glitches
 			if (COLOR_INK==COLOR_BLACK) {
-				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 255, 0, AUX_HMMV);					// Paint white background destination
-				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);			// Paint char in black
-				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);	// Paint PAPER background destination
-				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Copy TEMP char to destination
+				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 255, 0, AUX_HMMV);                    // Paint white background in TEMP
+				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0, 0, CMD_LMMM|LOG_XOR);              // Paint char in black (XOR inverts)
+				bitBlt( 0,  0, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, CMD_LMMV|LOG_AND);    // Apply PAPER to background
+				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);                   // Copy TEMP to destination
 			} else {
+				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, AUX_HMMV);                   // Paint PAPER background
+				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);                   // Copy char to TEMP (white)
+				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);     // Apply INK color to TEMP
+				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TIMP);          // Copy TEMP transparently to destination
+			}
+	#else
+			// Screen 5/6/7/8: !COLOR_WHITE == COLOR_BLACK (0x00), TNOT/TIMP usable
+			if (COLOR_INK==COLOR_BLACK) {
+				// Case 2a: 4 blits → 2 blits using TNOT
+				// TNOT: if SC==0 → DC=DC (keep PAPER); else DC=!SC=!COLOR_WHITE=COLOR_BLACK ✓
+				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, AUX_HMMV);                   // Paint PAPER background
+				bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TNOT);                 // FG→BLACK, BG→keep PAPER
+			} else {
+				// Use VRAM like TEMP working space to avoid glitches
 				bitBlt( 0,  0, dx, dy, FONTWIDTH, FONTHEIGHT, COLOR_PAPER, 0, AUX_HMMV);				// Paint PAPER background destination
 				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);				// Paint TEMP char in white
 				bitBlt(sx, sy, dx, FONTTEMPY, FONTWIDTH, FONTHEIGHT, COLOR_INK, 0, CMD_LMMV|LOG_TAND);	// Paint TEMP INK color foreground
 				bitBlt(dx, FONTTEMPY, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, CMD_LMMM|LOG_TIMP);		// Copy TEMP char to destination
 			}
+	#endif
 		}
 	#else
 		bitBlt(sx, sy, dx, dy, FONTWIDTH, FONTHEIGHT, 0x00, 0, AUX_HMMM);								// Copy char in white
@@ -875,7 +892,7 @@ inline bool gfxPictureShow()
 			// Load image palette
 			if (chunk->type==IMG_CHUNK_PALETTE) {
 				#if SCREEN!=8 && SCREEN!=12
-					size = fread(chunk->data, 32, fp);
+					size = fread(chunk->data, 32);
 					if (!(size & 0xff00))
 						setPalette(chunk->data);
 				#else
