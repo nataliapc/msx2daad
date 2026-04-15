@@ -290,8 +290,7 @@ void do_ATLT()		// locno
 #if !defined(DISABLE_PRESENT) || !defined(DISABLE_ABSENT)
 void do_PRESENT()	// objno
 {
-	static Object *obj;
-	obj = &objects[getValueOrIndirection()];
+	Object *obj = &objects[getValueOrIndirection()];
 
 	checkEntry = (obj->location>LOC_NOTCREATED || obj->location==flags[fPlayer]);
 }
@@ -357,10 +356,8 @@ void do_NOTCARR()
 #if !defined(DISABLE_ISAT) || !defined(DISABLE_ISNOTAT)
 void do_ISAT()		// objno locno+
 {
-	static uint8_t objloc;
-	static uint8_t loc;
-	objloc = objects[getValueOrIndirection()].location;
-	loc = *pPROC++;
+	uint8_t objloc = objects[getValueOrIndirection()].location;
+	uint8_t loc = *pPROC++;
 
 	checkEntry = (objloc==loc || (loc==LOC_HERE && objloc==flags[fPlayer]));
 }
@@ -948,8 +945,7 @@ void do_PUTO()		// locno+
 #if !defined(DISABLE_PUTIN) || !defined(DISABLE_AUTOP)
 static void _internal_putin(uint8_t objno, uint8_t locno)
 {
-	static Object *obj;
-	obj = objects + objno;
+	Object *obj = objects + objno;
 	referencedObject(objno);					// TODO: check if must be referenced
 	if (obj->location==LOC_WORN) {
 		printSystemMsg(24);
@@ -976,8 +972,7 @@ static void _internal_putin(uint8_t objno, uint8_t locno)
 #ifndef DISABLE_PUTIN
 void do_PUTIN()		// objno locno
 {
-	static uint8_t objno;
-	objno = getValueOrIndirection();
+	uint8_t objno = getValueOrIndirection();
 	_internal_putin(objno, *pPROC++);
 }
 #endif
@@ -1051,8 +1046,7 @@ static void _internal_takeout(uint8_t objno, uint8_t locno)
 #ifndef DISABLE_TAKEOUT
 void do_TAKEOUT()	// objno locno
 {
-	static uint8_t objno;
-	objno = getValueOrIndirection();
+	uint8_t objno = getValueOrIndirection();
 	_internal_takeout(objno, *pPROC++);
 }
 #endif
@@ -1287,10 +1281,8 @@ void do_AUTOT()		// locno
 #ifndef DISABLE_COPYOO
 void do_COPYOO()	// objno1 objno2
 {
-	static uint8_t objno1;
-	static uint8_t objno2;
-	objno1 = getValueOrIndirection();
-	objno2 = *pPROC++;
+	uint8_t objno1 = getValueOrIndirection();
+	uint8_t objno2 = *pPROC++;
 	objects[objno2].location = objects[objno1].location;
 	referencedObject(objno2);
 }
@@ -1317,8 +1309,7 @@ void do_RESET() {
 #ifndef DISABLE_COPYOF
 void do_COPYOF()	// objno flagno
 {
-	static Object *obj;
-	obj = objects + getValueOrIndirection();
+	Object *obj = objects + getValueOrIndirection();
 	flags[*pPROC++] = obj->location;
 }
 #endif
@@ -1332,8 +1323,7 @@ void do_COPYOF()	// objno flagno
 #ifndef DISABLE_COPYFO
 void do_COPYFO()	// flagno objno
 {
-	static uint8_t flagValue;
-	flagValue = flags[getValueOrIndirection()];
+	uint8_t flagValue = flags[getValueOrIndirection()];
 	(objects + *pPROC++)->location = flagValue;
 	if (flagValue == 255) errorCode(2);
 }
@@ -1351,8 +1341,7 @@ void do_COPYFO()	// flagno objno
 #ifndef DISABLE_WHATO
 void do_WHATO()
 {
-	static uint8_t objno;
-	objno = _internal_checkLocCARR_WORN_HERE();
+	uint8_t objno = _internal_checkLocCARR_WORN_HERE();
 	if (objno==NULLWORD) objno = getObjectId(flags[fNoun1], flags[fAdject1], LOC_HERE);
 	referencedObject(objno);
 }
@@ -1608,8 +1597,7 @@ void do_MODE() {	// option
 #ifndef DISABLE_INPUT
 void do_INPUT() {	// stream options
 	//TODO: INPUT not fully implemented
-	static uint8_t window;
-	window = getValueOrIndirection();					// <stream>
+	uint8_t window = getValueOrIndirection();			// <stream>
 	if (window >= WINDOWS_NUM) { pPROC++; return; }
 	flags[fInStream] = window;
 	uint8_t options = ((*pPROC++) & 0x07) << 3;			// <options>
@@ -1650,8 +1638,7 @@ void do_TIME()		// duration option
 #ifndef DISABLE_WINDOW
 void do_WINDOW()	// window
 {
-	static uint8_t window;
-	window = getValueOrIndirection();
+	uint8_t window = getValueOrIndirection();
 	if (window >= WINDOWS_NUM) return;
 	flags[fCurWin] = window;
 	cw = &windows[window];
