@@ -821,7 +821,7 @@ static void _internal_remove(uint8_t objno)
 	if (obj->location==LOC_CARRIED || obj->location==flags[fPlayer]) {
 		printSystemMsg(50);
 	} else
-	if (obj->location!=flags[fPlayer] && obj->location!=LOC_WORN) {
+	if (obj->location!=LOC_WORN) {	// not carried/here (checked above) and not worn → SM23
 		printSystemMsg(23);
 	} else
 	if (!obj->attribs.mask.isWareable) {
@@ -1676,7 +1676,7 @@ void do_WINAT()		// line col
 #ifndef DISABLE_WINSIZE
 void do_WINSIZE()	// height width
 {
-	cw->winH = getValueOrIndirection();;
+	cw->winH = getValueOrIndirection();
 	cw->winW = *pPROC++;
 	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
@@ -2199,7 +2199,7 @@ void do_DOALL() {	// locno+
 	if (currProc->condactDOALL) errorCode(4);
 	currProc->condactDOALL = ++pPROC;
 	currProc->entryDOALL = currProc->entry;
-	flags[fDAObjNo] = -1;
+	flags[fDAObjNo] = NULLWORD;	// 255+1=0 in _internal_doall → start from object 0
 	_internal_doall();
 }
 #else
@@ -2399,8 +2399,8 @@ void do_CALL()		// address(dword)
 #ifndef DISABLE_SFX
 void do_SFX()		// value1 value2
 {
-	uint16_t value = (uint16_t)getValueOrIndirection();
-	uint8_t  reg = *pPROC++;
+	uint8_t value = getValueOrIndirection();
+	uint8_t reg = *pPROC++;
 	sfxWriteRegister(reg, value);
 }
 #endif
@@ -2445,8 +2445,8 @@ void do_SFX()		// value1 value2
 void do_GFX()		// pa routine
 {
 	//TODO GFX not fully implemented
-	uint16_t value = (uint16_t)getValueOrIndirection();
-	uint8_t  routine = *pPROC++;
+	uint8_t value = getValueOrIndirection();
+	uint8_t routine = *pPROC++;
 
 	gfxRoutines(routine, value);
 }
