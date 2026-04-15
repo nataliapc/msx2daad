@@ -125,8 +125,9 @@ unitTests/                  # Unit test suite — 11 .com binaries, 323 tests
         tests_daad_init.c             # 6 tests: initObjects + initFlags
 
 docs/                       # DAAD official documentation (markdown)
-    DAAD_Manual_1991.md     #   Original manual — definitive condact spec
+    DAAD_Manual_1991.md     #   Original manual — definitive condact spec (DC compiler, [] indirection)
     DAAD_Manual_2018.md     #   2018 revision (tools/distribution focus)
+    DAAD_Ready_Documentation_V2.md  # DAAD Ready v2 — condact reference for DRC compiler (@ indirection)
     Flags_for_Quill_PAWS_SWAN_and_DAAD.md  # System flag reference
 
 bin/                        # Tools: imgwizard.php, precomp.php, testdaad.c, dsktool, dsk2rom
@@ -182,7 +183,7 @@ OK: 292 / 323  |  FAIL: 0 / 323  |  TODO: 31 / 323
 - `condacts_stubs.h/c` — for condact tests; links real `daad_objects.rel` + `daad_getObjectWeight.rel`
 - `daad_stubs.h/c` — for engine function tests; no `daad_condacts.rel` (avoids circular deps)
 
-All tests validated against `docs/DAAD_Manual_1991.md`, `docs/Flags_for_Quill_PAWS_SWAN_and_DAAD.md`, and `wiki/MSX2DAAD-Wiki:-DAAD-Condacts:-a-quick-reference.md`.
+All tests validated against `docs/DAAD_Manual_1991.md`, `docs/Flags_for_Quill_PAWS_SWAN_and_DAAD.md`, `docs/DAAD_Ready_Documentation_V2.md`, and `wiki/MSX2DAAD-Wiki:-DAAD-Condacts:-a-quick-reference.md`. Each test includes a reference to the manual line that justifies the expected behaviour.
 
 ### Integration tests
 
@@ -225,9 +226,14 @@ When working on interpreter logic, condact behaviour, DDB format, flags, or adve
 ### Primary spec (definitive)
 | File | Content |
 |------|---------|
-| `docs/DAAD_Manual_1991.md` | Original DAAD manual — authoritative spec for all 128 condacts, system messages, flag semantics, object model, process tables |
+| `docs/DAAD_Manual_1991.md` | Original DAAD manual — authoritative spec for all 128 condacts, system messages, flag semantics, object model, process tables. Uses DC compiler syntax: indirection with `[param]` |
 | `docs/Flags_for_Quill_PAWS_SWAN_and_DAAD.md` | Complete flag reference (0–255): name, initial value, purpose for every system flag |
 | `docs/DAAD_Manual_2018.md` | 2018 revision by Tim Gilberts & Stefan Vogt — tool workflows, platform notes, known issues; condact spec unchanged from 1991 |
+
+### DRC compiler documentation
+| File | Content |
+|------|---------|
+| `docs/DAAD_Ready_Documentation_V2.md` | DAAD Ready v2 — condact and system reference for the **DRC compiler** (the compiler used by this project). Uses `@param` indirection syntax. Mostly aligned with the 1991 manual, but has known discrepancies — see `DAAD_DISCREPANCIAS.md` for the full analysis. Key differences: `PUTIN`/`TAKEOUT` use `locno+` instead of `locno.`; `AUTOP`/`AUTOT` include the `locno` argument (unlike the wiki). Prefer `docs/DAAD_Manual_1991.md` for authoritative condact semantics; prefer this file for DRC-specific syntax and the `@` indirection form |
 
 ### MSX2-specific wiki
 | File | Content |
