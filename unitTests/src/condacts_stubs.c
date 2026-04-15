@@ -12,8 +12,15 @@ const char ERROR_CARROBJNUM[] = "Carried objects number";
 const char TODO_GENERIC[] = "-----";
 const char TODO_UI[] = "UI not mocked";
 
-uint8_t fake_keyPressed;
-int16_t fake_lastSysMesPrinted;
+uint8_t  fake_keyPressed;
+int16_t  fake_lastSysMesPrinted;
+int      fake_lastCharPrinted;
+int16_t  fake_lastUserMsgPrinted;
+int16_t  fake_lastLocMsgPrinted;
+uint16_t fake_lastBase10Printed;
+uint8_t  fake_lastPaperCol;
+uint8_t  fake_lastInkCol;
+uint8_t  fake_lastBorderCol;
 
 // =============================================================================
 // Global variables
@@ -65,15 +72,15 @@ bool populateLogicalSentence() {}
 void parser() {}
 void mainLoop() {}
 
-void printBase10(uint16_t value) __z88dk_fastcall {}
+void printBase10(uint16_t value) __z88dk_fastcall { fake_lastBase10Printed = value; }
 bool waitForTimeout(uint16_t timerFlag) __z88dk_fastcall {}
 void errorCode(uint8_t code) {}
 
-void printChar(int c) __z88dk_fastcall {}
+void printChar(int c) __z88dk_fastcall            { fake_lastCharPrinted = c; }
 void getSystemMsg(uint8_t num) __z88dk_fastcall {}
 void printSystemMsg(uint8_t num) __z88dk_fastcall { if (num!=51) fake_lastSysMesPrinted = num; }
-void printUserMsg(uint8_t num) __z88dk_fastcall {}
-void printLocationMsg(uint8_t num) __z88dk_fastcall {}
+void printUserMsg(uint8_t num) __z88dk_fastcall   { fake_lastUserMsgPrinted = num; }
+void printLocationMsg(uint8_t num) __z88dk_fastcall { fake_lastLocMsgPrinted = num; }
 void printObjectMsg(uint8_t num) __z88dk_fastcall {}
 void printObjectMsgModif(uint8_t num, char modif) {}
 void printMsg(char *p, bool pr) {}
@@ -98,9 +105,9 @@ void printXMES(uint16_t address) __z88dk_fastcall {}
 
 // GFX functions
 inline void gfxClearWindow() {}
-inline void gfxSetPaperCol(uint8_t col) {}
-inline void gfxSetInkCol(uint8_t col) {}
-inline void gfxSetBorderCol(uint8_t col) {}
+inline void gfxSetPaperCol(uint8_t col)  { fake_lastPaperCol = col; }
+inline void gfxSetInkCol(uint8_t col)    { fake_lastInkCol = col; }
+inline void gfxSetBorderCol(uint8_t col) { fake_lastBorderCol = col; }
 bool gfxPicturePrepare(uint8_t location) {}
 inline bool gfxPictureShow() {}
 inline void gfxRoutines(uint8_t routine, uint8_t value) {}
@@ -147,8 +154,15 @@ void beforeEach()
 
 	cw = windows;
 
-	fake_keyPressed = 0;
-	fake_lastSysMesPrinted = -1;
+	fake_keyPressed         = 0;
+	fake_lastSysMesPrinted  = -1;
+	fake_lastCharPrinted    = -1;
+	fake_lastUserMsgPrinted = -1;
+	fake_lastLocMsgPrinted  = -1;
+	fake_lastBase10Printed  = 0;
+	fake_lastPaperCol       = 0;
+	fake_lastInkCol         = 0;
+	fake_lastBorderCol      = 0;
 }
 
 void do_action(char *pProc)

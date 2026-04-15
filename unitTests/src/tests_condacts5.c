@@ -476,7 +476,17 @@ void test_BACKAT_success()
 
 void test_PAPER_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given colour 3
+	static const char proc[] = { _PAPER, 3, 255 };
+	do_action(proc);
+
+	//BDD then gfxSetPaperCol(3) was called
+	ASSERT_EQUAL(fake_lastPaperCol, 3, "PAPER must call gfxSetPaperCol with given colour");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -485,7 +495,17 @@ void test_PAPER_success()
 
 void test_INK_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given colour 7
+	static const char proc[] = { _INK, 7, 255 };
+	do_action(proc);
+
+	//BDD then gfxSetInkCol(7) was called
+	ASSERT_EQUAL(fake_lastInkCol, 7, "INK must call gfxSetInkCol with given colour");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -494,7 +514,17 @@ void test_INK_success()
 
 void test_BORDER_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given colour 2
+	static const char proc[] = { _BORDER, 2, 255 };
+	do_action(proc);
+
+	//BDD then gfxSetBorderCol(2) was called
+	ASSERT_EQUAL(fake_lastBorderCol, 2, "BORDER must call gfxSetBorderCol with given colour");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -595,7 +625,17 @@ void test_TAB_indirection()
 
 void test_SPACE_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD when SPACE is called
+	static const char proc[] = { _SPACE, 255 };
+	do_action(proc);
+
+	//BDD then printChar(' ') was called
+	ASSERT_EQUAL(fake_lastCharPrinted, ' ', "SPACE must call printChar(' ')");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -604,7 +644,17 @@ void test_SPACE_success()
 
 void test_NEWLINE_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD when NEWLINE is called
+	static const char proc[] = { _NEWLINE, 255 };
+	do_action(proc);
+
+	//BDD then printChar('\r') was called
+	ASSERT_EQUAL(fake_lastCharPrinted, '\r', "NEWLINE must call printChar('\\r')");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -613,7 +663,17 @@ void test_NEWLINE_success()
 
 void test_MES_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given user message 10
+	static const char proc[] = { _MES, 10, 255 };
+	do_action(proc);
+
+	//BDD then printUserMsg(10) was called
+	ASSERT_EQUAL(fake_lastUserMsgPrinted, 10, "MES must call printUserMsg with given message number");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -622,7 +682,19 @@ void test_MES_success()
 
 void test_MESSAGE_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given user message 10
+	//     MESSAGE = MES + NEWLINE: calls printUserMsg(10) then printChar('\r')
+	static const char proc[] = { _MESSAGE, 10, 255 };
+	do_action(proc);
+
+	//BDD then both were called in order
+	ASSERT_EQUAL(fake_lastUserMsgPrinted, 10, "MESSAGE must call printUserMsg with given message number");
+	ASSERT_EQUAL(fake_lastCharPrinted, '\r', "MESSAGE must call NEWLINE after MES");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -631,7 +703,17 @@ void test_MESSAGE_success()
 
 void test_SYSMES_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given system message 5
+	static const char proc[] = { _SYSMESS, 5, 255 };
+	do_action(proc);
+
+	//BDD then printSystemMsg(5) was called (captured by fake_lastSysMesPrinted)
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 5, "SYSMESS must call printSystemMsg with given number");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -640,7 +722,17 @@ void test_SYSMES_success()
 
 void test_DESC_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given location 5
+	static const char proc[] = { _DESC, 5, 255 };
+	do_action(proc);
+
+	//BDD then printLocationMsg(5) was called
+	ASSERT_EQUAL(fake_lastLocMsgPrinted, 5, "DESC must call printLocationMsg with given location number");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -650,7 +742,20 @@ void test_DESC_success()
 
 void test_PRINT_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 100 = 42
+	flags[100] = 42;
+
+	//BDD when PRINT 100
+	static const char proc[] = { _PRINT, 100, 255 };
+	do_action(proc);
+
+	//BDD then printBase10(42) was called
+	ASSERT_EQUAL(fake_lastBase10Printed, 42, "PRINT must call printBase10 with the value of the given flag");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -659,7 +764,21 @@ void test_PRINT_success()
 
 void test_DPRINT_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 100 = 0x34, flag 101 = 0x12 -> 16-bit value 0x1234 = 4660
+	flags[100] = 0x34;
+	flags[101] = 0x12;
+
+	//BDD when DPRINT 100
+	static const char proc[] = { _DPRINT, 100, 255 };
+	do_action(proc);
+
+	//BDD then printBase10(0x1234) was called
+	ASSERT_EQUAL(fake_lastBase10Printed, 0x1234, "DPRINT must call printBase10 with 16-bit value (flagno | flagno+1<<8)");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -674,12 +793,43 @@ void test_DPRINT_success()
 
 void test_LISTOBJ_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given player at loc 5, obj1 and obj2 at loc 5
+	flags[fPlayer] = 5;
+	objects[1].location = 5;
+	objects[1].nounId = 10;
+	objects[2].location = 5;
+	objects[2].nounId = 11;
+
+	//BDD when LISTOBJ
+	static const char proc[] = { _LISTOBJ, 255 };
+	do_action(proc);
+
+	//BDD then F53_LISTED is set (objects were found at player location)
+	ASSERT(flags[fOFlags] & F53_LISTED, "LISTOBJ must set F53_LISTED when objects present at player location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 void test_LISTOBJ_none()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given player at loc 5, no objects at loc 5
+	//     (beforeEach memsets all objects to location=0; player at 5)
+	flags[fPlayer] = 5;
+
+	//BDD when LISTOBJ
+	static const char proc[] = { _LISTOBJ, 255 };
+	do_action(proc);
+
+	//BDD then F53_LISTED is NOT set (no objects at player location)
+	ASSERT(!(flags[fOFlags] & F53_LISTED), "LISTOBJ must not set F53_LISTED when no objects at player location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 // =============================================================================
@@ -690,12 +840,312 @@ void test_LISTOBJ_none()
 
 void test_LISTAT_success()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 at loc 3
+	objects[1].location = 3;
+	objects[1].nounId = 10;
+
+	//BDD when LISTAT 3
+	static const char proc[] = { _LISTAT, 3, 255 };
+	do_action(proc);
+
+	//BDD then F53_LISTED is set (objects found at given location)
+	//     Note: do_LISTAT prints SM51 on success, but the stub filters SM51
+	//     (if num!=51), so fake_lastSysMesPrinted does NOT capture it.
+	ASSERT(flags[fOFlags] & F53_LISTED, "LISTAT must set F53_LISTED when objects present at given location");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 void test_LISTAT_none()
 {
-	TODO(TODO_UI);
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given no objects at loc 7 (all objects at location=0 from memset)
+	//BDD when LISTAT 7
+	static const char proc[] = { _LISTAT, 7, 255 };
+	do_action(proc);
+
+	//BDD then F53_LISTED NOT set, and SM53 ("Nada.") was printed
+	ASSERT(!(flags[fOFlags] & F53_LISTED), "LISTAT must not set F53_LISTED when no objects at given location");
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 53, "LISTAT must print SM53 when no objects found");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+
+// =============================================================================
+// PRP010 — Edge case tests for UI condacts
+
+// PAPER/INK/BORDER: indirection resolves colour from flag
+void test_PAPER_indirection()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 75 = 5
+	flags[75] = 5;
+
+	//BDD when PAPER @75
+	static const char proc[] = { _PAPER|IND, 75, 255 };
+	do_action(proc);
+
+	//BDD then gfxSetPaperCol(5) was called via indirection
+	ASSERT_EQUAL(fake_lastPaperCol, 5, "PAPER @flag must resolve colour from flag value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_INK_indirection()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	flags[75] = 2;
+	static const char proc[] = { _INK|IND, 75, 255 };
+	do_action(proc);
+
+	ASSERT_EQUAL(fake_lastInkCol, 2, "INK @flag must resolve colour from flag value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+void test_BORDER_indirection()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	flags[75] = 4;
+	static const char proc[] = { _BORDER|IND, 75, 255 };
+	do_action(proc);
+
+	ASSERT_EQUAL(fake_lastBorderCol, 4, "BORDER @flag must resolve colour from flag value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// MES: indirection resolves message number from flag
+void test_MES_indirection()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 80 = 15
+	flags[80] = 15;
+
+	//BDD when MES @80
+	static const char proc[] = { _MES|IND, 80, 255 };
+	do_action(proc);
+
+	//BDD then printUserMsg(15) was called via indirection
+	ASSERT_EQUAL(fake_lastUserMsgPrinted, 15, "MES @flag must resolve message number from flag value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// SYSMESS: indirection resolves system message number from flag
+void test_SYSMES_indirection()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 80 = 8
+	flags[80] = 8;
+
+	//BDD when SYSMESS @80
+	static const char proc[] = { _SYSMESS|IND, 80, 255 };
+	do_action(proc);
+
+	//BDD then printSystemMsg(8) was called via indirection
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 8, "SYSMESS @flag must resolve system message number from flag value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// SYSMESS with SM51: the stub filters SM51 by design — must not be captured
+void test_SYSMES_sm51_not_captured()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given fake_lastSysMesPrinted = -1 (reset by beforeEach)
+	//BDD when SYSMESS 51 (SM51 = "." sentence terminator, filtered by stub)
+	static const char proc[] = { _SYSMESS, 51, 255 };
+	do_action(proc);
+
+	//BDD then fake_lastSysMesPrinted is still -1 (SM51 filtered: if (num!=51))
+	//     This documents the stub's intentional filter to avoid SM51 overwriting
+	//     the meaningful SM in condact sequences like PUTIN/TAKEOUT/ISAT.
+	ASSERT_EQUAL(fake_lastSysMesPrinted, -1, "SYSMESS 51 must NOT update fake_lastSysMesPrinted (stub filters SM51)");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// DESC: indirection resolves location number from flag
+void test_DESC_indirection()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 80 = 3
+	flags[80] = 3;
+
+	//BDD when DESC @80
+	static const char proc[] = { _DESC|IND, 80, 255 };
+	do_action(proc);
+
+	//BDD then printLocationMsg(3) was called via indirection
+	ASSERT_EQUAL(fake_lastLocMsgPrinted, 3, "DESC @flag must resolve location number from flag value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// PRINT: indirection resolves flag NUMBER from another flag, then prints that flag's VALUE
+void test_PRINT_indirection()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 80 = 100, flag 100 = 42
+	//     PRINT @80 -> reads flags[80]=100 -> prints flags[100]=42
+	flags[80]  = 100;
+	flags[100] = 42;
+
+	//BDD when PRINT @80
+	static const char proc[] = { _PRINT|IND, 80, 255 };
+	do_action(proc);
+
+	//BDD then printBase10(42) was called
+	ASSERT_EQUAL(fake_lastBase10Printed, 42, "PRINT @flag must resolve flagno from flag, then print its value");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// PRINT: flag value 0 (boundary)
+void test_PRINT_zero()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 100 = 0
+	flags[100] = 0;
+
+	static const char proc[] = { _PRINT, 100, 255 };
+	do_action(proc);
+
+	ASSERT_EQUAL(fake_lastBase10Printed, 0, "PRINT must print 0 when flag value is 0");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// DPRINT: indirection + 16-bit max value (0xFFFF)
+void test_DPRINT_max_value()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given flag 100 = 0xFF (low byte), flag 101 = 0xFF (high byte) -> 0xFFFF
+	flags[100] = 0xFF;
+	flags[101] = 0xFF;
+
+	static const char proc[] = { _DPRINT, 100, 255 };
+	do_action(proc);
+
+	//BDD then printBase10(65535) was called
+	ASSERT_EQUAL(fake_lastBase10Printed, 0xFFFF, "DPRINT must handle maximum 16-bit value (0xFFFF)");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// LISTOBJ: carried objects at player location are NOT listed
+// LISTOBJ calls _internal_listat(fPlayer, true) which matches objects[i].location == fPlayer.
+// LOC_CARRIED (254) != player location (5), so carried objects are not shown.
+void test_LISTOBJ_carried_not_shown()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given player at loc 5, obj1 carried (not at location 5)
+	flags[fPlayer] = 5;
+	objects[1].location = LOC_CARRIED;
+	objects[1].nounId = 10;
+
+	//BDD when LISTOBJ
+	static const char proc[] = { _LISTOBJ, 255 };
+	do_action(proc);
+
+	//BDD then F53_LISTED is NOT set (carried objects are not at the current location)
+	ASSERT(!(flags[fOFlags] & F53_LISTED), "LISTOBJ must not list carried objects (LOC_CARRIED != player location)");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// LISTOBJ: worn objects at player location are NOT listed
+void test_LISTOBJ_worn_not_shown()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given player at loc 5, obj1 worn
+	flags[fPlayer] = 5;
+	objects[1].location = LOC_WORN;
+	objects[1].nounId = 10;
+
+	static const char proc[] = { _LISTOBJ, 255 };
+	do_action(proc);
+
+	//BDD then F53_LISTED NOT set (worn objects are not at the current location)
+	ASSERT(!(flags[fOFlags] & F53_LISTED), "LISTOBJ must not list worn objects (LOC_WORN != player location)");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// LISTOBJ: SM48 (".\n") is printed as terminator after listing objects
+void test_LISTOBJ_sm48_terminator()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given player at loc 5, obj1 at loc 5
+	flags[fPlayer] = 5;
+	objects[1].location = 5;
+	objects[1].nounId = 10;
+
+	static const char proc[] = { _LISTOBJ, 255 };
+	do_action(proc);
+
+	//BDD then SM48 (".\n") is the last system message printed as list terminator
+	//     Order: SM1 ("I can also see:") -> object name -> SM48 (".\n")
+	//     SM48 != 51 so it IS captured by fake_lastSysMesPrinted
+	ASSERT_EQUAL(fake_lastSysMesPrinted, 48, "LISTOBJ must print SM48 as list terminator after objects");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
+}
+
+// LISTAT with LOC_CARRIED: lists objects in player's inventory
+// Common game pattern: LISTAT 254 to show carried objects
+void test_LISTAT_loc_carried()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	//BDD given obj1 and obj2 carried (location == LOC_CARRIED == 254)
+	objects[1].location = LOC_CARRIED;
+	objects[1].nounId = 10;
+	objects[2].location = LOC_CARRIED;
+	objects[2].nounId = 11;
+
+	//BDD when LISTAT LOC_CARRIED (254)
+	static const char proc[] = { _LISTAT, LOC_CARRIED, 255 };
+	do_action(proc);
+
+	//BDD then F53_LISTED is set (carried objects found at location LOC_CARRIED)
+	ASSERT(flags[fOFlags] & F53_LISTED, "LISTAT LOC_CARRIED must list carried objects");
+	ASSERT(checkEntry, ERROR);
+	SUCCEED();
 }
 
 
@@ -715,22 +1165,24 @@ int main(char** argv, int argc)
 	test_CLS_success();
 	test_SAVEAT_success();
 	test_BACKAT_success();
-	test_PAPER_success();
-	test_INK_success();
-	test_BORDER_success();
+	test_PAPER_success(); test_PAPER_indirection();
+	test_INK_success(); test_INK_indirection();
+	test_BORDER_success(); test_BORDER_indirection();
 	test_PRINTAT_success(); test_PRINTAT_indirection();
 	test_TAB_success(); test_TAB_indirection();
 	test_SPACE_success();
 	test_NEWLINE_success();
-	test_MES_success();
+	test_MES_success(); test_MES_indirection();
 	test_MESSAGE_success();
-	test_SYSMES_success();
-	test_DESC_success();
-	test_PRINT_success();
-	test_DPRINT_success();
+	test_SYSMES_success(); test_SYSMES_indirection(); test_SYSMES_sm51_not_captured();
+	test_DESC_success(); test_DESC_indirection();
+	test_PRINT_success(); test_PRINT_indirection(); test_PRINT_zero();
+	test_DPRINT_success(); test_DPRINT_max_value();
 
 	test_LISTOBJ_success(); test_LISTOBJ_none();
-	test_LISTAT_success(); test_LISTAT_none();
+	test_LISTOBJ_carried_not_shown(); test_LISTOBJ_worn_not_shown();
+	test_LISTOBJ_sm48_terminator();
+	test_LISTAT_success(); test_LISTAT_none(); test_LISTAT_loc_carried();
 
 	return 0;
 }

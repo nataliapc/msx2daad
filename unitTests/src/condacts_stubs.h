@@ -32,8 +32,15 @@ typedef enum CONDACT {
 };
 
 // Global variables
-extern uint8_t fake_keyPressed;
-extern int16_t fake_lastSysMesPrinted;
+extern uint8_t  fake_keyPressed;
+extern int16_t  fake_lastSysMesPrinted;
+extern int      fake_lastCharPrinted;
+extern int16_t  fake_lastUserMsgPrinted;
+extern int16_t  fake_lastLocMsgPrinted;
+extern uint16_t fake_lastBase10Printed;
+extern uint8_t  fake_lastPaperCol;
+extern uint8_t  fake_lastInkCol;
+extern uint8_t  fake_lastBorderCol;
 
 extern const CONDACT_LIST condactList[];
 
