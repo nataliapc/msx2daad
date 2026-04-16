@@ -154,7 +154,7 @@ plan/                       # PRP planning documents (PRP001–PRP008)
 - **Indentation**: Tabs, 4-space width (`.editorconfig`).
 - **Line endings**: LF.
 - **Charset**: UTF-8 for `.c`, `.h`, `.s`, `.asm`.
-- **SDCC-specific C**: Uses `__z88dk_fastcall`, `__asm`/`__endasm` inline assembly, `volatile __at()` for MMIO. This is not standard C — do not refactor to remove SDCC-specific constructs.
+- **SDCC-specific C**: Uses `__asm`/`__endasm` inline assembly, `volatile __at()` for MMIO. This is not standard C — do not refactor to remove SDCC-specific constructs.
 - **Naming**: Platform files: `daad_platform_<name>.c/.h`. Library files: `<category>_<function>.c/.s` (e.g., `dos_open.c`, `vdp_clear.s`).
 
 ---

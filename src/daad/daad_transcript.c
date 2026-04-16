@@ -45,7 +45,7 @@ void transcript_flush()
 	transcript_buff[0] = '\0';
 }
 
-void transcript_char(char c) __z88dk_fastcall
+void transcript_char(char c)
 {
 	char *utf;
 

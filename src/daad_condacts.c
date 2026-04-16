@@ -100,7 +100,7 @@ void initializePROC()
 }
 
 //===============================================
-void pushPROC(uint8_t proc) __z88dk_fastcall
+void pushPROC(uint8_t proc)
 {
 //#ifdef VERBOSE
 //cprintf("pushPROC(%u)\n",proc);
@@ -134,7 +134,7 @@ bool popPROC()
 }
 
 //===============================================
-PROCentry* getPROCess(uint8_t proc) __z88dk_fastcall
+PROCentry* getPROCess(uint8_t proc)
 {
 //#ifdef VERBOSE
 //cprintf("getPROCess(%u)\n",proc);
@@ -155,7 +155,7 @@ char* getPROCEntryCondacts()
 }
 
 //===============================================
-char* stepPROCEntryCondacts(int8_t step) __z88dk_fastcall
+char* stepPROCEntryCondacts(int8_t step)
 {
 	currProc->entry += step;
 	checkEntry = false;

@@ -17,7 +17,7 @@
  * @param num   	To get the token number 'num' in the token list.
  * @return			Return a pointer to the requested token.
  */
-char* getToken(uint8_t num) __z88dk_fastcall
+char* getToken(uint8_t num)
 {
 	char *p;
 	uint8_t i;

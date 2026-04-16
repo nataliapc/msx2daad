@@ -72,36 +72,36 @@ bool populateLogicalSentence() {}
 void parser() {}
 void mainLoop() {}
 
-void printBase10(uint16_t value) __z88dk_fastcall { fake_lastBase10Printed = value; }
-bool waitForTimeout(uint16_t timerFlag) __z88dk_fastcall {}
+void printBase10(uint16_t value) { fake_lastBase10Printed = value; }
+bool waitForTimeout(uint16_t timerFlag) {}
 void errorCode(uint8_t code) {}
 
-void printChar(int c) __z88dk_fastcall            { fake_lastCharPrinted = c; }
-void getSystemMsg(uint8_t num) __z88dk_fastcall {}
-void printSystemMsg(uint8_t num) __z88dk_fastcall { if (num!=51) fake_lastSysMesPrinted = num; }
-void printUserMsg(uint8_t num) __z88dk_fastcall   { fake_lastUserMsgPrinted = num; }
-void printLocationMsg(uint8_t num) __z88dk_fastcall { fake_lastLocMsgPrinted = num; }
-void printObjectMsg(uint8_t num) __z88dk_fastcall {}
+void printChar(int c) { fake_lastCharPrinted = c; }
+void getSystemMsg(uint8_t num) {}
+void printSystemMsg(uint8_t num) { if (num!=51) fake_lastSysMesPrinted = num; }
+void printUserMsg(uint8_t num) { fake_lastUserMsgPrinted = num; }
+void printLocationMsg(uint8_t num) { fake_lastLocMsgPrinted = num; }
+void printObjectMsg(uint8_t num) {}
 void printObjectMsgModif(uint8_t num, char modif) {}
 void printMsg(char *p, bool pr) {}
 void printOutMsg(char *s) {}
 void checkPrintedLines() {}
 
 void transcript_flush() {}
-void transcript_char(char c) __z88dk_fastcall {}
+void transcript_char(char c) {}
 
 // =============================================================================
 // daad_platform_api.c
 
 // System functions
-void     setTime(uint16_t time) __z88dk_fastcall {}
+void     setTime(uint16_t time) {}
 uint16_t getTime() {}
 uint16_t checkKeyboardBuffer() { return fake_keyPressed; }
 void     clearKeyboardBuffer() { fake_keyPressed = 0; }
 uint8_t  getKeyInBuffer() { uint8_t ret = fake_keyPressed; fake_keyPressed = 13; return ret; }
 
 // External texts
-void printXMES(uint16_t address) __z88dk_fastcall {}
+void printXMES(uint16_t address) {}
 
 // GFX functions
 inline void gfxClearWindow() {}

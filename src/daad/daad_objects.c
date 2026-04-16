@@ -43,7 +43,7 @@ uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
  * @param objno		Object ID.
  * @return			none.
  */
-void referencedObject(uint8_t objno) __z88dk_fastcall
+void referencedObject(uint8_t objno)
 {
 	Object *objRef = objno==NULLWORD ? nullObject : &objects[objno];
 

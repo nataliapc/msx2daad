@@ -1,6 +1,7 @@
 .vscode
 .claude
 .codex
+.opencode
 libs/*.lib
 obj/
 img/
@@ -8,6 +9,7 @@ otros/
 assets/tests/
 assets/otros/
 assets/Fonts/
+assets/V3/
 docs/mouse/
 docs/otros/
 docs/vector/
@@ -39,6 +41,7 @@ package/
 unitTests/obj
 unitTests/dsk/*.com
 .agents
+.embeddings.cache.json
 _tmp*/
 dsk*/
 TEST.*

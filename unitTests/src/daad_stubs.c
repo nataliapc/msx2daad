@@ -56,15 +56,15 @@ void prompt(bool p) {}
 void parser() {}
 
 // Print stubs
-void printBase10(uint16_t v) __z88dk_fastcall {}
-bool waitForTimeout(uint16_t t) __z88dk_fastcall {}
+void printBase10(uint16_t v) {}
+bool waitForTimeout(uint16_t t) {}
 void errorCode(uint8_t c) {}
-void printChar(int c) __z88dk_fastcall {}
-void getSystemMsg(uint8_t n) __z88dk_fastcall {}
-void printSystemMsg(uint8_t n) __z88dk_fastcall { if (n!=51) fake_lastSysMesPrinted = n; }
-void printUserMsg(uint8_t n) __z88dk_fastcall {}
-void printLocationMsg(uint8_t n) __z88dk_fastcall {}
-void printObjectMsg(uint8_t n) __z88dk_fastcall {}
+void printChar(int c) {}
+void getSystemMsg(uint8_t n) {}
+void printSystemMsg(uint8_t n) { if (n!=51) fake_lastSysMesPrinted = n; }
+void printUserMsg(uint8_t n) {}
+void printLocationMsg(uint8_t n) {}
+void printObjectMsg(uint8_t n) {}
 void printObjectMsgModif(uint8_t n, char m) {}
 void printMsg(char *p, bool pr) {}
 void printOutMsg(char *s) {}
@@ -73,10 +73,10 @@ void mainLoop() {}
 
 // Transcript stubs
 void transcript_flush() {}
-void transcript_char(char c) __z88dk_fastcall {}
+void transcript_char(char c) {}
 
 // Platform stubs
-void setTime(uint16_t t) __z88dk_fastcall {}
+void setTime(uint16_t t) {}
 uint16_t getTime() {}
 uint16_t checkKeyboardBuffer() { return 0; }
 void clearKeyboardBuffer() {}
@@ -84,7 +84,7 @@ uint8_t getKeyInBuffer() { return 13; }
 void waitingForInput() {}
 inline void *safeMemoryAllocate() {}
 inline void safeMemoryDeallocate(void *p) {}
-void printXMES(uint16_t a) __z88dk_fastcall {}
+void printXMES(uint16_t a) {}
 
 // GFX stubs
 void gfxSetScreen() {}
@@ -111,11 +111,11 @@ void sfxTone(uint8_t v1, uint8_t v2) {}
 
 // PROC stack stubs (minimal: just enough for daad_beforeEach setup)
 void initializePROC() { if (currProc) currProc->continueEntry = true; }
-void pushPROC(uint8_t proc) __z88dk_fastcall {}
+void pushPROC(uint8_t proc) {}
 bool popPROC() {}
-PROCentry* getPROCess(uint8_t proc) __z88dk_fastcall { return 0; }
+PROCentry* getPROCess(uint8_t proc) { return 0; }
 char* getPROCEntryCondacts() { return 0; }
-char* stepPROCEntryCondacts(int8_t step) __z88dk_fastcall { return 0; }
+char* stepPROCEntryCondacts(int8_t step) { return 0; }
 void processPROC() {}
 
 

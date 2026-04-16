@@ -22,7 +22,7 @@ extern void do_NEWLINE();
  * @param c			Char to write.
  * @return			none.
  */
-void printChar(int ch) __z88dk_fastcall
+void printChar(int ch)
 {
 	char c;
 	c = (char)ch;
@@ -74,7 +74,7 @@ void printChar(int ch) __z88dk_fastcall
  * @param value		Number to print.
  * @return			none.
  */
-void printBase10(uint16_t value) __z88dk_fastcall
+void printBase10(uint16_t value)
 {
 	if (value<10) {
 		printChar('0'+(uint8_t)value);

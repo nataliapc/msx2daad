@@ -31,7 +31,7 @@ char* _ptrToMessage(uint16_t *lst, uint8_t num)
  * @param num		Number of system message.
  * @return			none.
  */
-void getSystemMsg(uint8_t num) __z88dk_fastcall
+void getSystemMsg(uint8_t num)
 {
 	printMsg(_ptrToMessage((uint16_t*)hdr->sysMsgPos, num), false);
 }
@@ -44,7 +44,7 @@ void getSystemMsg(uint8_t num) __z88dk_fastcall
  * @param num		Number of system message.
  * @return			none.
  */
-void printSystemMsg(uint8_t num) __z88dk_fastcall
+void printSystemMsg(uint8_t num)
 {
 	printMsg(_ptrToMessage((uint16_t*)hdr->sysMsgPos, num), true);
 }
@@ -57,7 +57,7 @@ void printSystemMsg(uint8_t num) __z88dk_fastcall
  * @param num		Number of user message.
  * @return			none.
  */
-void printUserMsg(uint8_t num) __z88dk_fastcall
+void printUserMsg(uint8_t num)
 {
 	if (num > hdr->numUsrMsg) errorCode(7);
 	printMsg(_ptrToMessage((uint16_t*)hdr->usrMsgPos, num), true);
@@ -71,7 +71,7 @@ void printUserMsg(uint8_t num) __z88dk_fastcall
  * @param num		Number of location message.
  * @return			none.
  */
-void printLocationMsg(uint8_t num) __z88dk_fastcall
+void printLocationMsg(uint8_t num)
 {
 	if (num > hdr->numLocDsc) errorCode(1);
 	printMsg(_ptrToMessage((uint16_t*)hdr->locLstPos, num), true);
@@ -85,7 +85,7 @@ void printLocationMsg(uint8_t num) __z88dk_fastcall
  * @param num		Number of object message.
  * @return			none.
  */
-void printObjectMsg(uint8_t num) __z88dk_fastcall
+void printObjectMsg(uint8_t num)
 {
 	if (num > hdr->numObjDsc) errorCode(0);
 	printMsg(_ptrToMessage((uint16_t*)hdr->objLstPos, num), true);

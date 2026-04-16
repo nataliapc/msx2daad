@@ -63,7 +63,7 @@ void errorCode(uint8_t code)
  * @param timeFlag	A mask to compare with Timer Flag.
  * @return			Boolean for timeout if reached or not.
  */
-bool waitForTimeout(uint16_t timerFlag) __z88dk_fastcall
+bool waitForTimeout(uint16_t timerFlag)
 {
 	static uint16_t timeout;
 	timeout = flags[fTime]*50;

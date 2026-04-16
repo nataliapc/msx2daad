@@ -40,7 +40,7 @@
 bool     checkPlatformSystem();
 uint16_t getFreeMemory();
 char*    getCharsTranslation();
-void     setTime(uint16_t time) __z88dk_fastcall;
+void     setTime(uint16_t time);
 uint16_t getTime();
 uint16_t checkKeyboardBuffer();
 void     clearKeyboardBuffer();
@@ -56,7 +56,7 @@ uint16_t loadFile(char *filename, uint8_t *destaddress, uint16_t size);
 
 
 // External texts
-void printXMES(uint16_t address) __z88dk_fastcall;
+void printXMES(uint16_t address);
 
 
 // GFX functions

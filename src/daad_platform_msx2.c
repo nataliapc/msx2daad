@@ -152,7 +152,7 @@ char* getCharsTranslation()
  * @param time   	System time in 1/50 sec fragments.
  * @return			none.
  */
-void setTime(uint16_t time) __naked __z88dk_fastcall
+void setTime(uint16_t time) __naked
 {
 	time;
 	__asm
@@ -346,7 +346,7 @@ void loadExtendedTexts(char *filename)
  * @param address	Message address in a virtual 64kb file/RAM.
  * @return			none.
  */
-void printXMES(uint16_t address) __z88dk_fastcall
+void printXMES(uint16_t address)
 {
 	#ifdef RAM_MAPPER
 		if (FIRST_RAMSEG[0]) {
