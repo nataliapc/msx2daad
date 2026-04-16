@@ -59,7 +59,7 @@
 // Values to customize the MSX2 program
 
 #ifndef VERSION
-	#define VERSION				1.5
+	#define VERSION				1.6.0
 #endif
 #ifndef SCREEN
 	#define SCREEN 				8	// Screen 5/6/7/8/10/12

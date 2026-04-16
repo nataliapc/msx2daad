@@ -244,5 +244,11 @@ When working on interpreter logic, condact behaviour, DDB format, flags, or adve
 | `wiki/MSX2DAAD-Wiki:-Using-DRC.md` | DRC compiler usage |
 | `wiki/MSX2DAAD-Wiki:-MSX2DAAD features-and-limits.md` | MSX2-specific extensions and limits |
 
+### Repositories
+
+| Name | Content |
+|------|---------|
+| [PCDAAD](https://github.com/Utodev/PCDAAD) | PC/MSDOS engine interpreter (VGA 256 colours), reference implementation for V3 DDB format, and GFX/SFX behaviour |
+
 ### Agent skill
 - **`daad-system`** (`.agents/skills/daad-system/SKILL.md`): Structured technical reference — DDB binary format, all 128 condacts, system flags, object model, DSF source format, DRC compiler, MALUVA extensions, engine architecture. Load this skill for any task involving interpreter logic, condact behaviour, DDB parsing, or adventure source code.

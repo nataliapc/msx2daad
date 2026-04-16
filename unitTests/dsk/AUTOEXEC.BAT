@@ -7,6 +7,7 @@ condact3
 condact4
 condact5
 condact6
+cond_v3
 objwght
 daadobjs
 gettoken

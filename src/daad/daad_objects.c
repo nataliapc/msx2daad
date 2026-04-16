@@ -50,8 +50,8 @@ void referencedObject(uint8_t objno)
 	flags[fCONum] = objno;							// Flag 51
 	flags[fCOLoc] = objRef->location;				// Flag 54
 	flags[fCOWei] = objRef->attribs.mask.weight;	// Flag 55
-	flags[fCOCon] = flags[fCOCon] & 0b01111111 | (objRef->attribs.mask.isContainer << 7);	// Flag 56
-	flags[fCOWR]  = flags[fCOWR] & 0b01111111 | (objRef->attribs.mask.isWareable << 7);		// Flag 57
+	flags[fCOCon] = objRef->attribs.mask.isContainer << 7;	// Flag 56: 128 if container, else 0
+	flags[fCOWR]  = objRef->attribs.mask.isWareable << 7;	// Flag 57: 128 if wearable, else 0
 	flags[fCOAtt] = objRef->extAttr2;				// Flag 58
 	flags[fCOAtt+1] = objRef->extAttr1;				// Flag 59
 }

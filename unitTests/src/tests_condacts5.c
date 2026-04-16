@@ -1125,6 +1125,44 @@ void test_LISTOBJ_sm48_terminator()
 	SUCCEED();
 }
 
+// LISTOBJ: bit 6 = 0 (default) → newline between objects, not SM46/SM47
+void test_LISTOBJ_contlist_off()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	flags[fPlayer] = 3;
+	flags[fOFlags] = 0;                        // bit 6 = 0 → newline mode
+	objects[0].location = 3; objects[0].nounId = 10;
+	objects[1].location = 3; objects[1].nounId = 11;
+
+	static const char proc[] = { _LISTOBJ, 255 };
+	do_action(proc);
+
+	ASSERT_EQUAL(fake_lastCharPrinted, '\r',
+		"LISTOBJ with bit6=0 must use do_NEWLINE between objects");
+	SUCCEED();
+}
+
+// LISTOBJ: bit 6 = 1 → continuous mode, SM46/SM47 separators, no NEWLINE
+void test_LISTOBJ_contlist_on()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	flags[fPlayer] = 3;
+	flags[fOFlags] = 64;                       // bit 6 = 1 → continuous mode
+	objects[0].location = 3; objects[0].nounId = 10;
+	objects[1].location = 3; objects[1].nounId = 11;
+
+	static const char proc[] = { _LISTOBJ, 255 };
+	do_action(proc);
+
+	ASSERT_EQUAL(fake_lastCharPrinted, -1,
+		"LISTOBJ with bit6=1 must NOT use do_NEWLINE (uses SM separators)");
+	SUCCEED();
+}
+
 // LISTAT with LOC_CARRIED: lists objects in player's inventory
 // Common game pattern: LISTAT 254 to show carried objects
 void test_LISTAT_loc_carried()
@@ -1182,6 +1220,7 @@ int main(char** argv, int argc)
 	test_LISTOBJ_success(); test_LISTOBJ_none();
 	test_LISTOBJ_carried_not_shown(); test_LISTOBJ_worn_not_shown();
 	test_LISTOBJ_sm48_terminator();
+	test_LISTOBJ_contlist_off(); test_LISTOBJ_contlist_on();
 	test_LISTAT_success(); test_LISTAT_none(); test_LISTAT_loc_carried();
 
 	return 0;

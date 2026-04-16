@@ -58,8 +58,11 @@ bool initDAAD(int argc, char **argv)
 				hdr->objAttrPos, hdr->objExtrPos);
 	#endif
 
+#ifdef DAADV3
+	isV3 = (hdr->version == 3);
+#endif
 	//If not a valid DDB version exits
-	if (hdr->version != 2)
+	if (hdr->version != 2 && !isV3)
 		return false;
 
 	//Update header positions addresses
@@ -105,9 +108,10 @@ void initFlags()
 {
 	uint8_t i;
 
-	//Clear flag of player location
-	flags[fPlayer] = 0;
+	//Clear all flags
+	memset(flags, 0, 256);
 
+	//Initialize screen flags [fGFlags] & [fScMode]
 	gfxSetScreenModeFlags();
 
 	//Initialize DAAD windows

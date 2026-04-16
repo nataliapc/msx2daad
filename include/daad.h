@@ -48,6 +48,14 @@
 #define F57_WAREABLE		128		// (fCOWR) Bitmask: Current object is wearable
 #define F56_CONTAINER		128		// (fCOCon) Bitmask: Current object is a container
 #define F53_LISTED			128		// (fOFlags) Bitmask: If objects listed by LISTOBJ
+#ifdef DAADV3
+// V3: new bits of fOFlags (flag 53)
+#define F53_DOALLNONE    1  // (fOFlags) Bitmask: DOALL no objects
+#define F53_ALTFLAGS     2  // (fOFlags) Bitmask: alternative flags 60-91
+#define F53_NOPRONOUN    4  // (fOFlags) Bitmask: no enclitic pronouns
+#define F53_PREPFIRST   16  // (fOFlags) Bitmask: preposition before noun1
+#define F53_UNRECWRD    32  // (fOFlags) Bitmask: unrecognized word after verb
+#endif //DAADV3
 #define F29_MOUSE			1		// (fGFlags) Bitmask: Mouse available
 #define F29_GMODE			128		// (fGFlags) Bitmask: Graphics available
 
@@ -80,6 +88,11 @@
 #define MACHINE_AMIGA		6
 #define MACHINE_PCW			7
 #define MACHINE_MSX2		15
+
+#ifdef DAADV3
+  extern bool isV3;
+  #define ISV3 isV3
+#endif
 
 // Language constants (DDB header)
 #define LANGUAGE_EN			0
@@ -187,7 +200,10 @@ enum VOC_TYPE {
 	ADJECTIVE,					// 3
 	PREPOSITION,				// 4
 	CONJUNCTION,				// 5
-	PRONOUN						// 6
+	PRONOUN,					// 6
+#ifdef DAADV3
+	UNKNOWN_WORD				// 7 — V3 marker: word not found after a verb
+#endif
 };
 
 

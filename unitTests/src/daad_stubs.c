@@ -20,6 +20,9 @@ PROCstack *currProc;				// Pointer to current active condact.
 bool indirection;					// True if the current condact use indirection for the first argument.
 bool isDone;						// Variables for ISDONE/ISNDONE condacts.
 bool lastPicShow;					// True if last location picture was drawed.
+#ifdef DAADV3
+bool isV3;							// True if loaded DDB is version 3
+#endif
 
 uint8_t    *ddb;					// Where the DDB is allocated
 DDB_Header *hdr;					// Struct pointer to DDB Header

@@ -139,6 +139,11 @@ void do_COPYFF();
 void do_COPYBF();
 void do_RESET();
 void do_NOT_USED();
+#ifdef DAADV3
+void do_XMES();
+void do_INDIR();
+void do_SETAT();
+#endif
 
 #ifdef VERBOSE
 typedef struct

@@ -49,7 +49,11 @@ const CONDACT_LIST condactList[] = {
 	{ do_AUTOT,     1 }, { do_MOVE,      1 }, { do_WINSIZE,   1 }, { do_REDO,      0 }, { do_CENTRE,    1 },	// 105-109
 	{ do_EXIT,      1 }, { do_INKEY,     0 }, { do_BIGGER,    0 }, { do_SMALLER,   0 }, { do_ISDONE,    0 },	// 110-114
 	{ do_ISNDONE,   0 }, { do_SKIP,      0 }, { do_RESTART,   1 }, { do_TAB,       1 }, { do_COPYOF,    1 },	// 115-119
+#ifdef DAADV3
+	{ do_XMES,      1 }, { do_COPYOO,    1 }, { do_INDIR,     1 }, { do_COPYFO,    1 }, { do_SETAT,     1 },	// 120-124
+#else
 	{ do_NOT_USED,  1 }, { do_COPYOO,    1 }, { do_NOT_USED,  1 }, { do_COPYFO,    1 }, { do_NOT_USED,  1 },	// 120-124
+#endif
 	{ do_COPYFF,    1 }, { do_COPYBF,    1 }, { do_RESET,     1 },												// 125-127
 };
 
@@ -76,7 +80,11 @@ static const CondactArgs const CONDACTS[128] = {
 	{ "PUTO",      1 }, { "NOTDONE",   0 }, { "AUTOP",     1 }, { "AUTOT",     1 }, { "MOVE",      1 }, { "WINSIZE",   2 },
 	{ "REDO",      0 }, { "CENTRE",    0 }, { "EXIT",      1 }, { "INKEY",     0 }, { "BIGGER",    2 }, { "SMALLER",   2 },
 	{ "ISDONE",    0 }, { "ISNDONE",   0 }, { "SKIP",      1 }, { "RESTART",   0 }, { "TAB",       1 }, { "COPYOF",    2 },
+#ifdef DAADV3
+	{ "XMES",      2 }, { "COPYOO",    2 }, { "INDIR",     1 }, { "COPYFO",    2 }, { "SETAT",     2 }, { "COPYFF",    2 },
+#else
 	{ "NOT_USED1", 0 }, { "COPYOO",    2 }, { "NOT_USED2", 0 }, { "COPYFO",    2 }, { "NOT_USED3", 0 }, { "COPYFF",    2 },
+#endif
 	{ "COPYBF",    2 }, { "RESET",     0 }
 };
 #endif	//VERBOSE
@@ -198,8 +206,9 @@ void processPROC()
 		do {
 			currProc->entry++;
 			if (currProc->entry->verb==0) {
-				//Entry end
-				_popPROC();
+				//Entry end: implicit DONE when DOALL is active (spec: "if none found in pass")
+				if (currProc->condactDOALL) do_DONE();
+				else _popPROC();
 				break;
 			} else {
 				//Next entry
@@ -582,7 +591,14 @@ static void _internal_hasat(uint8_t value, bool negate)
 {
 	uint8_t bit, flagValue;
 	bit = 1 << (value & 7);	// 1 << (value % 8)
+#ifdef DAADV3
+	{
+		uint8_t baseFlag = (ISV3 && (flags[fOFlags] & F53_ALTFLAGS)) ? 91 : 59;
+		flagValue = flags[baseFlag - (value >> 3)] & bit;
+	}
+#else
 	flagValue = flags[(fCOAtt+1)-(value>>3)] & bit;
+#endif
 
 	if (negate) flagValue = !flagValue;
 	checkEntry = flagValue;
@@ -1887,17 +1903,24 @@ void do_DPRINT()	// flagno
 static void _internal_listat(uint8_t loc, bool listobj) {
 	uint8_t lastFound = NULLWORD;
 	uint8_t n = hdr->numObjDsc;
+	bool contList = flags[fOFlags] & 64;		// bit 6: continuous listing mode
 	flags[fOFlags] &= (F53_LISTED ^ 255);
 	for (uint8_t i=0; i<=n; i++) {
 		if (i==n || objects[i].location == loc) {
 			if (lastFound!=NULLWORD) {
-				if (listobj && !(flags[fOFlags] & F53_LISTED))
+				if (listobj && !(flags[fOFlags] & F53_LISTED)) {
 					printSystemMsg(1);
+					if (!contList) do_NEWLINE();
+				}
 				if (flags[fOFlags] & F53_LISTED) {
-					if (i<n)
-						printSystemMsg(46);	//", "
-					else
-						printSystemMsg(47);	//" y "
+					if (contList) {
+						if (i<n)
+							printSystemMsg(46);	//", "
+						else
+							printSystemMsg(47);	//" y "
+					} else {
+						do_NEWLINE();
+					}
 				}
 				printObjectMsg(lastFound);
 				flags[fOFlags] |= F53_LISTED;
@@ -2054,6 +2077,14 @@ void do_ANYKEY()
 void do_PAUSE()		// value
 {
 	uint16_t value = getValueOrIndirection();
+#ifdef DAADV3
+	if (ISV3 && !value) {
+		while (!checkKeyboardBuffer());
+		flags[fKey1] = getKeyInBuffer();
+		flags[fKey2] = 0;
+		return;
+	}
+#endif
 	if (!value) value = 256;
 
 	setTime(0);
@@ -2189,6 +2220,9 @@ static void _internal_doall() {
 		}
 		obj = &objects[objno];
 	}
+#ifdef DAADV3
+	if (ISV3) flags[fOFlags] &= ~F53_DOALLNONE;  // CLEAR: found at least one object
+#endif
 	flags[fDAObjNo] = objno;
 	flags[fNoun1] = obj->nounId;
 	flags[fAdject1] = obj->adjectiveId;
@@ -2196,6 +2230,9 @@ static void _internal_doall() {
 	currProc->entry = currProc->entryDOALL;
 }
 void do_DOALL() {	// locno+
+#ifdef DAADV3
+	if (ISV3) flags[fOFlags] |= F53_DOALLNONE;   // SET: no objects found yet
+#endif
 	if (currProc->condactDOALL) errorCode(4);
 	currProc->condactDOALL = ++pPROC;
 	currProc->entryDOALL = currProc->entry;
@@ -2370,7 +2407,11 @@ void do_EXTERN()	// value routine
 			printXMES(value);
 			break;
 		//=================== XUNDONE: Disable done internal flag [***UNTESTED***]
+		// V3 spec: "removed in DAAD V3 — produces undefined behavior" → no-op in V3
 		case 7:
+#ifdef DAADV3
+			if (!ISV3)
+#endif
 			isDone = false;
 			break;
 	}
@@ -2379,7 +2420,57 @@ void do_EXTERN()	// value routine
 
 // =============================================================================
 
-/*	Allows 'address' in memory (or in the database segment for 16bit) to be 
+#ifdef DAADV3
+/*	XMES (condact 120): native V3 equivalent of MALUVA's EXTERN <lsb> 3 <msb>.
+	Prints from external text file TEXTS.XDB using a 16-bit offset.
+	Reuses printXMES() (daad_platform_api.h), same as do_EXTERN case 3. */
+void do_XMES()	// lsb msb
+{
+	if (!ISV3) { pPROC += 2; return; }
+	uint8_t lsb = *pPROC++;
+	uint8_t msb = *pPROC++;
+	printXMES((uint16_t)lsb | ((uint16_t)msb << 8));
+}
+
+// =============================================================================
+
+/*	INDIR (condact 122): internal condact generated by DRC for indirection on
+	2nd parameter. Patches flags[flagno] into the 2nd argument byte of the
+	next condact, modifying the DDB in RAM. (Equivalent to CondactPTR+3 in PCDAAD.) */
+void do_INDIR()	// flagno
+{
+	if (!ISV3) { pPROC++; return; }
+	uint8_t flagno = *pPROC++;
+	*(pPROC + 2) = flags[flagno];
+}
+
+// =============================================================================
+
+/*	SETAT (condact 124): set/clear/toggle attribute bit indicated by value.
+	Uses the same baseFlag logic as _internal_hasat (PCDAAD condacts.pas:2186).
+	operation AND 3: 0=clear, 1=set, 2/3=toggle. */
+void do_SETAT()	// value operation
+{
+	if (!ISV3) { pPROC += 2; return; }
+	uint8_t value = getValueOrIndirection();
+	uint8_t operation = *pPROC++ & 3;
+	uint8_t bit = 1 << (value & 7);
+	uint8_t baseFlag = (flags[fOFlags] & F53_ALTFLAGS) ? 91 : 59;
+	uint8_t *flagPtr = &flags[baseFlag - (value >> 3)];
+
+	if (operation == 0) {
+		*flagPtr &= ~bit;           // clear
+	} else if (operation == 1) {
+		*flagPtr |= bit;            // set
+	} else {
+		*flagPtr ^= bit;            // toggle (operation 2 or 3)
+	}
+}
+#endif //DAADV3
+
+// =============================================================================
+
+/*	Allows 'address' in memory (or in the database segment for 16bit) to be
 	executed. See the extern secion for more details. */
 #ifndef DISABLE_CALL
 void do_CALL()		// address(dword)

@@ -32,6 +32,9 @@ void parser()
 	aux = lsBuffer1;
 	p = tmpMsg;
 	tmpVOC = safeMemoryAllocate();
+#ifdef DAADV3
+	bool verbSeen = false;
+#endif
 
 	//Clear logical sentences buffer
 	clearLogicalSentences();
@@ -62,6 +65,12 @@ cprintf("%u %c%c%c%c%c: ",p2-p, tmpVOC[0],tmpVOC[1],tmpVOC[2],tmpVOC[3],tmpVOC[4
 		voc = (Vocabulary*)hdr->vocPos;
 		while (voc->word[0]) {
 			if (!memcmp(tmpVOC, voc->word, 5)) {
+#ifdef DAADV3
+				if (ISV3) {
+					if (voc->type == VERB)        verbSeen = true;
+					if (voc->type == CONJUNCTION) verbSeen = false;
+				}
+#endif
 				*lsBuffer++ = voc->id;
 				*lsBuffer++ = voc->type;
 				*lsBuffer = 0;
@@ -72,9 +81,18 @@ cprintf("Found! %u / %u [%c%c%c%c%c]\n",voc->id, voc->type, 255-voc->word[0], 25
 			}
 			voc++;
 		}
-#ifdef VERBOSE2
-if (!voc->word[0]) cprintf("NOT FOUND!\n");
+		if (!voc->word[0]) {
+#ifdef DAADV3
+			if (ISV3 && verbSeen) {
+				*lsBuffer++ = 0;
+				*lsBuffer++ = UNKNOWN_WORD;
+				*lsBuffer = 0;
+			}
 #endif
+#ifdef VERBOSE2
+cprintf("NOT FOUND!\n");
+#endif
+		}
 		while (*p!=' ' && *p!='\0') {
 			if (*p=='"') {
 				lsBuffer = aux;
@@ -110,6 +128,9 @@ bool populateLogicalSentence()
 	// Clear parser flags
 	flags[fVerb] = flags[fNoun1] = flags[fAdject1] = flags[fAdverb] = flags[fPrep] = flags[fNoun2] = flags[fAdject2] =
 		flags[fCPNoun] = flags[fCPAdject] = NULLWORD;
+#ifdef DAADV3
+	if (ISV3) flags[fOFlags] &= ~(F53_UNRECWRD | F53_PREPFIRST);
+#endif
 #ifdef VERBOSE2
 cputs("populateLogicalSentence()\n");
 #endif
@@ -137,6 +158,9 @@ cputs("populateLogicalSentence()\n");
 			ret = true;
 		} else if (type==PREPOSITION && flags[fPrep]==NULLWORD) {						// PREP
 			flags[fPrep] = id;
+#ifdef DAADV3
+			if (ISV3 && flags[fNoun1] == NULLWORD) flags[fOFlags] |= F53_PREPFIRST;
+#endif
 			ret = true;
 		} else if (type==ADJECTIVE && adj==fAdject1 && flags[fAdject1]==NULLWORD) {		// ADJ1
 			flags[fAdject1] = id;
@@ -145,6 +169,11 @@ cputs("populateLogicalSentence()\n");
 			flags[fAdject2] = id;
 			ret = true;
 		}
+#ifdef DAADV3
+		  else if (type==UNKNOWN_WORD) {
+			flags[fOFlags] |= F53_UNRECWRD;
+		}
+#endif
 		p+=2;
 	}
 

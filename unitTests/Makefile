@@ -9,7 +9,7 @@ AR = $(DOCKER_RUN) sdar
 CC = $(DOCKER_RUN) sdcc
 HEX2BIN = $(DOCKER_RUN) hex2bin
 
-CXXFLAGS := -DUNIT_TESTS -DLANG_ES -DMSXDOS1 -DMSX2
+CXXFLAGS := -DUNIT_TESTS -DLANG_ES -DMSXDOS1 -DMSX2 -DDAADV3
 OPFLAGS := --opt-code-size
 WRFLAGS := --less-pedantic --disable-warning 196 --disable-warning 84 --disable-warning 85
 CCFLAGS := --code-loc 0x0180 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
@@ -36,8 +36,9 @@ DAAD_BASE_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel as
                   $(addprefix $(LIBDIR), $(LIBS))
 
 CONDACTS_PROGRAMS = condact1.com condact2.com condact3.com condact4.com condact5.com condact6.com
+V3_PROGRAMS = cond_v3.com
 DAAD_PROGRAMS = objwght.com daadobjs.com gettoken.com initobj.com
-PROGRAMS = dos.com $(CONDACTS_PROGRAMS) $(DAAD_PROGRAMS)
+PROGRAMS = dos.com $(CONDACTS_PROGRAMS) $(V3_PROGRAMS) $(DAAD_PROGRAMS)
 
 all: $(addprefix $(OBJDIR), $(PROGRAMS))
 
@@ -63,6 +64,14 @@ $(OBJDIR)%.rel: $(DAAD_SRCDIR2)%.c
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -c -o $@ $^ ;
 
 $(addprefix $(OBJDIR), $(CONDACTS_PROGRAMS)): $(OBJDIR)condact%.com: $(CONDACTS_BASE_LIBS) $(SRCDIR)tests_condacts%.c
+	@echo "######## Compiling $@"
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $^ -o $(subst .com,.ihx,$@) ;
+	@$(HEX2BIN) -e com $(subst .com,.ihx,$@) ;
+	@echo "**** Copying .COM files to DSK/"
+	@cp $@ dsk/
+
+$(OBJDIR)cond_v3.com: $(CONDACTS_BASE_LIBS) $(SRCDIR)tests_condacts_v3.c
 	@echo "######## Compiling $@"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $^ -o $(subst .com,.ihx,$@) ;
@@ -111,7 +120,7 @@ $(OBJDIR)dos.com: $(DOS_REL_LIBS) $(SRCDIR)tests_dos.c
 	@cp $@ dsk/
 
 clean:
-	@rm -f $(addprefix dsk/, dos.com $(CONDACTS_PROGRAMS) $(DAAD_PROGRAMS) tests.txt)
+	@rm -f $(addprefix dsk/, dos.com $(CONDACTS_PROGRAMS) $(V3_PROGRAMS) $(DAAD_PROGRAMS) tests.txt)
 	@rm -f *.com *.asm *.lst *.sym *.bin *.ihx *.lk *.map *.noi *.rel
 	@rm -rf $(OBJDIR)
 

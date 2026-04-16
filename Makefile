@@ -21,10 +21,10 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifndef VERSION
-	VERSION := 1.5.1
+	VERSION := 1.6.0
 endif
 ifndef CXXFLAGS
-	CXXFLAGS := -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2 -DLANG_ES -DMSX2
+	CXXFLAGS := -DLANG_ES -DMSX2 -DDAADV3 -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2
 endif
 LDFLAGS := -rc
 OPFLAGS := --less-pedantic --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0

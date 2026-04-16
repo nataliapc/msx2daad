@@ -151,8 +151,8 @@ void test_referencedObject_sets_all_flags()
 	ASSERT_EQUAL(flags[fCONum], 2, "flags[fCONum] must be 2");
 	ASSERT_EQUAL(flags[fCOLoc], 5, "flags[fCOLoc] must be 5");
 	ASSERT_EQUAL(flags[fCOWei], 7, "flags[fCOWei] must be 7");
-	ASSERT((flags[fCOCon] & 0x80) == 0, "flags[fCOCon] bit7 must be 0 (not container)");
-	ASSERT((flags[fCOWR] & 0x80) == 0x80, "flags[fCOWR] bit7 must be 1 (wearable)");
+	ASSERT_EQUAL(flags[fCOCon], 0, "flags[fCOCon] must be 0 (not container)");
+	ASSERT_EQUAL(flags[fCOWR], 128, "flags[fCOWR] must be 128 (wearable)");
 	ASSERT_EQUAL(flags[fCOAtt], 0xCD, "flags[fCOAtt] must be extAttr2=0xCD");
 	ASSERT_EQUAL(flags[fCOAtt+1], 0xAB, "flags[fCOAtt+1] must be extAttr1=0xAB");
 	SUCCEED();

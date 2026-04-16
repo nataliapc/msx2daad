@@ -104,7 +104,6 @@ void _ASSERT_TRUE(bool succeedCondition, const char *failMsg, char *file, char *
 {
 	if (!succeedCondition) {
 		cprintf("### Assert failed at: %s :: %s :: line %d\n\r    by \"%s\"\n\r\x07", file, func, line, failMsg);
-		crt_exit();
 	}
 }
 
@@ -112,14 +111,12 @@ void _ASSERT_EQUAL(uint16_t value, uint16_t expected, const char *failMsg, char 
 {
 	if (value != expected) {
 		cprintf("### Assert failed at: %s :: %s :: line %d\n\r    by \"%s\"\n\r    received:%u expected:%u\n\r\x07", file, func, line, failMsg, value, expected);
-		crt_exit();
 	}
 }
 
 void _FAIL(const char *failMsg, char *file, char *func, int line)
 {
 	cprintf("Fail by '%s'\n\r  at %s :: %s :: line %d\n\r\x07", failMsg, file, func, line);
-	crt_exit();
 }
 
 void _SUCCEED(char *file, char *func)

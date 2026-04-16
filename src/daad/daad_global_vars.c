@@ -28,6 +28,9 @@ bool lastPicShow;					// True if last location picture was drawed.
 
 uint8_t    *ddb;					// Where the DDB is allocated
 DDB_Header *hdr;					// Struct pointer to DDB Header
+#ifdef DAADV3
+bool        isV3;					// True if loaded DDB is version 3
+#endif
 Object     *objects;				// Memory allocation for objects data
 uint8_t     flags[256];				// DAAD flags (256 bytes)
 char       *ramsave;				// Memory to store ram save (RAMSAVE)

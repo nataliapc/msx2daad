@@ -574,7 +574,7 @@ void gfxSetScreen()
  * 					16|10 - SCREEN 10
  * 					16|12 - SCREEN 12
  * 
- * @return		Return the value to be assigned to the flag
+ * @return		none.
  */
 void gfxSetScreenModeFlags()
 {

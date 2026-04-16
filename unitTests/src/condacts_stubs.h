@@ -28,7 +28,7 @@ typedef enum CONDACT {
 	_PUTIN,     _TAKEOUT,   _NEWTEXT,  _ABILITY,  _WEIGHT,   _RANDOM,    _INPUT,     _SAVEAT,   _BACKAT,   _PRINTAT, 	// 90-99
 	_WHATO,     _CALL,      _PUTO,     _NOTDONE,  _AUTOP,    _AUTOT,     _MOVE,      _WINSIZE,  _REDO,     _CENTRE,  	// 100-109
 	_EXIT,      _INKEY,     _BIGGER,   _SMALLER,  _ISDONE,   _ISNDONE,   _SKIP,      _RESTART,  _TAB,      _COPYOF,  	// 110-119
-	_NOTUSED1,  _COPYOO,    _NOTUSED2, _COPYFO,   _NOTUSED3, _COPYFF,    _COPYBF,    _RESET								// 120-127
+	_XMES,      _COPYOO,    _INDIR,    _COPYFO,   _SETAT,    _COPYFF,    _COPYBF,    _RESET								// 120-127
 };
 
 // Global variables
@@ -38,6 +38,7 @@ extern int      fake_lastCharPrinted;
 extern int16_t  fake_lastUserMsgPrinted;
 extern int16_t  fake_lastLocMsgPrinted;
 extern uint16_t fake_lastBase10Printed;
+extern uint16_t fake_lastXmesPrinted;
 extern uint8_t  fake_lastPaperCol;
 extern uint8_t  fake_lastInkCol;
 extern uint8_t  fake_lastBorderCol;

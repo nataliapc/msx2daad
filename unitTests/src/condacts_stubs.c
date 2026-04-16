@@ -18,6 +18,7 @@ int      fake_lastCharPrinted;
 int16_t  fake_lastUserMsgPrinted;
 int16_t  fake_lastLocMsgPrinted;
 uint16_t fake_lastBase10Printed;
+uint16_t fake_lastXmesPrinted;
 uint8_t  fake_lastPaperCol;
 uint8_t  fake_lastInkCol;
 uint8_t  fake_lastBorderCol;
@@ -31,6 +32,9 @@ PROCstack *currProc;				// Pointer to current active condact.
 bool indirection;					// True if the current condact use indirection for the first argument.
 bool isDone;						// Variables for ISDONE/ISNDONE condacts.
 bool lastPicShow;					// True if last location picture was drawed.
+#ifdef DAADV3
+bool isV3;							// True if loaded DDB is version 3
+#endif
 
 
 static const uint8_t nullObjFake[] = { 0, 0, 0, 0, 0, 0 };
@@ -101,7 +105,7 @@ void     clearKeyboardBuffer() { fake_keyPressed = 0; }
 uint8_t  getKeyInBuffer() { uint8_t ret = fake_keyPressed; fake_keyPressed = 13; return ret; }
 
 // External texts
-void printXMES(uint16_t address) {}
+void printXMES(uint16_t address) { fake_lastXmesPrinted = address; }
 
 // GFX functions
 inline void gfxClearWindow() {}
@@ -146,6 +150,10 @@ void beforeEach()
 	isDone = false;
 
 	memset(hdr, 0, sizeof(DDB_Header));
+	hdr->version = 2;
+#ifdef DAADV3
+	isV3 = false;
+#endif
 	memset(objects, 0, sizeof(Object) * MOCK_NUM_OBJECTS);
 	memset(windows, 0, sizeof(Window) * WINDOWS_NUM);
 	memset(ramsave, 0, 512);
@@ -160,6 +168,7 @@ void beforeEach()
 	fake_lastUserMsgPrinted = -1;
 	fake_lastLocMsgPrinted  = -1;
 	fake_lastBase10Printed  = 0;
+	fake_lastXmesPrinted    = 0;
 	fake_lastPaperCol       = 0;
 	fake_lastInkCol         = 0;
 	fake_lastBorderCol      = 0;
