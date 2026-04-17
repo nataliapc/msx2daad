@@ -80,7 +80,9 @@ uint16_t checkKeyboardBuffer() { return 0; }
 void clearKeyboardBuffer() {}
 uint8_t getKeyInBuffer() { return 13; }
 void waitingForInput() {}
-inline void *safeMemoryAllocate() {}
+// parser() calls safeMemoryAllocate() for tmpVOC (5 bytes); needs real memory.
+static uint8_t _tmpVOC_buf[8];
+inline void *safeMemoryAllocate() { return _tmpVOC_buf; }
 inline void safeMemoryDeallocate(void *p) {}
 void printXMES(uint16_t a) {}
 

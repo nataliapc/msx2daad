@@ -458,6 +458,239 @@ void test_populateLS_pronoun_boundary_id_50_is_non_proper()
 
 
 // =============================================================================
+// Tests parser() — PRP016: Spanish enclitic pronouns (-LO/-LA/-LOS/-LAS)
+
+// Test vocabulary — DDB-encoded: each entry is [word0..4 (255-char), id, type]
+// Shorter words are padded with 255-' ' (=223) by the parser's memset.
+// "PALO" matches "PALO " (4 chars + 1 padded space).
+static const uint8_t TEST_VOCAB[] = {
+	// "COGER" id=20  VERB       — 5-char verb, canonical enclitic case
+	(uint8_t)(255-'C'),(uint8_t)(255-'O'),(uint8_t)(255-'G'),(uint8_t)(255-'E'),(uint8_t)(255-'R'), 20, VERB,
+	// "TIRAR" id=25  VERB       — for -LAS test (TIRARLAS)
+	(uint8_t)(255-'T'),(uint8_t)(255-'I'),(uint8_t)(255-'R'),(uint8_t)(255-'A'),(uint8_t)(255-'R'), 25, VERB,
+	// "LO   " id=30  VERB       — 2-char verb; wordLen==suffLen → no enclitic
+	(uint8_t)(255-'L'),(uint8_t)(255-'O'),(uint8_t)(255-' '),(uint8_t)(255-' '),(uint8_t)(255-' '), 30, VERB,
+	// "SUBIR" id=240 VERB       — id>239 for V3 F53_NOPRONOUN test
+	(uint8_t)(255-'S'),(uint8_t)(255-'U'),(uint8_t)(255-'B'),(uint8_t)(255-'I'),(uint8_t)(255-'R'),240, VERB,
+	// "ESPAD" id=100 NOUN       — "ESPADA" truncated, for regression
+	(uint8_t)(255-'E'),(uint8_t)(255-'S'),(uint8_t)(255-'P'),(uint8_t)(255-'A'),(uint8_t)(255-'D'),100, NOUN,
+	// "PALO " id=110 NOUN       — 4-char noun ending in 'O'; must NOT inject PRONOUN
+	(uint8_t)(255-'P'),(uint8_t)(255-'A'),(uint8_t)(255-'L'),(uint8_t)(255-'O'),(uint8_t)(255-' '),110, NOUN,
+	// terminator
+	0,0,0,0,0,0,0
+};
+
+// Helper: sets hdr->vocPos to TEST_VOCAB and clears tmpMsg
+static void parser_setup()
+{
+	hdr->vocPos = (uint16_t)(uintptr_t)TEST_VOCAB;
+	hdr->numObjDsc = MOCK_DAAD_NUM_OBJECTS;
+}
+
+// TEST 18 — enclitic -LO detected, PRONOUN injected after VERB
+void test_parser_enclitic_LO_injects_pronoun()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	//BDD given "COGERLO" → COGER (5 chars) matches verb id=20, suffix LO detected
+	strcpy(tmpMsg, "COGERLO");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 20,     "lsBuffer0[0] must be verb id=20");
+	ASSERT_EQUAL(lsBuffer0[1], VERB,   "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], SYNTH_PRONOUN_ID, "lsBuffer0[2] must be SYNTH_PRONOUN_ID");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN,"lsBuffer0[3] must be PRONOUN");
+	ASSERT_EQUAL(lsBuffer0[4], 0,      "lsBuffer0[4] must be terminator");
+	SUCCEED();
+}
+
+// TEST 19 — enclitic -LA detected
+void test_parser_enclitic_LA()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	strcpy(tmpMsg, "COGERLA");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[1], VERB,    "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN, "lsBuffer0[3] must be PRONOUN (suffix -LA)");
+	SUCCEED();
+}
+
+// TEST 20 — enclitic -LOS detected (3-char suffix)
+void test_parser_enclitic_LOS()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	strcpy(tmpMsg, "COGERLOS");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[1], VERB,    "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN, "lsBuffer0[3] must be PRONOUN (suffix -LOS)");
+	SUCCEED();
+}
+
+// TEST 21 — enclitic -LAS detected (3-char suffix)
+void test_parser_enclitic_LAS()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	strcpy(tmpMsg, "COGERLAS");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[1], VERB,    "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN, "lsBuffer0[3] must be PRONOUN (suffix -LAS)");
+	SUCCEED();
+}
+
+// TEST 22 — verb without enclitic: no PRONOUN injected
+void test_parser_verb_without_enclitic_no_injection()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	strcpy(tmpMsg, "COGER");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 20,   "lsBuffer0[0] must be verb id=20");
+	ASSERT_EQUAL(lsBuffer0[1], VERB, "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], 0,    "lsBuffer0[2] must be terminator (no PRONOUN)");
+	SUCCEED();
+}
+
+// TEST 23 — NOUN ending in -LO (PALO) must NOT inject PRONOUN (only VERB triggers)
+void test_parser_noun_ending_in_LO_does_not_inject_pronoun()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	//BDD "PALO" is a NOUN (id=110) that ends in 'O'; last-2 = "LO" pattern would NOT
+	//    trigger since the check requires voc->type == VERB
+	strcpy(tmpMsg, "PALO");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 110,  "lsBuffer0[0] must be noun id=110");
+	ASSERT_EQUAL(lsBuffer0[1], NOUN, "lsBuffer0[1] must be NOUN");
+	ASSERT_EQUAL(lsBuffer0[2], 0,    "lsBuffer0[2] must be terminator (no PRONOUN)");
+	SUCCEED();
+}
+
+// TEST 24 — V3 F53_NOPRONOUN + verb id=240: no enclitic injection
+void test_parser_enclitic_respects_F53_NOPRONOUN_v3()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+#ifdef DAADV3
+	isV3 = true;
+	flags[fOFlags] |= F53_NOPRONOUN;
+#endif
+
+	//BDD "SUBIRLO" → SUBIR (id=240 > 239) with F53_NOPRONOUN active: no injection
+	strcpy(tmpMsg, "SUBIRLO");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 240,  "lsBuffer0[0] must be verb id=240");
+	ASSERT_EQUAL(lsBuffer0[1], VERB, "lsBuffer0[1] must be VERB");
+#ifdef DAADV3
+	ASSERT_EQUAL(lsBuffer0[2], 0, "no PRONOUN must be injected when F53_NOPRONOUN + id>239");
+	isV3 = false;
+#else
+	TODO("F53_NOPRONOUN test only meaningful with DAADV3");
+#endif
+	SUCCEED();
+}
+
+// TEST 25 — word length == suffix length: no injection (requires wordLen > suffLen)
+void test_parser_enclitic_word_too_short()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	//BDD "LO" matches verb id=30; wordLen=2, suffixLen("LO")=2 → 2>2 is false → no PRONOUN
+	strcpy(tmpMsg, "LO");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 30,   "lsBuffer0[0] must be verb id=30");
+	ASSERT_EQUAL(lsBuffer0[1], VERB, "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], 0,    "no PRONOUN when wordLen == suffLen");
+	SUCCEED();
+}
+
+// TEST 26 — regression: COGER ESPADA parses to [VERB, NOUN] without spurious PRONOUN
+void test_parser_enclitic_does_not_break_nonverb_matches()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	strcpy(tmpMsg, "COGER ESPADA");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 20,   "lsBuffer0[0] must be verb id=20");
+	ASSERT_EQUAL(lsBuffer0[1], VERB, "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], 100,  "lsBuffer0[2] must be noun id=100 (no spurious PRONOUN)");
+	ASSERT_EQUAL(lsBuffer0[3], NOUN, "lsBuffer0[3] must be NOUN");
+	ASSERT_EQUAL(lsBuffer0[4], 0,    "lsBuffer0[4] must be terminator");
+	SUCCEED();
+}
+
+// TEST 27 — TIRARLAS: only LAS matches, only one PRONOUN injected (break fires)
+void test_parser_LAS_only_one_pronoun_injected()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	//BDD "TIRARLAS" → TIRAR (id=25); last-2="AS"≠LO/LA, last-3="LAS"✓ → one PRONOUN
+	strcpy(tmpMsg, "TIRARLAS");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 25,     "lsBuffer0[0] must be verb id=25");
+	ASSERT_EQUAL(lsBuffer0[1], VERB,   "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], SYNTH_PRONOUN_ID, "lsBuffer0[2] must be SYNTH_PRONOUN_ID");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN,"lsBuffer0[3] must be PRONOUN (LAS matched once)");
+	ASSERT_EQUAL(lsBuffer0[4], 0,      "lsBuffer0[4] must be terminator (no second PRONOUN)");
+	SUCCEED();
+}
+
+// TEST 28 — full integration: parser() + populateLogicalSentence() enclitic flow
+void test_parser_to_populate_enclitic_flow()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	//BDD given pronoun state from a previous sentence (ESPADA referenced before)
+	flags[fCPNoun]   = 100;
+	flags[fCPAdject] = NULLWORD;
+
+	//BDD "COGERLO" → parser injects [VERB, SYNTH_PRONOUN_ID/PRONOUN]
+	//     populateLogicalSentence resolves PRONOUN → fNoun1 = fCPNoun = 100
+	strcpy(tmpMsg, "COGERLO");
+	parser();
+	populateLogicalSentence();
+
+	ASSERT_EQUAL(flags[fVerb],    20,      "fVerb must be 20 (COGER)");
+	ASSERT_EQUAL(flags[fNoun1],   100,     "fNoun1 must be 100 (filled from fCPNoun via PRONOUN)");
+	ASSERT_EQUAL(flags[fAdject1], NULLWORD,"fAdject1 must be NULLWORD (pronoun adj was NULLWORD)");
+	SUCCEED();
+}
+
+
+// =============================================================================
 
 int main(char** argv, int argc)
 {
@@ -487,6 +720,19 @@ int main(char** argv, int argc)
 	test_populateLS_does_not_clear_cpnoun_on_each_call();
 	test_populateLS_pronoun_boundary_id_49_is_proper();
 	test_populateLS_pronoun_boundary_id_50_is_non_proper();
+
+	// parser() — enclitic pronouns (PRP016)
+	test_parser_enclitic_LO_injects_pronoun();
+	test_parser_enclitic_LA();
+	test_parser_enclitic_LOS();
+	test_parser_enclitic_LAS();
+	test_parser_verb_without_enclitic_no_injection();
+	test_parser_noun_ending_in_LO_does_not_inject_pronoun();
+	test_parser_enclitic_respects_F53_NOPRONOUN_v3();
+	test_parser_enclitic_word_too_short();
+	test_parser_enclitic_does_not_break_nonverb_matches();
+	test_parser_LAS_only_one_pronoun_injected();
+	test_parser_to_populate_enclitic_flow();
 
 	return 0;
 }

@@ -34,8 +34,11 @@
 #define LOC_HERE			255
 #define LOC_CONTAINER		256		// Fake location to indicate the object location is a container. See getObjectId()
 
-// Vocabulary constant
+// Vocabulary constants
 #define NULLWORD			255
+#define SYNTH_PRONOUN_ID	1		// Synthetic id for parser-injected PRONOUN tokens (enclitic -lo/-la/-los/-las).
+									// Must be non-zero: lsBuffer scan loop treats id==0 as end-of-buffer.
+									// The actual value is arbitrary; PRONOUN branches never read the id.
 
 // Used by HASHAT/HASNAT
 #define HAS_WAREABLE		23		// Flag 57 (fCOWR) Bit#7

@@ -214,6 +214,7 @@ There is no CI pipeline. All testing is local.
 
 - **`AUTOT` container search** was broken until PRP008: `getObjectId(LOC_CONTAINER=256)` always failed because `256 < numObjDsc` (uint8) is always false. Fixed in `src/daad/daad_objects.c` — now checks `objects[i].location < numObjDsc` instead.
 - **`PAUSE`, `END`, `EXIT 0`** are not unit-testable: PAUSE loops on `getTime()` (always 0 in stubs), END/EXIT 0 call `die()` which terminates the process.
+- **Spanish enclitic pronouns** (PRP016): implemented. `parser()` detects `-LO/-LA/-LOS/-LAS` suffixes on matched verbs and injects a `[SYNTH_PRONOUN_ID, PRONOUN]` token (`SYNTH_PRONOUN_ID=1`, defined in `include/daad.h`). `populateLogicalSentence` processes it via the PRONOUN branch (PRP015), filling `fNoun1`/`fAdject1` from flags 46/47. Respects `F53_NOPRONOUN` (V3). **Limitation**: verbos ≤ 4 chars require vocabulary synonyms per DAAD 1991 manual §4.4.1 — the DAAD 5-char truncation must match a vocab entry before enclitic detection can fire.
 - **`DOALL`** requires a real process table to test meaningfully.
 - **`MOVE`** requires Verbs/Connections DDB tables to be mocked.
 

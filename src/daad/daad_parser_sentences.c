@@ -22,6 +22,15 @@ uint8_t lsBuffer1[TEXT_BUFFER_LEN/4+1];	// Logical sentence buffer [type+id] for
  *
  * @return			none.
  */
+// Spanish enclitic suffixes (same order as PCDAAD parser.pas:24)
+// Verbs ending in these suffixes inject a virtual PRONOUN token.
+// Only compiled for Spanish builds; verbos >= 5 chars work automatically.
+// Verbos <= 4 chars require vocabulary synonyms per DAAD 1991 manual §4.4.1.
+#ifdef LANG_ES
+static const char SPANISH_SUFFIXES[4][4] = { "LO", "LA", "LOS", "LAS" };
+static const uint8_t SPANISH_SUFFIX_LEN[4] = { 2, 2, 3, 3 };
+#endif
+
 void parser()
 {
 	uint8_t i;
@@ -76,6 +85,29 @@ cprintf("%u %c%c%c%c%c: ",p2-p, tmpVOC[0],tmpVOC[1],tmpVOC[2],tmpVOC[3],tmpVOC[4
 				*lsBuffer = 0;
 #ifdef VERBOSE2
 cprintf("Found! %u / %u [%c%c%c%c%c]\n",voc->id, voc->type, 255-voc->word[0], 255-voc->word[1], 255-voc->word[2], 255-voc->word[3], 255-voc->word[4]);
+#endif
+#ifdef LANG_ES
+				// Enclitic pronoun: verb ending in -LO/-LA/-LOS/-LAS injects PRONOUN token
+				// verbSeen already set true above (V3); populateLogicalSentence handles PRONOUN
+#ifdef DAADV3
+				if (voc->type == VERB && !(ISV3 && (flags[fOFlags] & F53_NOPRONOUN) && voc->id > 239))
+#else
+				if (voc->type == VERB)
+#endif
+				{
+					const char *wordEnd = p;
+					while (*wordEnd!=' ' && *wordEnd!='"' && *wordEnd!='\0') wordEnd++;
+					uint8_t wordLen = (uint8_t)(wordEnd - p);
+					for (uint8_t k=0; k<4; k++) {
+						uint8_t sl = SPANISH_SUFFIX_LEN[k];
+						if (wordLen > sl && !memcmp(wordEnd-sl, SPANISH_SUFFIXES[k], sl)) {
+							*lsBuffer++ = SYNTH_PRONOUN_ID;
+							*lsBuffer++ = PRONOUN;
+							*lsBuffer = 0;
+							break;
+						}
+					}
+				}
 #endif
 				break;
 			}
