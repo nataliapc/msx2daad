@@ -117,7 +117,7 @@ void printObjectMsgModif(uint8_t num, char modif)
 		tmpMsg[0] = modif=='@'?'E':'e';
 		tmpMsg[1] = 'l';
 	} else
-	if (!strnicmp("una ", tmpMsg, 3)) {
+	if (!strnicmp("una ", tmpMsg, 4)) {
 		ini++;
 		tmpMsg[1] = modif=='@'?'L':'l';
 	}
@@ -125,7 +125,7 @@ void printObjectMsgModif(uint8_t num, char modif)
 		if (*p=='.' || *p==0x0a) { *p--='\0'; }
 		p++;
 	}
-#elif LANG_EN
+#elif defined(LANG_EN)
 	if (!strnicmp("a ", tmpMsg, 2)) {
 		ini+=2;
 	} else

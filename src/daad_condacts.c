@@ -1340,8 +1340,9 @@ void do_COPYOF()	// objno flagno
 void do_COPYFO()	// flagno objno
 {
 	uint8_t flagValue = flags[getValueOrIndirection()];
-	(objects + *pPROC++)->location = flagValue;
+	uint8_t objno = *pPROC++;
 	if (flagValue == 255) errorCode(2);
+	objects[objno].location = flagValue;
 }
 #endif
 

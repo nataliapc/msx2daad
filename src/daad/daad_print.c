@@ -88,13 +88,18 @@ void printBase10(uint16_t value)
  * Function: printMsg
  * --------------------------------
  * Uncompress a tokenized string and can print it.
- * 
+ *
  * @param lst		List of tokenized string (sysmes, usermes, desc...).
  * @param num   	To get the string number 'num' in that list.
  * @param print		Output the string to the current window or not.
  * @return			none.
  *
  * Reentrant function, don't use static variables!
+ *
+ * REENTRANCY NOTE: printMsg writes to the global tmpMsg buffer.
+ * The only known reentrant caller is checkPrintedLines (via printSystemMsg(32)),
+ * which is guarded by checkPrintedLines_inUse + safeMemoryAllocate().
+ * Any new reentrant call path MUST save/restore tmpMsg the same way.
  */
 void printMsg(char *p, bool print)
 {
