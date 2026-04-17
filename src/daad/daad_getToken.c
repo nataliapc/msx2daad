@@ -28,7 +28,6 @@ char* getToken(uint8_t num)
 	while (num) {
 		if (*p > 127) num--;
 		p++;
-		if (!num) break;
 	}
 	// Copy selected token
 	do {

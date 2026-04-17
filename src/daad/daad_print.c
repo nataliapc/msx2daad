@@ -76,12 +76,13 @@ void printChar(int ch)
  */
 void printBase10(uint16_t value)
 {
-	if (value<10) {
-		printChar('0'+(uint8_t)value);
-		return;
-	}
-	printBase10(value/10);
-	printChar('0'+(uint8_t)(value%10));
+	uint8_t buf[5];
+	uint8_t n = 0;
+	do {
+		buf[n++] = '0' + (uint8_t)(value % 10);
+		value /= 10;
+	} while (value);
+	while (n) printChar(buf[--n]);
 }
 
 /*

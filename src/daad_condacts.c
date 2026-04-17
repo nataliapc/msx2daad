@@ -93,6 +93,7 @@ static const char SAVEGAME[] = "SAVEGAME.000";
 
 static void _internal_picture(uint8_t value);
 static void _internal_display(uint8_t value);
+static void _internal_placeObject(Object *obj, uint8_t newLoc);
 
 
 //==============================================================================
@@ -864,6 +865,17 @@ void do_REMOVE()	// objno
 
 // =============================================================================
 
+// Move an object to newLoc, maintaining fNOCarr count.
+// Decrements fNOCarr if the object was carried; increments if newLoc is LOC_CARRIED.
+static void _internal_placeObject(Object *obj, uint8_t newLoc)
+{
+	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
+	obj->location = newLoc;
+	if (newLoc==LOC_CARRIED) flags[fNOCarr]++;
+}
+
+// =============================================================================
+
 /*	The position of Object objno. is changed to the current location and Flag 1
 	is decremented if the object was carried. */
 #ifndef DISABLE_CREATE
@@ -872,14 +884,13 @@ void do_CREATE()	// objno
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
-	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
-	obj->location = flags[fPlayer];
+	_internal_placeObject(obj, flags[fPlayer]);
 }
 #endif
 
 // =============================================================================
 
-/*	The position of Object objno. is changed to not-created and Flag 1 is 
+/*	The position of Object objno. is changed to not-created and Flag 1 is
 	decremented if the object was carried. */
 #ifndef DISABLE_DESTROY
 void do_DESTROY()	// objno
@@ -887,8 +898,7 @@ void do_DESTROY()	// objno
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
-	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
-	obj->location = LOC_NOTCREATED;
+	_internal_placeObject(obj, LOC_NOTCREATED);
 }
 #endif
 
@@ -920,9 +930,7 @@ void do_PLACE()		// objno locno+
 	uint8_t objno = getValueOrIndirection();
 	Object *obj = objects + objno;
 	referencedObject(objno);
-	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
-	obj->location = *pPROC++;
-	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
+	_internal_placeObject(obj, *pPROC++);
 }
 #endif
 
@@ -936,9 +944,7 @@ void do_PLACE()		// objno locno+
 void do_PUTO()		// locno+
 {
 	Object *obj = objects + flags[fCONum];
-	if (obj->location==LOC_CARRIED && flags[fNOCarr]) flags[fNOCarr]--;
-	obj->location = getValueOrIndirection();
-	if (obj->location==LOC_CARRIED) flags[fNOCarr]++;
+	_internal_placeObject(obj, getValueOrIndirection());
 }
 #endif
 
@@ -1673,22 +1679,28 @@ static void _internal_windowCheck()
 	if (cw->winH + cw->winY > MAX_LINES) cw->winH = MAX_LINES - cw->winY;
 }
 #endif
-#ifndef DISABLE_WINAT
-void do_WINAT()		// line col
+#if !defined(DISABLE_WINAT) || !defined(DISABLE_WINSIZE) || !defined(DISABLE_CLS)
+static void _internal_windowReset()
 {
-	cw->winY = getValueOrIndirection();
-	cw->winX = *pPROC++;
-	_internal_windowCheck();
 	cw->cursorX = cw->cursorY = 0;
 	cw->lastPicLocation = NO_LASTPICTURE;
 	lastPicShow = false;
 	printedLines = 0;
 }
 #endif
+#ifndef DISABLE_WINAT
+void do_WINAT()		// line col
+{
+	cw->winY = getValueOrIndirection();
+	cw->winX = *pPROC++;
+	_internal_windowCheck();
+	_internal_windowReset();
+}
+#endif
 
 // =============================================================================
 
-/*	Sets current window size to given height and width. Clipping needed to fit 
+/*	Sets current window size to given height and width. Clipping needed to fit
 	available screen. */
 #ifndef DISABLE_WINSIZE
 void do_WINSIZE()	// height width
@@ -1696,10 +1708,7 @@ void do_WINSIZE()	// height width
 	cw->winH = getValueOrIndirection();
 	cw->winW = *pPROC++;
 	_internal_windowCheck();
-	cw->cursorX = cw->cursorY = 0;
-	cw->lastPicLocation = NO_LASTPICTURE;
-	lastPicShow = false;
-	printedLines = 0;
+	_internal_windowReset();
 }
 #endif
 
@@ -1721,10 +1730,7 @@ void do_CENTRE()
 void do_CLS()
 {
 	gfxClearWindow();
-	cw->cursorX = cw->cursorY = 0;
-	cw->lastPicLocation = NO_LASTPICTURE;
-	lastPicShow = false;
-	printedLines = 0;
+	_internal_windowReset();
 }
 #endif
 

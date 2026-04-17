@@ -20,9 +20,10 @@ int cprintf(const char *format, ...)
 	return 0;
 }
 
+static const char _hex[] = "0123456789ABCDEF";
+
 static void _printn(unsigned u, unsigned base, char issigned)
 {
-	const char *_hex = "0123456789ABCDEF";
 	if (issigned && ((int)u < 0)) {
 		putchar('-');
 		u = (unsigned)-((int)u);

@@ -30,8 +30,9 @@ static uint8_t _sumLocation(uint8_t loc)
 	Object *obj = objects;
 	for (uint8_t i=0; i<hdr->numObjDsc; i++) {
 		if (obj->location == loc) {
-			weight += obj->attribs.mask.weight;
-			if (obj->attribs.mask.isContainer && obj->attribs.mask.weight>0)
+			uint8_t w = obj->attribs.mask.weight;
+			weight += w;
+			if (w > 0 && obj->attribs.mask.isContainer)
 				weight += _sumLocation(i);
 		}
 		obj++;
@@ -45,8 +46,9 @@ uint8_t getObjectWeight(uint8_t objno, bool isCarriedWorn)
 	if (objno == NULLWORD)
 		return _sumLocation(LOC_CARRIED) + _sumLocation(LOC_WORN);
 
-	uint16_t weight = objects[objno].attribs.mask.weight;
-	if (objects[objno].attribs.mask.isContainer && weight>0)
+	Object *obj = &objects[objno];
+	uint16_t weight = obj->attribs.mask.weight;
+	if (weight > 0 && obj->attribs.mask.isContainer)
 		weight += _sumLocation(objno);
 	return weight>255 ? 255 : (uint8_t)weight;
 }

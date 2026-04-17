@@ -45,7 +45,7 @@ void prompt(bool printPromptMsg)
 	if (printPromptMsg) {
 		newPrompt = flags[fPrompt];
 		if (!newPrompt)
-			while ((newPrompt=(rand()%4)+2)==lastPrompt);
+			while ((newPrompt=((uint8_t)rand()&3)+2)==lastPrompt);
 		printSystemMsg(newPrompt);
 		lastPrompt = newPrompt;
 	}

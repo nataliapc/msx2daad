@@ -21,12 +21,13 @@
  */
 uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location)
 {
-	for (uint16_t i=0; i<hdr->numObjDsc; i++) {
-		if (noun!=NULLWORD && objects[i].nounId==noun && 
-		   (adjc==NULLWORD || objects[i].adjectiveId==adjc) && 							// If 'adjc' not needed or 'adjc' matchs
-		   ((location==LOC_HERE || objects[i].location==location) ||					// It's in anywhere or placed in 'location'...
-		    (location==LOC_CONTAINER && objects[i].location<hdr->numObjDsc &&
-										objects[objects[i].location].attribs.mask.isContainer)))	// ...or if it's inside a container
+	Object *obj = objects;
+	for (uint8_t i=0; i<hdr->numObjDsc; i++, obj++) {
+		if (noun!=NULLWORD && obj->nounId==noun &&
+		   (adjc==NULLWORD || obj->adjectiveId==adjc) && 								// If 'adjc' not needed or 'adjc' matchs
+		   ((location==LOC_HERE || obj->location==location) ||							// It's in anywhere or placed in 'location'...
+		    (location==LOC_CONTAINER && obj->location<hdr->numObjDsc &&
+										objects[obj->location].attribs.mask.isContainer)))	// ...or if it's inside a container
 		{
 			return i;
 		}
