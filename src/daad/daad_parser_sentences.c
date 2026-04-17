@@ -151,10 +151,9 @@ cprintf("%u %u %u %u %u %u %u %u \n",lsBuffer[0],lsBuffer[1],lsBuffer[2],lsBuffe
  */
 bool populateLogicalSentence()
 {
-	char *p, type, id, adj;
+	char *p, type, id;
 	bool ret;
 	p = lsBuffer0;
-	adj = fAdject1;
 	ret = false;
 
 	// Clear parser flags (fCPNoun/fCPAdject persist across sentences — spec DAAD 1991)
@@ -183,7 +182,6 @@ cputs("populateLogicalSentence()\n");
 			ret = true;
 		} else if (type==NOUN && flags[fNoun2]==NULLWORD) {								// NOUN2
 			flags[fNoun2] = id;
-			adj = fAdject2;
 			ret = true;
 		} else if (type==ADVERB && flags[fAdverb]==NULLWORD) {							// ADVERB
 			flags[fAdverb] = id;
@@ -194,10 +192,10 @@ cputs("populateLogicalSentence()\n");
 			if (ISV3 && flags[fNoun1] == NULLWORD) flags[fOFlags] |= F53_PREPFIRST;
 #endif
 			ret = true;
-		} else if (type==ADJECTIVE && adj==fAdject1 && flags[fAdject1]==NULLWORD) {		// ADJ1
+		} else if (type==ADJECTIVE && flags[fAdject1]==NULLWORD) {						// ADJ1: first empty slot
 			flags[fAdject1] = id;
 			ret = true;
-		} else if (type==ADJECTIVE && adj==fAdject2 && flags[fAdject2]==NULLWORD) {		// ADJ2
+		} else if (type==ADJECTIVE && flags[fAdject2]==NULLWORD) {						// ADJ2: second empty slot
 			flags[fAdject2] = id;
 			ret = true;
 		} else if (type==PRONOUN) {															// PRONOUN

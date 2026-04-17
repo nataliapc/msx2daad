@@ -458,6 +458,82 @@ void test_populateLS_pronoun_boundary_id_50_is_non_proper()
 
 
 // =============================================================================
+// Tests populateLogicalSentence — INC-04 (PRP017): adj2 before noun2
+
+// TEST 29 — adjective2 captured even when it precedes noun2 (English word order)
+// Scenario: "GET RED LAMP FROM RED BOX" = [VERB, ADJ, NOUN, PREP, ADJ, NOUN]
+void test_populateLS_adj2_captured_before_noun2()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+
+	//BDD given English-order sentence: adj1 before noun1, adj2 before noun2
+	lsBuffer0[0]  = 30;   lsBuffer0[1]  = VERB;
+	lsBuffer0[2]  = 7;    lsBuffer0[3]  = ADJECTIVE;  // ADJ1 (for LAMP)
+	lsBuffer0[4]  = 50;   lsBuffer0[5]  = NOUN;       // NOUN1 = LAMP
+	lsBuffer0[6]  = 4;    lsBuffer0[7]  = PREPOSITION;
+	lsBuffer0[8]  = 9;    lsBuffer0[9]  = ADJECTIVE;  // ADJ2 (for BOX) — BEFORE noun2
+	lsBuffer0[10] = 60;   lsBuffer0[11] = NOUN;       // NOUN2 = BOX
+	lsBuffer0[12] = 0;
+
+	//BDD when populateLogicalSentence()
+	populateLogicalSentence();
+
+	//BDD then both adjectives are captured
+	ASSERT_EQUAL(flags[fAdject1], 7,        "fAdject1 must be 7 (first adjective)");
+	ASSERT_EQUAL(flags[fNoun1],   50,       "fNoun1 must be 50");
+	ASSERT_EQUAL(flags[fAdject2], 9,        "fAdject2 must be 9 (second adj, captured before noun2)");
+	ASSERT_EQUAL(flags[fNoun2],   60,       "fNoun2 must be 60");
+	SUCCEED();
+}
+
+// TEST 30 — both adj1 and adj2 captured in two-adjective sentence
+void test_populateLS_adj1_and_adj2_both_captured()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+
+	//BDD given [VERB, ADJ1, NOUN1, ADJ2, NOUN2] — no preposition
+	lsBuffer0[0] = 30;   lsBuffer0[1] = VERB;
+	lsBuffer0[2] = 7;    lsBuffer0[3] = ADJECTIVE;
+	lsBuffer0[4] = 50;   lsBuffer0[5] = NOUN;
+	lsBuffer0[6] = 9;    lsBuffer0[7] = ADJECTIVE;
+	lsBuffer0[8] = 60;   lsBuffer0[9] = NOUN;
+	lsBuffer0[10] = 0;
+
+	populateLogicalSentence();
+
+	ASSERT_EQUAL(flags[fAdject1], 7,  "fAdject1 must be 7");
+	ASSERT_EQUAL(flags[fAdject2], 9,  "fAdject2 must be 9 (second adj captured)");
+	SUCCEED();
+}
+
+// TEST 31 — regression: Spanish word order (adj follows noun) still works
+// Scenario: "COGE LAMPARA VERDE DE CAJA ROJA" = [VERB, NOUN1, ADJ1, PREP, NOUN2, ADJ2]
+void test_populateLS_spanish_adj_after_nouns_unchanged()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+
+	lsBuffer0[0]  = 30;   lsBuffer0[1]  = VERB;
+	lsBuffer0[2]  = 50;   lsBuffer0[3]  = NOUN;       // NOUN1 = LAMPARA
+	lsBuffer0[4]  = 7;    lsBuffer0[5]  = ADJECTIVE;  // ADJ1 = VERDE (follows noun1)
+	lsBuffer0[6]  = 4;    lsBuffer0[7]  = PREPOSITION;
+	lsBuffer0[8]  = 60;   lsBuffer0[9]  = NOUN;       // NOUN2 = CAJA
+	lsBuffer0[10] = 9;    lsBuffer0[11] = ADJECTIVE;  // ADJ2 = ROJA (follows noun2)
+	lsBuffer0[12] = 0;
+
+	populateLogicalSentence();
+
+	ASSERT_EQUAL(flags[fAdject1], 7,  "fAdject1 must be 7 (VERDE for LAMPARA)");
+	ASSERT_EQUAL(flags[fNoun1],   50, "fNoun1 must be 50 (LAMPARA)");
+	ASSERT_EQUAL(flags[fAdject2], 9,  "fAdject2 must be 9 (ROJA for CAJA)");
+	ASSERT_EQUAL(flags[fNoun2],   60, "fNoun2 must be 60 (CAJA)");
+	SUCCEED();
+}
+
+
+// =============================================================================
 // Tests parser() — PRP016: Spanish enclitic pronouns (-LO/-LA/-LOS/-LAS)
 
 // Test vocabulary — DDB-encoded: each entry is [word0..4 (255-char), id, type]
@@ -720,6 +796,11 @@ int main(char** argv, int argc)
 	test_populateLS_does_not_clear_cpnoun_on_each_call();
 	test_populateLS_pronoun_boundary_id_49_is_proper();
 	test_populateLS_pronoun_boundary_id_50_is_non_proper();
+
+	// populateLogicalSentence — INC-04 (PRP017)
+	test_populateLS_adj2_captured_before_noun2();
+	test_populateLS_adj1_and_adj2_both_captured();
+	test_populateLS_spanish_adj_after_nouns_unchanged();
 
 	// parser() — enclitic pronouns (PRP016)
 	test_parser_enclitic_LO_injects_pronoun();
