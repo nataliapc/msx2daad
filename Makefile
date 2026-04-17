@@ -24,15 +24,15 @@ ifndef VERSION
 	VERSION := 1.6.0
 endif
 ifndef CXXFLAGS
-	CXXFLAGS := -DLANG_ES -DMSX2 -DDAADV3 -DTEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2
+	CXXFLAGS := -DLANG_ES -DMSX2 -DDAADV3 -D_TEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2
 endif
+FULLOPT =  --max-allocs-per-node 2000000
 LDFLAGS := -rc
 OPFLAGS := --less-pedantic --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0
 WRFLAGS := --disable-warning 196 --disable-warning 84
-CCFLAGS := --code-loc 0x0178 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS)
+CCFLAGS := --code-loc 0x0178 --data-loc 0 -mz80 --no-std-crt0 --out-fmt-ihx $(OPFLAGS) $(WRFLAGS) $(CXXFLAGS) $(FULLOPT)
 
 MAKEFLAGS = --no-print-directory
-FULLOPT =  --max-allocs-per-node 2000000
 
 SRCDIR = src/
 SRCLIB = $(SRCDIR)libs/
@@ -109,7 +109,7 @@ $(LIBDIR)utils.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)u
 $(OBJDIR)$(PROGRAM).com: $(REL_LIBS) $(wildcard $(INCDIR)/*.h)
 	@echo "$(COL_YELLOW)######## Compiling $@$(COL_RESET)"
 	@$(DIR_GUARD)
-	@$(CC) $(CCFLAGS) $(FULLOPT) -I$(INCDIR) -L$(LIBDIR) $(REL_LIBS) -o $(subst .com,.ihx,$@) ;
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $(REL_LIBS) -o $(subst .com,.ihx,$@) ;
 	@$(HEX2BIN) -e com $(subst .com,.ihx,$@) ;
 	@echo "**** Copying .COM files to DSK/"
 	@cp $(OBJDIR)$(PROGRAM).com dsk/

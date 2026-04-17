@@ -139,6 +139,8 @@ void initFlags()
 	clearLogicalSentences();
 
 	doingPrompt = false;
+	printedLines = 0;
+	checkPrintedLines_inUse = false;
 }
 
 /*
