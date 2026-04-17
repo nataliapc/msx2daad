@@ -37,7 +37,7 @@ DAAD_BASE_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel as
 
 CONDACTS_PROGRAMS = condact1.com condact2.com condact3.com condact4.com condact5.com condact6.com
 V3_PROGRAMS = cond_v3.com
-DAAD_PROGRAMS = objwght.com daadobjs.com gettoken.com initobj.com
+DAAD_PROGRAMS = objwght.com daadobjs.com gettoken.com initobj.com parser.com
 PROGRAMS = dos.com $(CONDACTS_PROGRAMS) $(V3_PROGRAMS) $(DAAD_PROGRAMS)
 
 all: $(addprefix $(OBJDIR), $(PROGRAMS))
@@ -104,6 +104,17 @@ $(OBJDIR)gettoken.com: $(DAAD_BASE_LIBS) $(OBJDIR)daad_getToken.rel $(SRCDIR)tes
 	@cp $@ dsk/
 
 $(OBJDIR)initobj.com: $(DAAD_BASE_LIBS) $(OBJDIR)daad_init.rel $(OBJDIR)daad_getObjectWeight.rel $(SRCDIR)tests_daad_init.c
+	@echo "######## Compiling $@"
+	@$(DIR_GUARD)
+	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $^ -o $(subst .com,.ihx,$@) ;
+	@$(HEX2BIN) -e com $(subst .com,.ihx,$@) ;
+	@echo "**** Copying .COM files to DSK/"
+	@cp $@ dsk/
+
+PARSER_BASE_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel assert.rel parser_stubs.rel) \
+                   $(addprefix $(LIBDIR), $(LIBS))
+
+$(OBJDIR)parser.com: $(PARSER_BASE_LIBS) $(OBJDIR)daad_parser_sentences.rel $(SRCDIR)tests_daad_parser_sentences.c
 	@echo "######## Compiling $@"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $^ -o $(subst .com,.ihx,$@) ;

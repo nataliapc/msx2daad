@@ -265,7 +265,8 @@ cputs("nextLogicalSentence()\n");
 	p = lsBuffer0;
 	c = lsBuffer0;
 
-	while (*p!=CONJUNCTION && *p!=0) p+=2;
+	while (*p!=0 && *(p+1)!=CONJUNCTION) p+=2;
+	if (!*p) { *c++ = 0; *c = 0; return; }
 	p+=2;
 	for (;;) {
 		*c++ = *p;
