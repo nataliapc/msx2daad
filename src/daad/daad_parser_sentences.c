@@ -125,9 +125,9 @@ bool populateLogicalSentence()
 	adj = fAdject1;
 	ret = false;
 
-	// Clear parser flags
-	flags[fVerb] = flags[fNoun1] = flags[fAdject1] = flags[fAdverb] = flags[fPrep] = flags[fNoun2] = flags[fAdject2] =
-		flags[fCPNoun] = flags[fCPAdject] = NULLWORD;
+	// Clear parser flags (fCPNoun/fCPAdject persist across sentences — spec DAAD 1991)
+	flags[fVerb] = flags[fNoun1] = flags[fAdject1] = flags[fAdverb] = flags[fPrep] =
+		flags[fNoun2] = flags[fAdject2] = NULLWORD;
 #ifdef DAADV3
 	if (ISV3) flags[fOFlags] &= ~(F53_UNRECWRD | F53_PREPFIRST);
 #endif
@@ -168,6 +168,13 @@ cputs("populateLogicalSentence()\n");
 		} else if (type==ADJECTIVE && adj==fAdject2 && flags[fAdject2]==NULLWORD) {		// ADJ2
 			flags[fAdject2] = id;
 			ret = true;
+		} else if (type==PRONOUN) {															// PRONOUN
+			// Replace Noun1/Adject1 with stored pronoun if no noun was given yet
+			if (flags[fNoun1]==NULLWORD && flags[fCPNoun]!=NULLWORD) {
+				flags[fNoun1]   = flags[fCPNoun];
+				flags[fAdject1] = flags[fCPAdject];
+			}
+			ret = true;
 		}
 #ifdef DAADV3
 		  else if (type==UNKNOWN_WORD) {
@@ -183,13 +190,19 @@ cputs("populateLogicalSentence()\n");
 			flags[fO2Num] = obj;
 			flags[fO2Loc] = objects[obj].location;
 			flags[fO2Con] = objects[obj].attribs.mask.isContainer << 7;
-			flags[fO2Att] = objects[obj].extAttr1;
-			flags[fO2Att+1] = objects[obj].extAttr2;
+			flags[fO2Att]   = objects[obj].extAttr2;	// Consistent with fCOAtt (flag 58)
+			flags[fO2Att+1] = objects[obj].extAttr1;	// Consistent with fCOAtt+1 (flag 59)
 		} else {
 			flags[fO2Num] = LOC_NOTCREATED;							// TODO: check default values when Object2 is undefined
 			flags[fO2Loc] = LOC_NOTCREATED;
 			flags[fO2Con] = flags[fO2Att] = flags[fO2Att+1] = 0;
 		}
+	}
+
+	// Save non-proper noun as pronoun reference (spec DAAD 1991: id >= 50)
+	if (flags[fNoun1]!=NULLWORD && flags[fNoun1]>=50) {
+		flags[fCPNoun]   = flags[fNoun1];
+		flags[fCPAdject] = flags[fAdject1];
 	}
 #ifdef VERBOSE2
 cprintf("VERB:%u NOUN1:%u ADJ1:%u, ADVERB:%u PREP: %u NOUN2:%u, ADJ2:%u\n",

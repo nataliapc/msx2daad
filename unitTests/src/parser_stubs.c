@@ -53,9 +53,6 @@ char* getCharsTranslation() { return 0; }
 // prompt — called by getLogicalSentence (in daad_parser_sentences.c)
 void prompt(bool p) {}
 
-// getObjectId — called by populateLogicalSentence (in daad_parser_sentences.c)
-uint8_t getObjectId(uint8_t noun, uint8_t adjc, uint16_t location) { return NULLWORD; }
-
 // Print stubs
 void printBase10(uint16_t v) {}
 bool waitForTimeout(uint16_t t) {}

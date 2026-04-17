@@ -114,7 +114,7 @@ $(OBJDIR)initobj.com: $(DAAD_BASE_LIBS) $(OBJDIR)daad_init.rel $(OBJDIR)daad_get
 PARSER_BASE_LIBS := $(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel heap.rel assert.rel parser_stubs.rel) \
                    $(addprefix $(LIBDIR), $(LIBS))
 
-$(OBJDIR)parser.com: $(PARSER_BASE_LIBS) $(OBJDIR)daad_parser_sentences.rel $(SRCDIR)tests_daad_parser_sentences.c
+$(OBJDIR)parser.com: $(PARSER_BASE_LIBS) $(OBJDIR)daad_parser_sentences.rel $(OBJDIR)daad_objects.rel $(OBJDIR)daad_getObjectWeight.rel $(SRCDIR)tests_daad_parser_sentences.c
 	@echo "######## Compiling $@"
 	@$(DIR_GUARD)
 	@$(CC) $(CCFLAGS) -I$(INCDIR) -L$(LIBDIR) $^ -o $(subst .com,.ihx,$@) ;
