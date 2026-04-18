@@ -32,14 +32,14 @@ void transcript_flush()
 
 	size = filesize(transcript_filename);
 	if (size>=0xff00)
-		fp = fcreate(transcript_filename, 0, 0);
+		fp = fcreate(transcript_filename);
 	else {
-		fp = fopen(transcript_filename, O_WRONLY);
-		fseek(fp, size, SEEK_SET);
+		fp = fopen(transcript_filename);
+		fseek(size, SEEK_SET);
 	}
 	if (fp<0xff00) {
-		fputs(transcript_buff, fp);
-		fclose(fp);
+		fputs(transcript_buff);
+		fclose();
 	}
 	trIdx = 0;
 	transcript_buff[0] = '\0';
