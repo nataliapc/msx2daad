@@ -212,6 +212,14 @@ A powerful tool to convert pictures to MSX formats. Versions for Linux and Windo
 You can export image and palette files.  
 http://marmsx.msxall.com/msxvw/msxvw5/index_en.php
 
+---
 
+## More stars!
 
+Please give us a star on [GitHub](https://github.com/nataliapc/msx2daad) if you like this project.
 
+### Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=nataliapc/msx2daad&type=Date&theme=dark)](https://www.star-history.com/#nataliapc/msx2daad&Date)
+
+---
