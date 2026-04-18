@@ -582,9 +582,73 @@ void test_SFX_success()
 
 	* = supported by MSX2 interpreter. */
 
-void test_GFX_success()
+// GFX_SET_PALETTE updates the internal color table (SC8: GGGRRRBB)
+// Ref: docs/GFX.md lines 9-27; plan/PRP020_GFX_Palette.md
+void test_GFX_SET_PALETTE()
 {
-	TODO(TODO_GENERIC);
+	const char *_func = __func__;
+	beforeEach();
+
+	// given: flags[20]=idx=5, R=192, G=96, B=128
+	flags[20] = 5;
+	flags[21] = 192;  // Red
+	flags[22] = 96;   // Green
+	flags[23] = 128;  // Blue
+
+	static const char proc[] = { _GFX, 20, GFX_SET_PALETTE, 255 };
+	do_action(proc);
+
+	// then: test_colorTranslationSC8[5] = (G & 0xE0) | ((R & 0xE0)>>3) | ((B & 0xE0)>>6)
+	//   G=96 & 0xE0=0x60, R=192 & 0xE0=0xC0 >>3=0x18, B=128 & 0xE0=0x80 >>6=0x02
+	//   expected: 0x60|0x18|0x02 = 0x7A
+	ASSERT_EQUAL(test_colorTranslationSC8[5], 0x7A, "SET_PALETTE: wrong GRB332 value in color table");
+	SUCCEED();
+}
+
+// GFX_GET_PALETTE reads the internal color table and fills flags[v+1..v+3] with R,G,B
+// Ref: docs/GFX.md lines 9-27; plan/PRP020_GFX_Palette.md
+void test_GFX_GET_PALETTE()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	// given: color 10 = 0xED in SC8 default table (GRB332=0b11101101 → G=0xE0,R=0x60,B=0x40)
+	flags[30] = 10;
+
+	static const char proc[] = { _GFX, 30, GFX_GET_PALETTE, 255 };
+	do_action(proc);
+
+	// then: flags[31..33] = R=0x60, G=0xE0, B=0x40 (all non-zero, all different)
+	ASSERT_EQUAL(flags[31], 0x60, "GET_PALETTE idx=10: R must be 0x60");
+	ASSERT_EQUAL(flags[32], 0xE0, "GET_PALETTE idx=10: G must be 0xE0");
+	ASSERT_EQUAL(flags[33], 0x40, "GET_PALETTE idx=10: B must be 0x40");
+	SUCCEED();
+}
+
+// SET then GET round-trip; SC8 truncates R/G to 3 bits (mask 0xE0) and B to 2 bits (mask 0xC0)
+// Ref: plan/PRP020_GFX_Palette.md §Tests
+void test_GFX_SET_GET_PALETTE_roundtrip()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	// given: SET color 3 to R=200, G=100, B=150
+	flags[40] = 3;
+	flags[41] = 200;
+	flags[42] = 100;
+	flags[43] = 150;
+
+	static const char proc_set[] = { _GFX, 40, GFX_SET_PALETTE, 255 };
+	do_action(proc_set);
+
+	static const char proc_get[] = { _GFX, 40, GFX_GET_PALETTE, 255 };
+	do_action(proc_get);
+
+	// then: R and G lose bits 4-0; B loses bits 5-0 (only 2 bits in GRB332)
+	ASSERT_EQUAL(flags[41], (200 & 0xE0), "SET->GET: Red truncated to 3 bits (mask 0xE0)");
+	ASSERT_EQUAL(flags[42], (100 & 0xE0), "SET->GET: Green truncated to 3 bits (mask 0xE0)");
+	ASSERT_EQUAL(flags[43], (150 & 0xC0), "SET->GET: Blue truncated to 2 bits in SC8 (mask 0xC0)");
+	SUCCEED();
 }
 
 // =============================================================================
@@ -671,7 +735,7 @@ int main(char** argv, int argc)
 	test_EXTERN_success();
 	test_CALL_success();
 	test_SFX_success();
-	test_GFX_success();
+	test_GFX_SET_PALETTE(); test_GFX_GET_PALETTE(); test_GFX_SET_GET_PALETTE_roundtrip();
 
 	test_PICTURE_success();
 	test_DISPLAY_success();

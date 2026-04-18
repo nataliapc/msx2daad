@@ -67,6 +67,13 @@ extern uint8_t savedPosY;
 
 extern char *tmpMsg;
 
+// Palette test arrays (mirror of daad_platform_msx2.c, reset by beforeEach)
+#if SCREEN == 8
+extern uint8_t  test_colorTranslationSC8[];
+#else
+extern uint16_t test_colorTranslation[];
+#endif
+
 // Const string arrays
 extern const char ERROR[];
 extern const char ERROR_ISDONE[];

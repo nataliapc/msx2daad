@@ -402,13 +402,13 @@ void printXMES(uint16_t address)
 	#define AUX_HMMV		CMD_HMMV
 #endif
 
-#if SCREEN == 8		//SCREEN 8 fixed colors
+#if SCREEN == 8		// SCREEN 8 fixed colors GRB332
 	static const uint8_t colorTranslationSC8[] = {	// EGA Palette -> MSX SC8 Palette (GGGRRRBB)
 	//  000   006   600   606   060   066   260   666   222   447   733   737   373   377   773   777      (GGGRRRBBB) 9bits color guide
 		0x00, 0x02, 0xc0, 0xc3, 0x18, 0x1b, 0x58, 0xdb, 0x49, 0x93, 0xed, 0xef, 0x7d, 0x7f, 0xfd, 0xff	// (GGGRRRBB) 8bits real color used
 	};
 #endif
-#if SCREEN == 6	//SCREEN 6 paletted colors
+#if SCREEN == 6		// SCREEN 6 paletted colors GRB333
 	static const uint16_t colorTranslation[] = {	// Amber Palette -> MSX grb
 		0x000, // 0: 000 black
 		0x230, // 1: 320 dark amber
@@ -416,7 +416,7 @@ void printXMES(uint16_t address)
 		0x670, // 3_ 760 light amber
 		0,0,0,0, 0,0,0,0, 0,0,0,0
 	};
-#else										//Paletted colors
+#else				// Paletted colors GRB333 (SCREEN 5,7,10)
 	static const uint16_t colorTranslation[] = {	// EGA Palette -> MSX grb
 		0x000, // 0: 000 black
 		0x006, // 1: 006 blue
@@ -811,7 +811,15 @@ inline void gfxPutInputEcho(char c, bool keepPos)
  */
 inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
 {
-	setColorPal(index%16, (((uint16_t)red & 0b11100000)<<3) | ((green & 0b11100000)>>1) | ((blue & 0b11100000)>>5));
+#if SCREEN == 8
+	index %= 16;
+	((uint8_t*)colorTranslationSC8)[index] = (green & 0xE0) | ((red & 0xE0) >> 3) | ((blue & 0xE0) >> 6);
+#elif SCREEN != 12
+	index %= 16;
+	uint16_t grb = (((uint16_t)green & 0xE0) << 3) | ((red & 0xE0) >> 1) | ((blue & 0xE0) >> 5);
+	((uint16_t*)colorTranslation)[index] = grb;
+	setColorPal(index, grb);
+#endif
 }
 
 /*
@@ -893,8 +901,10 @@ inline bool gfxPictureShow()
 			if (chunk->type==IMG_CHUNK_PALETTE) {
 				#if SCREEN!=8 && SCREEN!=12
 					size = fread(chunk->data, 32);
-					if (!(size & 0xff00))
+					if (!(size & 0xff00)) {
+						memcpy((void*)colorTranslation, chunk->data, 32);
 						setPalette(chunk->data);
+					}
 				#else
 					fseek(32, SEEK_CUR);
 				#endif
@@ -972,12 +982,23 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 		//=================== Set Palette (9)
 		case GFX_SET_PALETTE:
 			gfxSetPalette(flags[value], flags[value+1], flags[value+2], flags[value+3]);
-			//TODO: change the colors array
 			break;
 		//=================== Get Palette (10)
-		case GFX_GET_PALETTE:
-			//TODO: not implemented
+		case GFX_GET_PALETTE: {
+			uint8_t idx = flags[value] % 16;
+			#if SCREEN == 8
+				uint8_t grb8 = colorTranslationSC8[idx];
+				flags[value+1] = (grb8 << 3) & 0xE0;	// Red:   bits 4-2 → bits 7-5
+				flags[value+2] = grb8 & 0xE0;			// Green: bits 7-5
+				flags[value+3] = (grb8 << 6) & 0xC0;	// Blue:  bits 1-0 → bits 7-6
+			#elif SCREEN != 12
+				uint16_t grb = colorTranslation[idx];
+				flags[value+1] = (uint8_t)((grb << 1) & 0xE0);	// Red:   bits 6-4 → bits 7-5
+				flags[value+2] = (uint8_t)((grb >> 3) & 0xE0);	// Green: bits 10-8 → bits 7-5
+				flags[value+3] = (uint8_t)((grb << 5) & 0xE0);	// Blue:  bits 2-0 → bits 7-5
+			#endif
 			break;
+		}
 		//=================== Copy current Window BACK->PHYS (128)
 		case GFX_CURRENT_WIN_TO_PHYS:
 		//=================== Copy current Window PHYS->BACK (129)

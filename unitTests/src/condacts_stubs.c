@@ -114,7 +114,54 @@ inline void gfxSetInkCol(uint8_t col)    { fake_lastInkCol = col; }
 inline void gfxSetBorderCol(uint8_t col) { fake_lastBorderCol = col; }
 bool gfxPicturePrepare(uint8_t location) {}
 inline bool gfxPictureShow() {}
-inline void gfxRoutines(uint8_t routine, uint8_t value) {}
+
+#if SCREEN == 8
+uint8_t test_colorTranslationSC8[] = {
+	0x00, 0x02, 0xc0, 0xc3, 0x18, 0x1b, 0x58, 0xdb, 0x49, 0x93, 0xed, 0xef, 0x7d, 0x7f, 0xfd, 0xff
+};
+static const uint8_t test_colorTranslationSC8_init[] = {
+	0x00, 0x02, 0xc0, 0xc3, 0x18, 0x1b, 0x58, 0xdb, 0x49, 0x93, 0xed, 0xef, 0x7d, 0x7f, 0xfd, 0xff
+};
+#else
+uint16_t test_colorTranslation[] = {
+	0x000, 0x006, 0x600, 0x606, 0x060, 0x066, 0x260, 0x666,
+	0x222, 0x447, 0x733, 0x737, 0x373, 0x377, 0x773, 0x777
+};
+static const uint16_t test_colorTranslation_init[] = {
+	0x000, 0x006, 0x600, 0x606, 0x060, 0x066, 0x260, 0x666,
+	0x222, 0x447, 0x733, 0x737, 0x373, 0x377, 0x773, 0x777
+};
+#endif
+
+void gfxRoutines(uint8_t routine, uint8_t value)
+{
+	if (routine == GFX_SET_PALETTE) {
+		uint8_t idx = flags[value] % 16;
+		#if SCREEN == 8
+			test_colorTranslationSC8[idx] = (flags[value+2] & 0xE0)
+			                              | ((flags[value+1] & 0xE0) >> 3)
+			                              | ((flags[value+3] & 0xE0) >> 6);
+		#elif SCREEN != 12
+			uint16_t grb = (((uint16_t)flags[value+2] & 0xE0) << 3)
+			             | ((flags[value+1] & 0xE0) >> 1)
+			             | ((flags[value+3] & 0xE0) >> 5);
+			test_colorTranslation[idx] = grb;
+		#endif
+	} else if (routine == GFX_GET_PALETTE) {
+		uint8_t idx = flags[value] % 16;
+		#if SCREEN == 8
+			uint8_t grb8 = test_colorTranslationSC8[idx];
+			flags[value+1] = (grb8 << 3) & 0xE0;
+			flags[value+2] = grb8 & 0xE0;
+			flags[value+3] = (grb8 << 6) & 0xC0;
+		#elif SCREEN != 12
+			uint16_t grb = test_colorTranslation[idx];
+			flags[value+1] = (uint8_t)((grb << 1) & 0xE0);
+			flags[value+2] = (uint8_t)((grb >> 3) & 0xE0);
+			flags[value+3] = (uint8_t)((grb << 5) & 0xE0);
+		#endif
+	}
+}
 
 // SFX functions
 void sfxInit() {}
@@ -173,6 +220,12 @@ void beforeEach()
 	fake_lastPaperCol       = 0;
 	fake_lastInkCol         = 0;
 	fake_lastBorderCol      = 0;
+
+	#if SCREEN == 8
+		memcpy(test_colorTranslationSC8, test_colorTranslationSC8_init, 16);
+	#else
+		memcpy(test_colorTranslation, test_colorTranslation_init, 32);
+	#endif
 }
 
 void do_action(char *pProc)
