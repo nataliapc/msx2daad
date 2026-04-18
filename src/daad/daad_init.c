@@ -60,10 +60,13 @@ bool initDAAD(int argc, char **argv)
 
 #ifdef DAADV3
 	isV3 = (hdr->version == 3);
-#endif
 	//If not a valid DDB version exits
 	if (hdr->version != 2 && !isV3)
 		return false;
+#else
+	if (hdr->version != 2)
+		return false;
+#endif
 
 	//Update header positions addresses
 	for (uint8_t i=0; i<12; i++) {

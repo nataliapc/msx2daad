@@ -282,6 +282,9 @@ extern uint8_t     savedPosY;		//  "    "      "
 
 extern bool    lastPicShow;			// True if last location picture was drawed.
 
+#ifdef TRANSCRIPT
+extern uint16_t trIdx;
+#endif
 
 // DAAD Core function definitions
 bool initDAAD(int argc, char **argv);
