@@ -138,6 +138,7 @@ void beforeAll()
 	tmpTok = malloc(32);
 	tmpMsg = malloc(100);
 	nullObject = (const Object*)nullObjFake;
+	RESET_TESTS();
 }
 
 void beforeEach()

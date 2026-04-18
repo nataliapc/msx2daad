@@ -7,6 +7,7 @@
 static const char LOG_FILE[] = "tests.txt";
 static char *_writePtr;
 
+static bool testOk = true;
 
 // Append [s, s+len) to tests.txt on the current drive.
 // Tries fopen first (append to existing file); falls back to fcreate if not found.
@@ -100,10 +101,16 @@ void cputs(char *s)
 }
 
 
+void RESET_TESTS()
+{
+	testOk = true;
+}
+
 void _ASSERT_TRUE(bool succeedCondition, const char *failMsg, char *file, char *func, int line)
 {
 	if (!succeedCondition) {
 		cprintf("### Assert failed at: %s :: %s :: line %d\n\r    by \"%s\"\n\r\x07", file, func, line, failMsg);
+		testOk = false;
 	}
 }
 
@@ -111,20 +118,28 @@ void _ASSERT_EQUAL(uint16_t value, uint16_t expected, const char *failMsg, char 
 {
 	if (value != expected) {
 		cprintf("### Assert failed at: %s :: %s :: line %d\n\r    by \"%s\"\n\r    received:%u expected:%u\n\r\x07", file, func, line, failMsg, value, expected);
+		testOk = false;
 	}
 }
 
 void _FAIL(const char *failMsg, char *file, char *func, int line)
 {
 	cprintf("Fail by '%s'\n\r  at %s :: %s :: line %d\n\r\x07", failMsg, file, func, line);
+	testOk = false;
 }
 
 void _SUCCEED(char *file, char *func)
 {
-	cprintf("%s :: %s ... OK\n\r", file, func);
+	if (testOk) {
+		cprintf("%s :: %s ... OK\n\r", file, func);
+	} else {
+		cprintf("%s :: %s ... FAIL\n\r", file, func);
+	}
+	testOk = true;
 }
 
 void _TODO(const char *infoMsg, char *file, char *func)
 {
 	cprintf("### TODO: %s :: %s [%s]\n\r", file, func, infoMsg);
+	testOk = true;
 }

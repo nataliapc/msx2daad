@@ -147,7 +147,7 @@ test: all
 	; fi'
 	@if [ -f dsk/tests.txt ]; then \
 		OK=$$(grep -c "\.\.\. OK$$" dsk/tests.txt || true) ; \
-		FAIL=$$(grep -c "### Assert failed" dsk/tests.txt || true) ; \
+		FAIL=$$(grep -c "\.\.\. FAIL$$" dsk/tests.txt || true) ; \
 		TODO=$$(grep -c "### TODO:" dsk/tests.txt || true) ; \
 		TOTAL=$$((OK + FAIL + TODO)) ; \
 		{ \

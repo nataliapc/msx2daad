@@ -395,6 +395,8 @@ int main(char** argv, int argc)
 {
     cputs("### UNIT TESTS DOS.LIB ###\n\r");
 
+    RESET_TESTS();
+
     test_dosver_valid_version();
     test_dosver_not_unknown();
 

@@ -12,6 +12,7 @@
 #define TODO(infoMsg)							_TODO(infoMsg, __FILE__, __func__)
 
 
+void RESET_TESTS();
 void _ASSERT_TRUE(bool succeedCondition, const char *failMsg, char *file, char *func, int line);
 void _ASSERT_EQUAL(uint16_t value, uint16_t expected, const char *failMsg, char *file, char *func, int line);
 void _FAIL(const char *failMsg, char *file, char *func, int line);
