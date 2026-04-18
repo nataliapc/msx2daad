@@ -258,6 +258,7 @@ void test_SYNONYM_success()
 	//BDD then success
 	ASSERT_EQUAL(flags[fVerb], 3, ERROR_FLAG);
 	ASSERT_EQUAL(flags[fNoun1], 4, ERROR_FLAG);
+	ASSERT_EQUAL(isDone, true, "SYNONYM must mark DONE in V2");
 	SUCCEED();
 }
 
@@ -277,6 +278,7 @@ void test_SYNONYM_success_verb()
 	//BDD then success
 	ASSERT_EQUAL(flags[fVerb], 1, ERROR_FLAG);
 	ASSERT_EQUAL(flags[fNoun1], 4, ERROR_FLAG);
+	ASSERT_EQUAL(isDone, true, "SYNONYM must mark DONE in V2");
 	SUCCEED();
 }
 
@@ -296,6 +298,7 @@ void test_SYNONYM_success_noun()
 	//BDD then success
 	ASSERT_EQUAL(flags[fVerb], 3, ERROR_FLAG);
 	ASSERT_EQUAL(flags[fNoun1], 2, ERROR_FLAG);
+	ASSERT_EQUAL(isDone, true, "SYNONYM must mark DONE in V2");
 	SUCCEED();
 }
 

@@ -960,6 +960,15 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 		case GFX_GRAPHICS_IN_BACK:
 			gfxPictureOffet = 256l * BYTESxLINE;
 			break;
+#endif//DISABLE_GFX
+		//=================== Clear Back (6)
+		case GFX_CLEAR_BACK:
+			page_offset = 256l;
+		//=================== Clear Phys (5)
+		case GFX_CLEAR_PHYS:
+			bitBlt(0, 0, 0, page_offset, SCREEN_WIDTH, SCREEN_HEIGHT, getColor(0), 0, CMD_HMMV);
+			break;
+#ifndef DISABLE_GFX
 		//=================== Set Palette (9)
 		case GFX_SET_PALETTE:
 			gfxSetPalette(flags[value], flags[value+1], flags[value+2], flags[value+3]);
@@ -982,13 +991,6 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 			bitBlt(cwX, cwY, cwX, cwY2, cw->winW*FONTWIDTH, cw->winH*FONTHEIGHT, 0, 0, CMD_HMMM);	// Copy current Window
 			break;
 #endif//DISABLE_GFX
-		//=================== Clear Back (6)
-		case GFX_CLEAR_BACK:
-			page_offset = 256l;
-		//=================== Clear Phys (5)
-		case GFX_CLEAR_PHYS:
-			bitBlt(0, 0, 0, page_offset, SCREEN_WIDTH, SCREEN_HEIGHT, getColor(0), 0, CMD_HMMV);
-			break;
 	}
 }
 

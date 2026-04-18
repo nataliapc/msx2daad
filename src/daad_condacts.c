@@ -2153,6 +2153,11 @@ void do_SYNONYM()	// verb noun
 	if (value!=NULLWORD) flags[fVerb] = value;
 	value = *pPROC++;
 	if (value!=NULLWORD) flags[fNoun1] = value;
+#ifdef DAADV3
+	if (!ISV3) isDone = true;
+#else
+	isDone = true;
+#endif
 }
 #endif
 
@@ -2392,35 +2397,37 @@ void do_EXTERN()	// value routine
 	uint16_t value = (uint16_t)getValueOrIndirection();
 	uint8_t  routine = *pPROC++;
 
-	switch (routine) {
-		//=================== XPICTURE: Load Raster Graphic
-		case 0:
-			_internal_picture(value);
-			_internal_display(0);
-			break;
-		//=================== XSAVE: Save Game
-		case 1:
-			do_SAVE();
-			pPROC--;
-			break;
-		//=================== XLOAD: Load Game
-		case 2:
-			do_LOAD();
-			pPROC--;
-			break;
-		//=================== XMES: External message
-		case 3:
-			value |= (*pPROC++)<<8;
-			printXMES(value);
-			break;
-		//=================== XUNDONE: Disable done internal flag [***UNTESTED***]
-		// V3 spec: "removed in DAAD V3 — produces undefined behavior" → no-op in V3
-		case 7:
 #ifdef DAADV3
-			if (!ISV3)
+	if (!ISV3)	// V3: skip MALUVA routines (undefined behavior per spec §6)
 #endif
-			isDone = false;
-			break;
+	{
+		switch (routine) {
+			//=================== XPICTURE: Load Raster Graphic
+			case 0:
+				_internal_picture(value);
+				_internal_display(0);
+				break;
+			//=================== XSAVE: Save Game
+			case 1:
+				do_SAVE();
+				pPROC--;
+				break;
+			//=================== XLOAD: Load Game
+			case 2:
+				do_LOAD();
+				pPROC--;
+				break;
+			//=================== XMES: External message
+			case 3:
+				value |= (*pPROC++)<<8;
+				printXMES(value);
+				break;
+			//=================== XUNDONE: Disable done internal flag [***UNTESTED***]
+			// V3 spec: "removed in DAAD V3 — produces undefined behavior" → no-op in V3
+			case 7:
+				isDone = false;
+				break;
+		}
 	}
 }
 #endif

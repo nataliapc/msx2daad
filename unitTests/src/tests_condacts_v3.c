@@ -360,6 +360,28 @@ void test_DOALL_bit0_clear_when_objects()
 }
 
 
+// =============================================================================
+// Tests SYNONYM V3
+// =============================================================================
+
+void test_SYNONYM_v3_no_done()
+{
+	const char *_func = __func__;
+	beforeEach(); setV3();
+
+	flags[fVerb]  = 1;
+	flags[fNoun1] = 2;
+	isDone = false;
+
+	char proc[] = { _SYNONYM, 3, 4, 255 };
+	do_action(proc);
+
+	ASSERT_EQUAL(flags[fVerb],  3,     "SYNONYM must substitute verb in V3");
+	ASSERT_EQUAL(flags[fNoun1], 4,     "SYNONYM must substitute noun in V3");
+	ASSERT_EQUAL(isDone,        false, "SYNONYM must NOT mark DONE in V3");
+	SUCCEED();
+}
+
 int main(char** argv, int argc)
 {
 	cputs("### UNIT TESTS CONDACTS V3 ###\n\r### (DAAD V3 support) ###\n\r");
@@ -398,5 +420,9 @@ int main(char** argv, int argc)
 	test_DOALL_bit0_set_when_no_objects();
 	test_DOALL_bit0_clear_when_objects();
 
+	// SYNONYM V3: must NOT mark DONE
+	test_SYNONYM_v3_no_done();
+
 	return 0;
 }
+
