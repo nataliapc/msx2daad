@@ -651,6 +651,49 @@ void test_GFX_SET_GET_PALETTE_roundtrip()
 	SUCCEED();
 }
 
+// GFX_TEXTS_IN_PHYS (7) / GFX_TEXTS_IN_BACK (8): redirect text writing to Phys/Back VRAM page
+// Ref: docs/GFX.md lines 13-14; plan/PRP021_GFX_Text_Phys_Back.md
+void test_GFX_TEXTS_default()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	// then: after reset the offset must be 0 (text goes to Phys by default)
+	ASSERT_EQUAL(test_gfxTextOffset, 0, "TEXTS default: offset must be 0 after beforeEach");
+	SUCCEED();
+}
+
+void test_GFX_TEXTS_IN_BACK()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	static const char proc[] = { _GFX, 0, GFX_TEXTS_IN_BACK, 255 };
+	do_action(proc);
+
+	// then: offset must be 256 (pixels) to redirect text to Back page
+	ASSERT_EQUAL(test_gfxTextOffset, 256, "TEXTS_IN_BACK: offset must be 256");
+	SUCCEED();
+}
+
+void test_GFX_TEXTS_IN_PHYS()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	// given: offset previously set to Back
+	static const char proc_back[] = { _GFX, 0, GFX_TEXTS_IN_BACK, 255 };
+	do_action(proc_back);
+
+	// when: restore to Phys
+	static const char proc_phys[] = { _GFX, 0, GFX_TEXTS_IN_PHYS, 255 };
+	do_action(proc_phys);
+
+	// then: offset must be 0 again
+	ASSERT_EQUAL(test_gfxTextOffset, 0, "TEXTS_IN_PHYS: offset must be 0 after switching back from Back");
+	SUCCEED();
+}
+
 // =============================================================================
 // Actions to show pictures [2 condacts]
 // =============================================================================
@@ -736,6 +779,7 @@ int main(char** argv, int argc)
 	test_CALL_success();
 	test_SFX_success();
 	test_GFX_SET_PALETTE(); test_GFX_GET_PALETTE(); test_GFX_SET_GET_PALETTE_roundtrip();
+	test_GFX_TEXTS_default(); test_GFX_TEXTS_IN_BACK(); test_GFX_TEXTS_IN_PHYS();
 
 	test_PICTURE_success();
 	test_DISPLAY_success();

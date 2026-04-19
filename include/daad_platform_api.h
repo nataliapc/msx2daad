@@ -86,8 +86,8 @@ inline void gfxRoutines(uint8_t routine, uint8_t value);
 #define GFX_GRAPHICS_IN_BACK		4
 #define GFX_CLEAR_PHYS				5
 #define GFX_CLEAR_BACK				6
-#define GFX_TEXTS_IN_PHYS			7	//**UNUSED YET**
-#define GFX_TEXTS_IN_BACK			8	//**UNUSED YET**
+#define GFX_TEXTS_IN_PHYS			7
+#define GFX_TEXTS_IN_BACK			8
 #define GFX_SET_PALETTE				9
 #define GFX_GET_PALETTE				10
 #define GFX_CURRENT_WIN_TO_PHYS		128

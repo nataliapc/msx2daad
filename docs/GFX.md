@@ -29,3 +29,4 @@ page switching so you may want to code for that special case (ScMode=4)
 Note that our machines only use the most significant bits. E.g
 PC the top 6, ST the top 3 and Amiga the top 4! This system allows the same
 numbers to represent the same colours in each machine.
+

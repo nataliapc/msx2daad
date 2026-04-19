@@ -133,6 +133,8 @@ static const uint16_t test_colorTranslation_init[] = {
 };
 #endif
 
+uint16_t test_gfxTextOffset;
+
 void gfxRoutines(uint8_t routine, uint8_t value)
 {
 	if (routine == GFX_SET_PALETTE) {
@@ -160,6 +162,10 @@ void gfxRoutines(uint8_t routine, uint8_t value)
 			flags[value+2] = (uint8_t)((grb >> 3) & 0xE0);
 			flags[value+3] = (uint8_t)((grb << 5) & 0xE0);
 		#endif
+	} else if (routine == GFX_TEXTS_IN_PHYS) {
+		test_gfxTextOffset = 0;
+	} else if (routine == GFX_TEXTS_IN_BACK) {
+		test_gfxTextOffset = 256;
 	}
 }
 
@@ -226,6 +232,8 @@ void beforeEach()
 	#else
 		memcpy(test_colorTranslation, test_colorTranslation_init, 32);
 	#endif
+
+	test_gfxTextOffset = 0;
 }
 
 void do_action(char *pProc)

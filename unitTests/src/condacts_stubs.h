@@ -74,6 +74,9 @@ extern uint8_t  test_colorTranslationSC8[];
 extern uint16_t test_colorTranslation[];
 #endif
 
+// Text-page VRAM offset for GFX 7/8 (mirror of gfxTextOffset, reset by beforeEach)
+extern uint16_t test_gfxTextOffset;
+
 // Const string arrays
 extern const char ERROR[];
 extern const char ERROR_ISDONE[];

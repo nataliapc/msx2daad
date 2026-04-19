@@ -153,7 +153,8 @@ ES_SC8_TR:
 _package_single: $(OBJDIR)msx2daad.com
 	@echo "$(COL_YELLOW)####################### $(OUTFILE)$(COL_RESET)"
 	@mkdir -p $(PKGDIR)
-	$(MAKE) clean all
+	$(MAKE) clean
+	$(MAKE) $(OBJDIR)msx2daad.com
 	@cp $(OBJDIR)msx2daad.com $(PKGDIR)$(OUTFILE)
 package: EN_SC5 EN_SC6 EN_SC7 EN_SC8 EN_SC10 EN_SC12 \
          ES_SC5 ES_SC6 ES_SC7 ES_SC8 ES_SC10 ES_SC12 \

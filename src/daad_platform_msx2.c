@@ -67,6 +67,8 @@ static uint32_t posVRAM;
 static bool offsetText;
 // Offset to set/unset the VRAM page where load images
 uint32_t gfxPictureOffet;
+// Offset (in pixels) to set/unset the VRAM page where write text (GFX 7/8)
+static uint16_t gfxTextOffset;
 // Current VRAM page visible
 static bool currentPage;
 
@@ -528,6 +530,7 @@ void gfxSetScreen()
 	offsetText = false;
 	currentPage = false;
 	gfxPictureOffet = 0;
+	gfxTextOffset = 0;
 }
 
 /*
@@ -610,7 +613,8 @@ void gfxClearScreenBlock(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
  */
 inline void gfxClearWindow()
 {
-	gfxClearScreenBlock(cw->winX, cw->winY, cw->winW, cw->winH);
+	uint8_t pr = gfxTextOffset ? 32 : 0;
+	gfxClearScreenBlock(cw->winX, cw->winY + pr, cw->winW, cw->winH);
 }
 
 /*
@@ -622,7 +626,8 @@ inline void gfxClearWindow()
  */
 inline void gfxClearCurrentLine()
 {
-	gfxClearScreenBlock(cw->winX, cw->winY+cw->cursorY, cw->winW, 1);
+	uint8_t pr = gfxTextOffset ? 32 : 0;
+	gfxClearScreenBlock(cw->winX, cw->winY + cw->cursorY + pr, cw->winW, 1);
 }
 
 /*
@@ -635,10 +640,12 @@ inline void gfxClearCurrentLine()
 inline void gfxScrollUp()
 {
 	ASM_HALT;
+	uint16_t py = gfxTextOffset;
+	uint8_t  pr = gfxTextOffset ? 32 : 0;
 	if (cw->winH > 1) {
-		bitBlt(cw->winX*FONTWIDTH, (cw->winY+1)*FONTHEIGHT, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_HMMM);
+		bitBlt(cw->winX*FONTWIDTH, (cw->winY+1)*FONTHEIGHT + py, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT + py, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_HMMM);
 	}
-	gfxClearScreenBlock(cw->winX, (cw->winY+cw->winH-1), cw->winW, 1);
+	gfxClearScreenBlock(cw->winX, (cw->winY+cw->winH-1) + pr, cw->winW, 1);
 }
 
 /*
@@ -712,6 +719,7 @@ inline void gfxSetGraphCharset(bool value)
  */
 static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 {
+	dy += gfxTextOffset;
 	c -= 16;
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
 	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY;
@@ -825,7 +833,7 @@ inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blu
 /*
  * Function: gfxPicturePrepare
  * --------------------------------
- * Prepare filename to read image and check if 
+ * Prepare filename to read image and check if
  * exists.
  * 
  * @param location	DAAD location number.
@@ -848,7 +856,7 @@ bool gfxPicturePrepare(uint8_t location)
 /*
  * Function: gfxPictureShow
  * --------------------------------
- * Read the image file and shown it at graphical 
+ * Read the image file and shown it at graphical
  * screen.
  * 
  * @return			none.
@@ -969,6 +977,14 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 		//=================== Graphics Write to Back (4)
 		case GFX_GRAPHICS_IN_BACK:
 			gfxPictureOffet = 256l * BYTESxLINE;
+			break;
+		//=================== Text Write to Phys (7)
+		case GFX_TEXTS_IN_PHYS:
+			gfxTextOffset = 0;
+			break;
+		//=================== Text Write to Back (8)
+		case GFX_TEXTS_IN_BACK:
+			gfxTextOffset = 256;
 			break;
 #endif//DISABLE_GFX
 		//=================== Clear Back (6)
