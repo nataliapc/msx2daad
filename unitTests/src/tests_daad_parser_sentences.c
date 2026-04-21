@@ -548,6 +548,10 @@ static const uint8_t TEST_VOCAB[] = {
 	(uint8_t)(255-'L'),(uint8_t)(255-'O'),(uint8_t)(255-' '),(uint8_t)(255-' '),(uint8_t)(255-' '), 30, VERB,
 	// "SUBIR" id=240 VERB       — id>239 for V3 F53_NOPRONOUN test
 	(uint8_t)(255-'S'),(uint8_t)(255-'U'),(uint8_t)(255-'B'),(uint8_t)(255-'I'),(uint8_t)(255-'R'),240, VERB,
+	// "HABLA" id=35  VERB       — 5-char verb ending in -LA: HABLA-bug false positive case
+	(uint8_t)(255-'H'),(uint8_t)(255-'A'),(uint8_t)(255-'B'),(uint8_t)(255-'L'),(uint8_t)(255-'A'), 35, VERB,
+	// "FALLA" id=245 VERB       — 5-char verb id>=240 ending in -LA: F53_NOPRONOUN workaround
+	(uint8_t)(255-'F'),(uint8_t)(255-'A'),(uint8_t)(255-'L'),(uint8_t)(255-'L'),(uint8_t)(255-'A'),245, VERB,
 	// "ESPAD" id=100 NOUN       — "ESPADA" truncated, for regression
 	(uint8_t)(255-'E'),(uint8_t)(255-'S'),(uint8_t)(255-'P'),(uint8_t)(255-'A'),(uint8_t)(255-'D'),100, NOUN,
 	// "PALO " id=110 NOUN       — 4-char noun ending in 'O'; must NOT inject PRONOUN
@@ -879,6 +883,130 @@ void test_parser_to_populate_UNKNOWN_WORD_flow_v3()
 #endif //DAADV3
 
 // =============================================================================
+// Tests HABLA false-positive (enclitic detection on 5-char verbs ending -LA/-LO)
+// =============================================================================
+// This is the documented DAAD design bug reported in the wild: a legitimate
+// 5-char verb ending in -LO/-LA (e.g. HABLA) matches the enclitic suffix
+// detection and triggers pronoun substitution erroneously. Per DAAD V3 spec
+// §1 bit 2 (ES_PRONOUN_240), the only mitigation is:
+//   1) put the problematic verb at id >= 240,
+//   2) set bit 2 of flag 53 (F53_NOPRONOUN) at game start.
+// These tests DOCUMENT the current behavior — they pass because the engine
+// matches DAAD's original spec; a regression in either direction is a bug.
+// =============================================================================
+
+// TEST H1 — HABLA bug reproduction: 5-char verb ending in -LA triggers enclitic
+void test_parser_HABLA_triggers_false_positive_enclitic()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	//BDD "HABLA" alone: 5-char verb ending in -LA suffix
+	strcpy(tmpMsg, "HABLA");
+	parser();
+
+	//BDD then parser matches HABLA as verb id=35 and spuriously injects PRONOUN
+	//    because wordLen(5) > suffLen(2) and memcmp("LA", "LA") succeeds.
+	ASSERT_EQUAL(lsBuffer0[0], 35,               "lsBuffer0[0] must be HABLA verb id=35");
+	ASSERT_EQUAL(lsBuffer0[1], VERB,             "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], SYNTH_PRONOUN_ID, "HABLA-bug: enclitic detection fires on 5-char -LA verb");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN,          "HABLA-bug: PRONOUN token injected after HABLA verb");
+	ASSERT_EQUAL(lsBuffer0[4], 0,                "lsBuffer0[4] must be terminator");
+	SUCCEED();
+}
+
+// TEST H2 — HABLA CON PEDRO: bug propagates to full sentence, polluting NOUN slot
+#ifdef LANG_ES
+void test_parser_HABLA_CON_pollutes_noun_with_pronoun()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+
+	//BDD given a previous pronoun reference (e.g. fCPNoun="ESPADA" id=100)
+	flags[fCPNoun]   = 100;
+	flags[fCPAdject] = NULLWORD;
+
+	//BDD "HABLA" (simulating the 1st word of "HABLA CON PEDRO" — vocab has no CON/PEDRO)
+	strcpy(tmpMsg, "HABLA");
+	parser();
+	populateLogicalSentence();
+
+	ASSERT_EQUAL(flags[fVerb],  35,       "fVerb must be 35 (HABLA)");
+	//BDD HABLA-bug consequence: fNoun1 gets filled from fCPNoun via synthetic PRONOUN
+	ASSERT_EQUAL(flags[fNoun1], 100,      "HABLA-bug: fNoun1 polluted with previous pronoun (documents the issue)");
+	SUCCEED();
+}
+#endif
+
+#ifdef DAADV3
+// TEST H3 — Workaround: HABLA-like verb at id>=240 + F53_NOPRONOUN → no pronoun
+void test_parser_FALLA_id245_with_F53_NOPRONOUN_no_enclitic()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+	isV3 = true;
+	flags[fOFlags] |= F53_NOPRONOUN;
+
+	//BDD "FALLA" (5-char verb id=245, ends in -LA) with V3 + F53 bit 2 set
+	strcpy(tmpMsg, "FALLA");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 245,  "lsBuffer0[0] must be FALLA verb id=245");
+	ASSERT_EQUAL(lsBuffer0[1], VERB, "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], 0,    "Workaround active: no PRONOUN injected (id>=240 + F53_NOPRONOUN)");
+	isV3 = false;
+	SUCCEED();
+}
+
+// TEST H4 — Partial workaround: F53_NOPRONOUN set but verb id<240 → still triggers
+void test_parser_HABLA_id35_with_F53_NOPRONOUN_still_triggers()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+	isV3 = true;
+	flags[fOFlags] |= F53_NOPRONOUN;
+
+	//BDD "HABLA" at id=35 (NOT >=240) with F53_NOPRONOUN set
+	strcpy(tmpMsg, "HABLA");
+	parser();
+
+	//BDD spec §1 bit 2: F53_NOPRONOUN only excludes verbs id>=240
+	ASSERT_EQUAL(lsBuffer0[0], 35,               "lsBuffer0[0] must be HABLA verb id=35");
+	ASSERT_EQUAL(lsBuffer0[1], VERB,             "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], SYNTH_PRONOUN_ID, "id<240: F53_NOPRONOUN does NOT protect — still triggers (spec §1 bit 2)");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN,          "id<240: PRONOUN still injected");
+	isV3 = false;
+	SUCCEED();
+}
+
+// TEST H5 — Partial workaround: verb id>=240 but F53_NOPRONOUN not set → still triggers
+void test_parser_FALLA_id245_without_F53_NOPRONOUN_still_triggers()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+	isV3 = true;
+	flags[fOFlags] &= ~F53_NOPRONOUN;   // explicitly unset
+
+	//BDD "FALLA" at id=245 but F53_NOPRONOUN bit cleared
+	strcpy(tmpMsg, "FALLA");
+	parser();
+
+	//BDD spec §1 bit 2: must be explicitly set by author; default=0 → no protection
+	ASSERT_EQUAL(lsBuffer0[0], 245,              "lsBuffer0[0] must be FALLA verb id=245");
+	ASSERT_EQUAL(lsBuffer0[1], VERB,             "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], SYNTH_PRONOUN_ID, "F53_NOPRONOUN not set: id>=240 alone is not enough, PRONOUN triggers");
+	ASSERT_EQUAL(lsBuffer0[3], PRONOUN,          "PRONOUN injected despite id>=240");
+	isV3 = false;
+	SUCCEED();
+}
+#endif //DAADV3
+
+// =============================================================================
 
 // TEST 28 — full integration: parser() + populateLogicalSentence() enclitic flow
 void test_parser_to_populate_enclitic_flow()
@@ -961,6 +1089,17 @@ int main(char** argv, int argc)
 	test_populateLS_UNKNOWN_WORD_sets_F53_UNRECWRD_v3();
 	test_populateLS_clears_F53_UNRECWRD_at_start_v3();
 	test_parser_to_populate_UNKNOWN_WORD_flow_v3();
+#endif
+
+	// HABLA false-positive bug (documents DAAD's original design behaviour)
+	test_parser_HABLA_triggers_false_positive_enclitic();
+#ifdef LANG_ES
+	test_parser_HABLA_CON_pollutes_noun_with_pronoun();
+#endif
+#ifdef DAADV3
+	test_parser_FALLA_id245_with_F53_NOPRONOUN_no_enclitic();
+	test_parser_HABLA_id35_with_F53_NOPRONOUN_still_triggers();
+	test_parser_FALLA_id245_without_F53_NOPRONOUN_still_triggers();
 #endif
 
 	return 0;
