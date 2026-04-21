@@ -742,6 +742,144 @@ void test_parser_LAS_only_one_pronoun_injected()
 	SUCCEED();
 }
 
+// =============================================================================
+// Tests V3 UNKNOWN_WORD → F53_UNRECWRD (bit 5 of flag 53)
+// Spec: assets/V3/DAAD_V3_full.md §1 bit 5 ("UNKNOWN_WORD"):
+//   "Set after obtaining a LS if the parser encountered a word it could not
+//    recognise in the vocabulary, and that word appeared *after* a verb had
+//    already been found in the same sentence. Cleared at the start of each
+//    new LS extraction."
+// =============================================================================
+
+#ifdef DAADV3
+// TEST V3-U1 — parser injects SYNTH_UNKNOWN_ID/UNKNOWN_WORD when unknown word appears after verb
+void test_parser_unknown_word_after_verb_v3_injects()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+	isV3 = true;
+
+	//BDD "COGER XYZZY" → COGER is VERB id=20, XYZZY is not in vocab but came AFTER verb
+	strcpy(tmpMsg, "COGER XYZZY");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 20,               "lsBuffer0[0] must be COGER verb id=20");
+	ASSERT_EQUAL(lsBuffer0[1], VERB,             "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], SYNTH_UNKNOWN_ID, "lsBuffer0[2] must be SYNTH_UNKNOWN_ID (non-zero, else terminator)");
+	ASSERT_EQUAL(lsBuffer0[3], UNKNOWN_WORD,     "lsBuffer0[3] must be UNKNOWN_WORD type");
+	ASSERT_EQUAL(lsBuffer0[4], 0,                "lsBuffer0[4] must be terminator");
+	isV3 = false;
+	SUCCEED();
+}
+
+// TEST V3-U2 — parser does NOT inject UNKNOWN_WORD when unknown word appears before any verb
+void test_parser_unknown_word_before_verb_v3_no_inject()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+	isV3 = true;
+
+	//BDD "XYZZY COGER" → XYZZY is unknown but comes BEFORE a verb → no injection
+	strcpy(tmpMsg, "XYZZY COGER");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 20,   "lsBuffer0[0] must be COGER verb id=20 (XYZZY silently skipped)");
+	ASSERT_EQUAL(lsBuffer0[1], VERB, "lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], 0,    "lsBuffer0[2] must be terminator (no UNKNOWN_WORD injected: word before verb)");
+	isV3 = false;
+	SUCCEED();
+}
+
+// TEST V3-U3 — V2 mode (isV3=false): never inject UNKNOWN_WORD, regardless of position
+void test_parser_unknown_word_v2_no_inject()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+	isV3 = false;
+
+	strcpy(tmpMsg, "COGER XYZZY");
+	parser();
+
+	ASSERT_EQUAL(lsBuffer0[0], 20,   "V2: lsBuffer0[0] must be COGER verb");
+	ASSERT_EQUAL(lsBuffer0[1], VERB, "V2: lsBuffer0[1] must be VERB");
+	ASSERT_EQUAL(lsBuffer0[2], 0,    "V2: lsBuffer0[2] must be terminator (no UNKNOWN_WORD in V2)");
+	SUCCEED();
+}
+
+// TEST V3-U4 — populateLogicalSentence sets F53_UNRECWRD when UNKNOWN_WORD token is present
+void test_populateLS_UNKNOWN_WORD_sets_F53_UNRECWRD_v3()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	isV3 = true;
+
+	//BDD given lsBuffer0 = [VERB id=10, UNKNOWN_WORD sentinel]
+	lsBuffer0[0] = 10;                 lsBuffer0[1] = VERB;
+	lsBuffer0[2] = SYNTH_UNKNOWN_ID;   lsBuffer0[3] = UNKNOWN_WORD;
+	lsBuffer0[4] = 0;
+	flags[fOFlags] = 0;
+
+	//BDD when populateLogicalSentence()
+	populateLogicalSentence();
+
+	ASSERT_EQUAL(flags[fVerb], 10, "fVerb must be 10");
+	ASSERT(flags[fOFlags] & F53_UNRECWRD, "F53_UNRECWRD (bit 5 of flag 53) must be set after UNKNOWN_WORD token");
+	isV3 = false;
+	SUCCEED();
+}
+
+// TEST V3-U5 — populateLogicalSentence clears F53_UNRECWRD at the start of each LS
+void test_populateLS_clears_F53_UNRECWRD_at_start_v3()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	isV3 = true;
+
+	//BDD given F53_UNRECWRD pre-set from a previous LS
+	flags[fOFlags] = F53_UNRECWRD;
+
+	//BDD and lsBuffer0 with a clean verb only (no UNKNOWN_WORD token)
+	lsBuffer0[0] = 10;   lsBuffer0[1] = VERB;
+	lsBuffer0[2] = 0;
+
+	//BDD when populateLogicalSentence()
+	populateLogicalSentence();
+
+	ASSERT_EQUAL(flags[fVerb], 10, "fVerb must be 10");
+	ASSERT_EQUAL(flags[fOFlags] & F53_UNRECWRD, 0, "F53_UNRECWRD must be cleared at the start of each new LS");
+	isV3 = false;
+	SUCCEED();
+}
+
+// TEST V3-U6 — full integration: parser() + populateLogicalSentence() sets F53_UNRECWRD
+// This is the regression guard for the dual-bug: (a) parser injection reachable,
+// (b) populateLogicalSentence sees it and sets the flag.
+void test_parser_to_populate_UNKNOWN_WORD_flow_v3()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+	parser_setup();
+	isV3 = true;
+
+	//BDD any residual flag 53 bit 5 from a previous sentence
+	flags[fOFlags] = F53_UNRECWRD;
+
+	strcpy(tmpMsg, "COGER XYZZY");
+	parser();
+	populateLogicalSentence();
+
+	ASSERT_EQUAL(flags[fVerb], 20, "fVerb must be 20 (COGER)");
+	ASSERT(flags[fOFlags] & F53_UNRECWRD, "F53_UNRECWRD must be set after parser()+populateLogicalSentence() of 'COGER XYZZY' in V3");
+	isV3 = false;
+	SUCCEED();
+}
+#endif //DAADV3
+
+// =============================================================================
+
 // TEST 28 — full integration: parser() + populateLogicalSentence() enclitic flow
 void test_parser_to_populate_enclitic_flow()
 {
@@ -814,6 +952,16 @@ int main(char** argv, int argc)
 	test_parser_enclitic_does_not_break_nonverb_matches();
 	test_parser_LAS_only_one_pronoun_injected();
 	test_parser_to_populate_enclitic_flow();
+
+#ifdef DAADV3
+	// V3 UNKNOWN_WORD → F53_UNRECWRD (bit 5 of flag 53)
+	test_parser_unknown_word_after_verb_v3_injects();
+	test_parser_unknown_word_before_verb_v3_no_inject();
+	test_parser_unknown_word_v2_no_inject();
+	test_populateLS_UNKNOWN_WORD_sets_F53_UNRECWRD_v3();
+	test_populateLS_clears_F53_UNRECWRD_at_start_v3();
+	test_parser_to_populate_UNKNOWN_WORD_flow_v3();
+#endif
 
 	return 0;
 }

@@ -242,5 +242,25 @@ void do_action(char *pProc)
 	indirection = *pProc & IND;
 
 	CondactStruct *currCondact = (CondactStruct*)pProc++;
-	condactList[currCondact->condact].function();
+	const CONDACT_LIST *ce = &condactList[currCondact->condact];
+	ce->function();
+	isDone |= ce->flag;           // match processPROC() post-condact OR (daad_condacts.c:203)
+}
+
+// Simulate processPROC()'s inner loop for a full entry: execute condacts
+// sequentially honoring checkEntry (ISDONE/ISNDONE can abort the rest)
+// and applying the isDone |= ce->flag post-condact rule. Terminator: 0xff.
+void do_entry(const char *pEntry)
+{
+	pPROC = (uint8_t*)pEntry;
+	checkEntry = true;
+	isDone = false;
+	uint8_t temp;
+	while (checkEntry && (temp=*pPROC)!=0xff) {
+		CondactStruct *cc = (CondactStruct*)pPROC++;
+		indirection = cc->indirection;
+		const CONDACT_LIST *ce = &condactList[cc->condact];
+		ce->function();
+		isDone |= ce->flag;
+	}
 }

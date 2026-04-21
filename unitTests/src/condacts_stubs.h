@@ -91,5 +91,6 @@ extern const char TODO_UI[];
 void beforeAll();
 void beforeEach();
 void do_action(char *pProc);
+void do_entry(const char *pEntry);
 
 #endif // CONDACTS_STUBS_H

@@ -37,6 +37,7 @@
 // Vocabulary constants
 #define NULLWORD			255
 #define SYNTH_PRONOUN_ID	1		// Synthetic id for parser-injected PRONOUN tokens (enclitic -lo/-la/-los/-las).
+#define SYNTH_UNKNOWN_ID	2		// Synthetic id for parser-injected UNKNOWN_WORD tokens (V3 F53_UNRECWRD). Must be non-zero (0 terminates lsBuffer scan).
 									// Must be non-zero: lsBuffer scan loop treats id==0 as end-of-buffer.
 									// The actual value is arbitrary; PRONOUN branches never read the id.
 

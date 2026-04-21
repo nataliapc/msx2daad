@@ -382,6 +382,74 @@ void test_SYNONYM_v3_no_done()
 	SUCCEED();
 }
 
+// =============================================================================
+// Integration test: SYNONYM + ISDONE entry — real inventory pattern from a DSF
+// =============================================================================
+// DSF pattern reported in the wild for an "I" (inventory) shortcut:
+//     SYNONYM COGER TODO
+//     ISDONE
+//     CLEAR 53
+//     DONE
+// Expected behaviour:
+//   - V2: SYNONYM marks DONE → ISDONE passes → CLEAR runs.
+//   - V3: SYNONYM does NOT mark DONE (spec §7) → ISDONE fails →
+//         checkEntry=false → CLEAR is skipped.
+// Uses do_entry() which replicates processPROC()'s inner loop (checkEntry
+// gating + isDone |= ce->flag), so this catches the dual-mechanism bug
+// where condactList[SYNONYM].flag=1 was silently re-marking DONE in V3.
+
+void test_entry_SYNONYM_ISDONE_v3_blocks_rest()
+{
+	const char *_func = __func__;
+	beforeEach(); setV3();
+
+	flags[fVerb]  = 1;
+	flags[fNoun1] = 2;
+	flags[53]     = 42;           // sentinel: set by caller, must survive
+
+	static const char entry[] = {
+		_SYNONYM, 3, 4,           // V3: does NOT mark DONE
+		_ISDONE,                  // V3: isDone=false → checkEntry=false → abort entry
+		_CLEAR, 53,               // must NOT execute
+		0xff
+	};
+	do_entry(entry);
+
+	// SYNONYM always substitutes regardless of version
+	ASSERT_EQUAL(flags[fVerb],  3,     "V3 entry: SYNONYM must substitute verb");
+	ASSERT_EQUAL(flags[fNoun1], 4,     "V3 entry: SYNONYM must substitute noun");
+	// The key invariant: subsequent condacts skipped
+	ASSERT_EQUAL(flags[53],     42,    "V3 entry: CLEAR 53 must NOT execute (ISDONE blocked rest)");
+	ASSERT_EQUAL(isDone,        false, "V3 entry: isDone must remain false after SYNONYM");
+	ASSERT_EQUAL(checkEntry,    false, "V3 entry: ISDONE must set checkEntry=false");
+	SUCCEED();
+}
+
+void test_entry_SYNONYM_ISDONE_v2_runs_rest()
+{
+	const char *_func = __func__;
+	beforeEach();                 // V2 default (isV3=false)
+
+	flags[fVerb]  = 1;
+	flags[fNoun1] = 2;
+	flags[53]     = 42;           // sentinel: must be wiped by CLEAR
+
+	static const char entry[] = {
+		_SYNONYM, 3, 4,           // V2: marks DONE (Z80/6502 legacy)
+		_ISDONE,                  // V2: isDone=true → checkEntry stays true
+		_CLEAR, 53,               // executes: flags[53] = 0
+		0xff
+	};
+	do_entry(entry);
+
+	ASSERT_EQUAL(flags[fVerb],  3,     "V2 entry: SYNONYM must substitute verb");
+	ASSERT_EQUAL(flags[fNoun1], 4,     "V2 entry: SYNONYM must substitute noun");
+	ASSERT_EQUAL(flags[53],     0,     "V2 entry: CLEAR 53 must execute (SYNONYM marked DONE)");
+	ASSERT_EQUAL(isDone,        true,  "V2 entry: isDone must be true after SYNONYM");
+	ASSERT_EQUAL(checkEntry,    true,  "V2 entry: ISDONE must keep checkEntry=true");
+	SUCCEED();
+}
+
 int main(char** argv, int argc)
 {
 	cputs("### UNIT TESTS CONDACTS V3 ###\n\r### (DAAD V3 support) ###\n\r");
@@ -422,6 +490,10 @@ int main(char** argv, int argc)
 
 	// SYNONYM V3: must NOT mark DONE
 	test_SYNONYM_v3_no_done();
+
+	// Integration: multi-condact entry simulating a real DSF pattern
+	test_entry_SYNONYM_ISDONE_v3_blocks_rest();
+	test_entry_SYNONYM_ISDONE_v2_runs_rest();
 
 	return 0;
 }

@@ -116,7 +116,7 @@ cprintf("Found! %u / %u [%c%c%c%c%c]\n",voc->id, voc->type, 255-voc->word[0], 25
 		if (!voc->word[0]) {
 #ifdef DAADV3
 			if (ISV3 && verbSeen) {
-				*lsBuffer++ = 0;
+				*lsBuffer++ = SYNTH_UNKNOWN_ID;   // must be non-zero: 0 terminates the lsBuffer scan in populateLogicalSentence
 				*lsBuffer++ = UNKNOWN_WORD;
 				*lsBuffer = 0;
 			}
@@ -207,7 +207,7 @@ cputs("populateLogicalSentence()\n");
 			ret = true;
 		}
 #ifdef DAADV3
-		  else if (type==UNKNOWN_WORD) {
+		else if (type==UNKNOWN_WORD) {
 			flags[fOFlags] |= F53_UNRECWRD;
 		}
 #endif
