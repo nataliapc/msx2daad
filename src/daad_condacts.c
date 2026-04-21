@@ -32,14 +32,14 @@ const CONDACT_LIST condactList[] = {
 	{ do_QUIT,      0 }, { do_END,       1 }, { do_DONE,      1 }, { do_OK,        1 }, { do_ANYKEY,    1 },	// 20-24
 	{ do_SAVE,      1 }, { do_LOAD,      1 }, { do_DPRINT,    1 }, { do_DISPLAY,   1 }, { do_CLS,       1 },	// 25-29
 	{ do_DROPALL,   1 }, { do_AUTOG,     1 }, { do_AUTOD,     1 }, { do_AUTOW,     1 }, { do_AUTOR,     1 },	// 30-34
-	{ do_PAUSE,     1 }, { do_SYNONYM,   1 }, { do_GOTO,      1 }, { do_MESSAGE,   1 }, { do_REMOVE,    1 },	// 35-39
+	{ do_PAUSE,     1 }, { do_SYNONYM,   0 }, { do_GOTO,      1 }, { do_MESSAGE,   1 }, { do_REMOVE,    1 },	// 35-39 SYNONYM have isDone logic inside
 	{ do_GET,       1 }, { do_DROP,      1 }, { do_WEAR,      1 }, { do_DESTROY,   1 }, { do_CREATE,    1 },	// 40-44
 	{ do_SWAP,      1 }, { do_PLACE,     1 }, { do_SET,       1 }, { do_CLEAR,     1 }, { do_PLUS,      1 },	// 45-49
 	{ do_MINUS,     1 }, { do_LET,       1 }, { do_NEWLINE,   1 }, { do_PRINT,     1 }, { do_SYSMESS,   1 },	// 50-54
 	{ do_ISAT,      0 }, { do_SETCO,     1 }, { do_SPACE,     1 }, { do_HASAT,     0 }, { do_HASNAT,    0 },	// 55-59
 	{ do_LISTOBJ,   1 }, { do_EXTERN,    1 }, { do_RAMSAVE,   1 }, { do_RAMLOAD,   1 }, { do_BEEP,      1 },	// 60-64
 	{ do_PAPER,     1 }, { do_INK,       1 }, { do_BORDER,    1 }, { do_PREP,      0 }, { do_NOUN2,     0 },	// 65-69
-	{ do_ADJECT2,   0 }, { do_ADD,       1 }, { do_SUB,       1 }, { do_PARSE,     1 }, { do_LISTAT,    1 },	// 70-74
+	{ do_ADJECT2,   0 }, { do_ADD,       1 }, { do_SUB,       1 }, { do_PARSE,     0 }, { do_LISTAT,    1 },	// 70-74  PARSE have isDone logic inside
 	{ do_PROCESS,   0 }, { do_SAME,      0 }, { do_MES,       1 }, { do_WINDOW,    1 }, { do_NOTEQ,     0 },	// 75-79
 	{ do_NOTSAME,   0 }, { do_MODE,      1 }, { do_WINAT,     1 }, { do_TIME,      1 }, { do_PICTURE,   1 },	// 80-84
 	{ do_DOALL,     1 }, { do_MOUSE,     1 }, { do_GFX,       1 }, { do_ISNOTAT,   0 }, { do_WEIGH,     1 },	// 85-89

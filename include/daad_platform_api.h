@@ -90,6 +90,10 @@ inline void gfxRoutines(uint8_t routine, uint8_t value);
 #define GFX_TEXTS_IN_BACK			8
 #define GFX_SET_PALETTE				9
 #define GFX_GET_PALETTE				10
+#define GFX_COLOR_CYCLE_START		11	// **Only PCDOS** Cycle colors start
+#define GFX_COLOR_CYCLE_STOP		12	// **Only PCDOS** Cycle colors stop
+#define GFX_PLAY_ANIMATION			13	// **Only PCDOS/jDAAD** Play animation from location in value until key press
+#define GFX_LOOP_ANIMATION			14	// **Only PCDOS/jDAAD** Play animation from location in value in infinite loop until key press
 #define GFX_CURRENT_WIN_TO_PHYS		128
 #define GFX_CURRENT_WIN_TO_BACK		129
 
