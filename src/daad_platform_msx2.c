@@ -872,7 +872,7 @@ inline bool gfxPictureShow()
 
 		fseek(4, SEEK_SET);								// Skip IMAGE_MAGIC "IMGx"
 		do {
-			size = fread((char*)chunk, 5);				// Read next chunk type
+			size = fread((char*)chunk, 5);				// Read next chunk type + size + auxData
 			if (size & 0xff00) continue;
 
 			//=============================================
@@ -916,6 +916,73 @@ inline bool gfxPictureShow()
 				#else
 					fseek(32, SEEK_CUR);
 				#endif
+			} else
+			if (chunk->type==IMG_CHUNK_CMD) {
+				//=============================================
+				// V9938 commands chunk: execute each packed command (15 bytes/cmd)
+				size = fread(chunk->data, 1);					// cmdCount
+				if (!(size & 0xff00)) {
+					uint8_t cmdCount = chunk->data[0];
+					fread(chunk->data, (uint16_t)cmdCount * 15);
+					char *p = chunk->data;
+					while (cmdCount--) {
+						fastVCopy(p);
+						p += 15;
+					}
+				}
+			} else
+			if (chunk->type==IMG_CHUNK_CMDDATA) {
+				//=============================================
+				// V9938 command data chunk: for now ONLY consume bytes to avoid
+				// messing up the file offset. The execution (decompression
+				// + sending to port #9B) is pending — see future PRP for
+				// "stream-decompress to VDP".
+				size = fread(chunk->data, chunk->auxData);		// 3 bytes extra header
+				if (!(size & 0xff00)) {
+					fseek(chunk->chunkSize, SEEK_CUR);			// skip compressed payload
+					/*
+					 * TODO (future PRP): execute HMMC streaming without decompressed buffer in RAM.
+					 *
+					 * Option A — decompress to RAM and dump to #9B (rejected due to RAM cost):
+					 *
+					 *     uint8_t  compID = chunk->data[0];
+					 *     uint16_t uncomp = *(uint16_t*)&chunk->data[1];
+					 *     fread(chunk->data, chunk->chunkSize);
+					 *     char *out = (char*)(heap_top + sizeof(IMG_CHUNK));
+					 *     switch (compID) {
+					 *         case 0: memcpy(out, chunk->data, uncomp);     break;   // RAW
+					 *         case 1: unRLE(chunk->data, out);              break;   // RLE
+					 *         case 2: pletter2ram(chunk->data, out);        break;   // PLETTER
+					 *     }
+					 *     // Dump to port #9B (VDP in HMMC redirects to R44 with internal TR)
+					 *     __asm
+					 *         ld   hl,#_out
+					 *         ld   l,(hl)
+					 *         inc  hl
+					 *         ld   h,(hl)
+					 *         ld   bc,#_uncomp
+					 *         ld   c,(bc)
+					 *         inc  bc
+					 *         ld   b,(bc)
+					 *     1$: ld   a,(hl)
+					 *         out  (0x9B),a
+					 *         inc  hl
+					 *         dec  bc
+					 *         ld   a,b
+					 *         or   c
+					 *         jr   nz,1$
+					 *     __endasm;
+					 *
+					 * Cost: up to `uncompressedSize` bytes of extra RAM for the buffer.
+					 * Unacceptable on MSX-DOS1.
+					 *
+					 * Option B (preferred) — decompressors with sink to port #9B:
+					 *   new variants `unRLE_port9B(src)`, `pletter2port9B(src)`,
+					 *   `copy2port9B(src, len)` that instead of `LD (DE),A` do
+					 *   `OUT (0x9B),A`. Zero extra RAM; same decompression loop
+					 *   redirected to VDP bus. This is designed in a separate PRP.
+					 */
+				}
 			} else {
 				//=============================================
 				// Picture data chunks

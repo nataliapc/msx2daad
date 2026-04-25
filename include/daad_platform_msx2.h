@@ -222,6 +222,9 @@ volatile __at (JIFFY)  uint16_t varJIFFY;
 #define IMG_CHUNK_CLS		17		// Clear Window (CLS)
 #define IMG_CHUNK_SKIP		18		// Skip VRAM bytes (SKIP)
 #define IMG_CHUNK_PAUSE		19		// Pause in 1/50 sec units (PAUSE)
+#define IMG_CHUNK_CMD		20		// Execute V9938 commands (CMDDATA payload is **SKIPPED** until stream-decompress PRP)
+#define IMG_CHUNK_CMDDATA	21		// V9938 command data chunks (**SKIPPED** until stream-decompress PRP)
+#define IMG_CHUNK_INFO		128		// Information chunk (**SKIPPED via else fallback**)
 
 typedef struct {
 	char     magic[3];				// Magic text: "IMG".
@@ -234,6 +237,41 @@ typedef struct {
 	uint16_t auxData;				// data[] size uncompressed | contains 0x0000 if unused
 	char     data[IMG_CHUNK_SIZE];	// Compressed data (uncompressed if type=RAW)
 } IMG_CHUNK;
+
+typedef struct {
+	uint8_t  type;					// Chunk type
+	uint16_t extraHeaderSize;		// Size of the extra header after the core header (this struct)
+	uint16_t dataSize;				// Size of the data after the extra header
+} IMG_CHUNK_HEADER;
+
+typedef struct {
+	IMG_CHUNK_HEADER header;		// { 128, 10, 0 } Type=128 (Info chunk), extraHeaderSize=10, dataSize=0
+	// Extra header (10 bytes)
+	uint8_t  infoVersion;			// { 1 } Info Version chunk format. Allows to add new fields in the future without breaking compatibility
+	uint16_t chunkCount;			// { n } Number of chunks in the image file (including the Info chunk)
+	uint16_t imageWidth;			// { w } Image width in pixels (rectangle for CX[L]/S; full screen for C[L])
+	uint16_t imageHeight;			// { h } Image height in pixels
+	uint8_t  pixelType;				// 0=unspec, 1=BP2 (4col), 2=BP4 (16col), 4=BD8 (256col), 6=BYJK, 7=BYJKP
+	uint8_t  paletteType;			// 0=unspec, 1=GRB332, 2=GRB333
+	uint8_t  chipsetType;			// 0=unspec, 1=TMS9918, 2=V9938, 3=V9958, 4=V9990
+} IMG_INFO;
+
+typedef struct {
+	IMG_CHUNK_HEADER header;		// { 20, 1, n*15 } Type=20 (V9938Cmd chunk), extraHeaderSize=1, dataSize=n*15
+	// Extra header (1 byte)
+	uint8_t  cmdCount;				// { n } Number of commands in this chunk data. Range 1-136 (15 bytes per command, R32-R46 ready for fastVCopy)
+	// Dummy Data
+	char     data[0];				// Dummy data only to get the pointer to the data section
+} IMG_V9938_CMD;
+
+typedef struct {
+	IMG_CHUNK_HEADER header;		// { 21, 3, 1-2040 } Type=21 (V9938CmdData chunk), extraHeaderSize=3, dataSize=1-2040
+	// Extra header (3 bytes)
+	uint8_t  compressorID;			// { c } Compressor used for the data: 0=uncompressed, 1=RLE, 2=Pletter5
+	uint16_t uncompressedSize;		// { s } Uncompressed data size in bytes (max: 16KB)
+	// Dummy Data
+	char     data[0];				// Dummy data only to get the pointer to the data section
+} IMG_V9938_CMDDATA;
 
 
 #endif //__PLATFORM_MSX2_H__
