@@ -938,10 +938,18 @@ inline bool gfxPictureShow()
 					uint16_t uncomp = *((uint16_t*)++p);	//uncompressedSize;
 					p += 2;
 					switch (compID) {
+#ifdef COMPRESSOR_RAW
 						case 0:  copyCmdData(p, uncomp);  break;   // RAW
+#endif//COMPRESSOR_RAW
+#ifdef COMPRESSOR_RLE
 						case 1:  unRLE_Data(p);           break;   // RLE
+#endif//COMPRESSOR_RLE
+#ifdef COMPRESSOR_PLETTER
 						case 2:  pletter2Data(p, uncomp); break;   // PLETTER
+#endif//COMPRESSOR_PLETTER
+#ifdef COMPRESSOR_ZX0
 						case 3:  dzx0Data(p, uncomp);     break;   // ZX0 [PRP025]
+#endif//COMPRESSOR_ZX0
 					}
 				}
 			} else {

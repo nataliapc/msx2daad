@@ -105,7 +105,7 @@ lus:
     adc hl,hl
     jp c,Depack_out
     call getbitsexx
-    jp c,lus
+    jr c,lus
 lenok:
     inc hl
     exx
@@ -113,7 +113,7 @@ lenok:
     inc hl
     ld b,#0
     bit 7,c
-    jp z,offsok
+    jr z,offsok
     jp (ix)
 
 mode7:

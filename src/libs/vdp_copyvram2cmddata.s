@@ -48,5 +48,5 @@ _copyVRam2CmdData::
 		out  (0x9B),a
 		djnz .cv_block
 		dec  d
-		jp   nz, .cv_block
+		jr   nz, .cv_block
 		ret

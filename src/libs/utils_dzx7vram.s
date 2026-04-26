@@ -51,7 +51,7 @@ zx7_len_size_loop:
 	inc     d
 	call	zx7_getbit 				; check next bit
 	jr      nc, zx7_len_size_loop
-	jp      zx7_len_value_start
+	jr      zx7_len_value_start
 
 zx7_len_value_loop:
 	call	zx7_getbit 				; check next bit
@@ -126,7 +126,7 @@ zx7_copybytes_loop:
 	
 zx7_exit:
 	pop     hl 						; restore source address (compressed data)
-	jp      nc, zx7_main_loop
+	jr      nc, zx7_main_loop
 
 	pop hl
 	pop de

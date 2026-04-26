@@ -93,7 +93,7 @@ getlen:
 	ret c
 	add a,a
 	call z,getbitexx
-	jp c,.lus
+	jr c,.lus
 .lenok:
 	inc hl
 	exx
@@ -101,7 +101,7 @@ getlen:
 	inc hl
 	ld b,#0
 	bit 7,c
-	jp z,offsok
+	jr z,offsok
 	jp (ix)
 
 mode6:

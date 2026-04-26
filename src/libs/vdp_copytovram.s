@@ -37,5 +37,5 @@ copyToVRAM::	; source:HL vram:A+DE size:BC
 	.c2v_loop1:
 		otir				; Send block of 256 bytes
 		dec  d				; Decrement blocks counter
-		jp   nz, .c2v_loop1	; ...more?
+		jr   nz, .c2v_loop1	; ...more?
 		ret

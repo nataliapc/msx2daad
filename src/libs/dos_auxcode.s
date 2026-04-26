@@ -18,7 +18,7 @@ dos_initializeFCB::
     ld      a,#' '
     ld      (hl),a
     ld      de,#SYSFCB+2
-    ld      bc,#10
+    ld      c,#10                 ; B already 0 from prior LDIR
     ldir
 
 	ret

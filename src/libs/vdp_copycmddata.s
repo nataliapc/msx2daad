@@ -30,7 +30,7 @@ copyCmdData::			; HL=src, DE=length
 	.ccd_loop1:
 		otir			; Send 256-byte block
 		dec  d
-		jp   nz, .ccd_loop1
+		jr   nz, .ccd_loop1
 		ret
 
 ; ---------------------------------------------------------------
