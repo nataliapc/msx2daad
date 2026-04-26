@@ -17,9 +17,11 @@ void disableTurboCPU();
 
 void unRLE(char *source, char *target) SDCC_STACKCALL;
 void unRLE_vram(char *srcmem, uint32_t vram) SDCC_STACKCALL;
+void unRLE_Data(char *source) SDCC_STACKCALL;
 
 void pletter2vram(char* data, uint32_t vram) SDCC_STACKCALL;
 void pletter2ram(char* datain, char* dataout);
+void pletter2Data(char* src, uint16_t uncompSize);
 
 void dzx7vram (char *data, uint32_t vram_offset) SDCC_STACKCALL;
 

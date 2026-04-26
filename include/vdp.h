@@ -61,6 +61,11 @@ void setVDP_Write(uint32_t vram);
 
 void copyToVRAM(uint16_t source, uint32_t vram, uint16_t size) SDCC_STACKCALL;
 
+// HMMC streaming helpers (PRP023): caller MUST have dispatched a HMMC command
+// via fastVCopy() previously; these write data bytes to port #9B (VDP R44).
+void copyCmdData(uint8_t *src, uint16_t length);
+void copyVRam2CmdData(uint32_t vram_src, uint16_t length) SDCC_STACKCALL;
+
 void enableVDP();
 void disableVDP();
 

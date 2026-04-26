@@ -920,11 +920,11 @@ inline bool gfxPictureShow()
 			if (chunk->type==IMG_CHUNK_CMD) {
 				//=============================================
 				// V9938 commands chunk: execute each packed command (15 bytes/cmd)
-				size = fread(chunk->data, 1);					// cmdCount
+				char *p = &((IMG_V9938_CMD*)chunk)->cmdCount;
+				size = fread(p, ((IMG_CHUNK_HEADER*)chunk)->extraHeaderSize + ((IMG_CHUNK_HEADER*)chunk)->dataSize);
 				if (!(size & 0xff00)) {
-					uint8_t cmdCount = chunk->data[0];
-					fread(chunk->data, (uint16_t)cmdCount * 15);
-					char *p = chunk->data;
+					uint8_t cmdCount = *p;
+					p++;
 					while (cmdCount--) {
 						fastVCopy(p);
 						p += 15;
@@ -933,68 +933,34 @@ inline bool gfxPictureShow()
 			} else
 			if (chunk->type==IMG_CHUNK_CMDDATA) {
 				//=============================================
-				// V9938 command data chunk: for now ONLY consume bytes to avoid
-				// messing up the file offset. The execution (decompression
-				// + sending to port #9B) is pending — see future PRP for
-				// "stream-decompress to VDP".
-				size = fread(chunk->data, chunk->auxData);		// 3 bytes extra header
+				// V9938 command data chunk: decompress + stream to port #9B
+				// (HMMC was dispatched by the preceding V9938Cmd chunk).
+				char *p = &((IMG_V9938_CMDDATA*)chunk)->compressorID;
+				size = fread(p, ((IMG_CHUNK_HEADER*)chunk)->extraHeaderSize + ((IMG_CHUNK_HEADER*)chunk)->dataSize);
 				if (!(size & 0xff00)) {
-					fseek(chunk->chunkSize, SEEK_CUR);			// skip compressed payload
-					/*
-					 * TODO (future PRP): execute HMMC streaming without decompressed buffer in RAM.
-					 *
-					 * Option A — decompress to RAM and dump to #9B (rejected due to RAM cost):
-					 *
-					 *     uint8_t  compID = chunk->data[0];
-					 *     uint16_t uncomp = *(uint16_t*)&chunk->data[1];
-					 *     fread(chunk->data, chunk->chunkSize);
-					 *     char *out = (char*)(heap_top + sizeof(IMG_CHUNK));
-					 *     switch (compID) {
-					 *         case 0: memcpy(out, chunk->data, uncomp);     break;   // RAW
-					 *         case 1: unRLE(chunk->data, out);              break;   // RLE
-					 *         case 2: pletter2ram(chunk->data, out);        break;   // PLETTER
-					 *     }
-					 *     // Dump to port #9B (VDP in HMMC redirects to R44 with internal TR)
-					 *     __asm
-					 *         ld   hl,#_out
-					 *         ld   l,(hl)
-					 *         inc  hl
-					 *         ld   h,(hl)
-					 *         ld   bc,#_uncomp
-					 *         ld   c,(bc)
-					 *         inc  bc
-					 *         ld   b,(bc)
-					 *     1$: ld   a,(hl)
-					 *         out  (0x9B),a
-					 *         inc  hl
-					 *         dec  bc
-					 *         ld   a,b
-					 *         or   c
-					 *         jr   nz,1$
-					 *     __endasm;
-					 *
-					 * Cost: up to `uncompressedSize` bytes of extra RAM for the buffer.
-					 * Unacceptable on MSX-DOS1.
-					 *
-					 * Option B (preferred) — decompressors with sink to port #9B:
-					 *   new variants `unRLE_port9B(src)`, `pletter2port9B(src)`,
-					 *   `copy2port9B(src, len)` that instead of `LD (DE),A` do
-					 *   `OUT (0x9B),A`. Zero extra RAM; same decompression loop
-					 *   redirected to VDP bus. This is designed in a separate PRP.
-					 */
+					uint8_t  compID = *p;				// compressorID;
+					uint16_t uncomp = *((uint16_t*)++p);	//uncompressedSize;
+					p += 2;
+					switch (compID) {
+						case 0:  copyCmdData(p, uncomp);  break;   // RAW
+						case 1:  unRLE_Data(p);           break;   // RLE
+						case 2:  pletter2Data(p, uncomp); break;   // PLETTER
+					}
 				}
 			} else {
 				//=============================================
 				// Picture data chunks
 				fread(chunk->data, chunk->chunkSize);
-				if (chunk->type==IMG_CHUNK_RAW) {		// Show RAW data
-					copyToVRAM((uint16_t)chunk->data, posVRAM, chunk->chunkSize);
-				} else
+//				if (chunk->type==IMG_CHUNK_RAW) {		// Show RAW data
+//					copyToVRAM((uint16_t)chunk->data, posVRAM, chunk->chunkSize);
+//				} else
 				if (chunk->type==IMG_CHUNK_RLE) {		// Show RLE data
 					unRLE_vram(chunk->data, posVRAM);
 				} else
 				if (chunk->type==IMG_CHUNK_PLETTER) {	// Show Pletter5 data
 					pletter2vram(chunk->data, posVRAM);
+				} else {
+					continue;
 				}
 				posVRAM += chunk->auxData;	//OutSize
 			}

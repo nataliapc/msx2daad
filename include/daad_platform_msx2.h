@@ -217,7 +217,7 @@ volatile __at (JIFFY)  uint16_t varJIFFY;
 #define IMG_CHUNK_PALETTE	1		// Load palette
 #define IMG_CHUNK_RAW		2		// Load RAW format data
 #define IMG_CHUNK_RLE		3		// Load RLE format data
-#define IMG_CHUNK_PLETTER	4		// Load Pletter5 format data
+#define IMG_CHUNK_PLETTER	4		// Load Pletter5 format data#define IMG_CHUNK_RESET		16		// Reset VRAM write pointer to current Window
 #define IMG_CHUNK_RESET		16		// Reset VRAM write pointer to current Window
 #define IMG_CHUNK_CLS		17		// Clear Window (CLS)
 #define IMG_CHUNK_SKIP		18		// Skip VRAM bytes (SKIP)

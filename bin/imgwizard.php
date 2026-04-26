@@ -113,6 +113,7 @@
 	define('CHUNK_HEAD',        5);
 	define('CHUNK_SIZE',        2043);
 	define('CHUNK_CMDDATA_MAX', 2040);     // CHUNK_SIZE - 3 (extra header de CmdData)
+	define('CHUNK_PLETTER_MAX_UNCOMP', 11264);   // VRAM scratch zone size (PRP023)
 
 	define('CHUNK_REDIRECT',    0);
 	define('CHUNK_PALETTE',     1);
@@ -214,6 +215,13 @@
 			}
 		}
 		echo "### Compressor: RLE (forced)\n";
+		if ($transparent < 0) {
+			echo "\n".
+			     "WARNING: 's' command without transparency is DEPRECATED.\n".
+			     "         Use 'cx' for new images (V9938 HMMC streaming).\n".
+			     "         's' with transparency remains the recommended path.\n".
+			     "         Continuing in legacy mode...\n\n";
+		}
 		compressRectangle($fileIn, $x, $y, $w, $h, $transparent);
 		exit;
 	}
@@ -261,6 +269,12 @@
 			$compress = $comp[COMP_NAME]." (forced)";
 		}
 		echo "### Compressor: $compress\n";
+		if ($transparent < 0) {
+			echo "\n".
+			     "WARNING: 'c' command without transparency is DEPRECATED.\n".
+			     "         Use 'cx' for new images (V9938 HMMC streaming).\n".
+			     "         Continuing in legacy mode...\n\n";
+		}
 		//Compress chunks
 		compressChunks($fileIn, $lines, $comp, $transparent, NULL, NULL);
 		exit;
@@ -563,13 +577,23 @@
 					break;
 				case CHUNK_INFO:
 					// $sin = extraHeaderSize (10), $sout = dataSize (0)
+					$pixelTypeNames = [0=>'Unspecified', 1=>'BP2 (4 cols paletted)', 2=>'BP4 (16 cols paletted)', 4=>'BD8 (256 fixed cols)'];
+					$paletteTypeNames = [0=>'Unspecified', 1=>'GRB332', 2=>'GRB333'];
+					$chipsetTypeNames = [0=>'Unspecified', 1=>'TMS9918', 2=>'V9938', 3=>'V9958', 4=>'V9990'];
 					$extra = substr($in, $pos+5, $sin);
 					$ver   = ord($extra[0]);
 					$cnt   = unpack("v", substr($extra, 1, 2))[1];
 					$wInf  = unpack("v", substr($extra, 3, 2))[1];
 					$hInf  = unpack("v", substr($extra, 5, 2))[1];
-					$px    = ord($extra[7]); $pl = ord($extra[8]); $cs = ord($extra[9]);
-					echo "    CHUNK $id: INFO v$ver chunks=$cnt w=$wInf h=$hInf px=$px pal=$pl chip=$cs\n";
+					$px    = $pixelTypeNames[ord($extra[7])];
+					$pl = $paletteTypeNames[ord($extra[8])];
+					$cs = $chipsetTypeNames[ord($extra[9])];
+					echo "    CHUNK $id: INFO v$ver\n".
+					     "        Chunks count:    $cnt\n".
+						 "        Original size:   $wInf x $hInf pixels\n".
+						 "        Pixel Type:      $px\n".
+						 "        Palette Type:    $pl\n".
+						 "        Chipset Type:    $cs\n";
 					$size += $sin + $sout;
 					break;
 				case CHUNK_V9938CMD:
@@ -1054,21 +1078,29 @@
 		$fullRect = sliceRect($in, $x, $y, $w, $h, $pixelsByte[$sup], $bytesLine[$sup]);
 		$totalUncomp = strlen($fullRect);                    // = $wb * $h
 
-		// 2) Particionar el payload en franjas que quepan en CHUNK_CMDDATA_MAX comprimidos
+		// 2) Particionar el payload en franjas. Estrategia:
+		//    - Tamaño inicial: CHUNK_SIZE (2043) — punto de bisección razonable para
+		//      cualquier compresor, igual que compressChunks() histórico.
+		//    - Cap superior de crecimiento:
+		//        PLETTER: CHUNK_PLETTER_MAX_UNCOMP (11264, zona scratch VRAM en engine).
+		//        RAW/RLE: sin cap engineering — el límite efectivo lo impone el
+		//                 cap de comprimido CHUNK_CMDDATA_MAX=2040 (engine descomprime
+		//                 directo al #9B, no necesita buffer).
+		$capGrow = ($comp[COMP_ID]==CHUNK_PLETTER) ? CHUNK_PLETTER_MAX_UNCOMP : ($totalUncomp);
 		$tmp = tempnam(sys_get_temp_dir(), 'imgwiz');
 		$dataChunks = [];                                    // array de [compID, uncompSize, payload]
 		$pos = 0;
 		while ($pos < $totalUncomp) {
-			$sizeIn    = min($totalUncomp - $pos, CHUNK_CMDDATA_MAX);
-			$sizeDelta = intval(CHUNK_CMDDATA_MAX / 2);
+			$sizeIn    = min($totalUncomp - $pos, CHUNK_SIZE);
+			$sizeDelta = intval(CHUNK_SIZE / 2);
 			$end = false;
 			do {
 				$sizeOut = compress($tmp, $fullRect, $pos, $sizeIn, $comp, -1);
 				if ($pos + $sizeIn >= $totalUncomp && $sizeOut <= CHUNK_CMDDATA_MAX) {
 					$end = true;
 				} else if ($sizeOut < CHUNK_CMDDATA_MAX - 1) {
-					if ($sizeDelta > 0 && $pos + $sizeIn < $totalUncomp) {
-						$sizeIn = min($sizeIn + $sizeDelta, $totalUncomp - $pos);
+					if ($sizeDelta > 0 && $pos + $sizeIn < $totalUncomp && $sizeIn < $capGrow) {
+						$sizeIn = min($sizeIn + $sizeDelta, $totalUncomp - $pos, $capGrow);
 					} else {
 						$end = true;
 					}
