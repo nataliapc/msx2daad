@@ -941,6 +941,7 @@ inline bool gfxPictureShow()
 						case 0:  copyCmdData(p, uncomp);  break;   // RAW
 						case 1:  unRLE_Data(p);           break;   // RLE
 						case 2:  pletter2Data(p, uncomp); break;   // PLETTER
+						case 3:  dzx0Data(p, uncomp);     break;   // ZX0 [PRP025]
 					}
 				}
 			} else {

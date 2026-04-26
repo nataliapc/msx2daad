@@ -17,8 +17,6 @@
 #include "utils.h"
 #include "vdp.h"
 
-#define VRAM_PLETTER_SCRATCH  0x1D400UL    // 119808: page 1 hidden zone
-                                            // (Y=468..511 in SC7/8/A/C, 11264 bytes)
 
 void pletter2Data(char *src, uint16_t uncompSize)
 {

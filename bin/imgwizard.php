@@ -132,20 +132,27 @@
 	define('CMP_RAW',           0);
 	define('CMP_RLE',           1);
 	define('CMP_PLETTER',       2);
+	define('CMP_ZX0',           3);     // [PRP025] V9938CmdData compressorID for ZX0
 
 	define('VDP_HMMC',       0xF0);     // CX[L] sin transparencia → HMMC (sin op lógica)
 	define('VDP_LMMC',       0xB0);     // CX[L] con transparencia → LMMC (admite op lógica)
 	define('LOG_AND',        0x01);
 	define('LOG_OR',         0x02);
 
+	// COMP_ID = legacy v1 chunk type (used by 'c'/'cl'/'s'). ZX0 has NO v1 chunk
+	// type — it's exclusively a v2 V9938CmdData compressor. The -1 sentinel makes
+	// the legacy code path (compressChunks) reject ZX0 explicitly. The buildV9938CmdSequence
+	// helper maps COMP_ID → CMP_* via fallthrough, so ZX0 still maps to CMP_ZX0=3.
 	$compressors = array(
-		array("raw", "raw", CHUNK_RAW, "RAW"),
-		array("rle", "rle", CHUNK_RLE, "RLE"),
+		array("raw",     "raw",   CHUNK_RAW,     "RAW"),
+		array("rle",     "rle",   CHUNK_RLE,     "RLE"),
 		array("pletter", "plet5", CHUNK_PLETTER, "PLETTER"),
+		array("zx0",     "zx0",   -1,            "ZX0"),       // [PRP025] cx[l] only
 	);
 	define('RAW', 0);
 	define('RLE', 1);
 	define('PLETTER', 2);
+	define('ZX0', 3);
 	define('COMP_APP',  0);
 	define('COMP_EXT',  1);
 	define('COMP_ID',   2);
@@ -161,6 +168,7 @@
 
 	if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
 		$compressors[PLETTER][COMP_APP] = "pletter.exe";
+		$compressors[ZX0][COMP_APP]     = "zx0.exe";
 	}
 
 	if ($argc<3) {
@@ -264,6 +272,11 @@
 		}
 		if ($compress=="" && $transparent==-1) {
 			echo "ERROR: Unknown compression method or not decimal number for transparent index color...\n";
+			exit;
+		}
+		// ZX0 is v2-only — reject in legacy 'c'/'cl' path
+		if ($comp[COMP_ID] < 0) {
+			echo "ERROR: ZX0 compression is only supported via 'cx'/'cxl' commands, not 'c'/'cl'.\n";
 			exit;
 		}
 		if ($transparent>=0) {
@@ -442,10 +455,11 @@
 			 " <fileIn>      Input file in format SCx (SC5/SC6/SC7/SC8/SCA/SCC)\n".
 			 "               Palette can be inside SCx file or PL5 PL6 PL7 files.\n".
 			 " <lines>       Image lines to get from input file.\n".
-			 " [compressor]  Compression type: RAW, RLE or PLETTER.\n".
+			 " [compressor]  Compression type: RAW, RLE, PLETTER or ZX0.\n".
 			 "                 RAW: no compression but fastest load.\n".
 			 "                 RLE: light compression but fast load (default).\n".
 			 "                 PLETTER: high compression but slow.\n".
+			 "                 ZX0: highest compression but slowest.\n".
 			 " [transparent] Optional: the color index that will become transparent (decimal).\n".
 			 "               Compression is forced to RLE for legacy 's'/'c' commands.\n".
 			 " --transparent-color=N\n".
@@ -641,7 +655,7 @@
 					$extra = substr($in, $pos+5, 3);
 					$compID = ord($extra[0]);
 					$uncomp = unpack("v", substr($extra, 1, 2))[1];
-					$compName = ['raw','rle','pletter'][$compID] ?? '?';
+					$compName = ['RAW','RLE','PLETTER','ZX0'][$compID] ?? '?';
 					echo "    CHUNK $id: V9938CmdData [$compName] $uncomp bytes ($sout comp)\n";
 					$size += $sin + $sout;
 					break;
@@ -1174,10 +1188,12 @@
 				} while (!$end);
 
 				$payload = file_get_contents($tmp.'.'.$comp[COMP_EXT]);
-				$compID  = $comp[COMP_ID]==CHUNK_RAW   ? CMP_RAW
-				        : ($comp[COMP_ID]==CHUNK_RLE  ? CMP_RLE : CMP_PLETTER);
+				$compID  = $comp[COMP_ID]==CHUNK_RAW     ? CMP_RAW
+				        : ($comp[COMP_ID]==CHUNK_RLE     ? CMP_RLE
+				        : ($comp[COMP_ID]==CHUNK_PLETTER ? CMP_PLETTER
+				        :                                  CMP_ZX0));
 				$dataChunks[] = [$compID, $sizeIn, $payload];
-				echo "    chunk pos=$pos uncomp=$sizeIn comp=".strlen($payload)." bytes\n";
+				echo "    #CHUNK (".strpad($pos,5)."): sizeIn: $sizeIn bytes (out: ".strlen($payload)." bytes)\n";
 				$pos += $sizeIn;
 			}
 			@unlink($tmp); @unlink($tmp.'.'.$comp[COMP_EXT]);
