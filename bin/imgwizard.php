@@ -133,7 +133,10 @@
 	define('CMP_RLE',           1);
 	define('CMP_PLETTER',       2);
 
-	define('VDP_HMMC',       0xF0);     // CX[L] siempre usa HMMC (sin op lógica)
+	define('VDP_HMMC',       0xF0);     // CX[L] sin transparencia → HMMC (sin op lógica)
+	define('VDP_LMMC',       0xB0);     // CX[L] con transparencia → LMMC (admite op lógica)
+	define('LOG_AND',        0x01);
+	define('LOG_OR',         0x02);
 
 	$compressors = array(
 		array("raw", "raw", CHUNK_RAW, "RAW"),
@@ -269,12 +272,10 @@
 			$compress = $comp[COMP_NAME]." (forced)";
 		}
 		echo "### Compressor: $compress\n";
-		if ($transparent < 0) {
-			echo "\n".
-			     "WARNING: 'c' command without transparency is DEPRECATED.\n".
-			     "         Use 'cx' for new images (V9938 HMMC streaming).\n".
-			     "         Continuing in legacy mode...\n\n";
-		}
+		echo "\n".
+		     "WARNING: 'c'/'cl' command is DEPRECATED.\n".
+		     "         Use 'cx'/'cxl' for new images (V9938 streaming, with optional --transparent-color=N).\n".
+		     "         Continuing in legacy mode...\n\n";
 		//Compress chunks
 		compressChunks($fileIn, $lines, $comp, $transparent, NULL, NULL);
 		exit;
@@ -295,9 +296,21 @@
 		}
 		$x = intval($argv[3]); $y = intval($argv[4]);
 		$w = intval($argv[5]); $h = intval($argv[6]);
-		$compress = "RLE";   // default
-		if ($argc>7) {
-			$compress = strtoupper($argv[7]);
+		// Optional positional [compressor] and optional flag --transparent-color=N
+		$compress    = "RLE";   // default
+		$transparent = -1;
+		for ($i = 7; $i < $argc; $i++) {
+			$arg = $argv[$i];
+			if (strpos($arg, "--transparent-color=") === 0) {
+				$val = substr($arg, strlen("--transparent-color="));
+				if (!is_numeric($val) || intval($val) < 0) {
+					echo "ERROR: --transparent-color requires a non-negative numeric value...\n";
+					exit;
+				}
+				$transparent = intval($val);
+			} else {
+				$compress = strtoupper($arg);
+			}
 		}
 		$comp = NULL;
 		foreach ($compressors as $c) {
@@ -307,8 +320,12 @@
 			echo "ERROR: Unknown compression method ($compress). Use RAW/RLE/PLETTER...\n";
 			exit;
 		}
-		echo "### Compressor: $compress (CX command — no transparency allowed)\n";
-		compressV9938Rectangle($fileIn, $x, $y, $w, $h, $comp);
+		if ($transparent >= 0) {
+			echo "### Compressor: $compress (CX command, transparency color $transparent)\n";
+		} else {
+			echo "### Compressor: $compress (CX command — no transparency)\n";
+		}
+		compressV9938Rectangle($fileIn, $x, $y, $w, $h, $comp, $transparent);
 		exit;
 	}
 
@@ -411,7 +428,7 @@
 			 "S) Create an image from a rectangle:\n".
 			 "    $appname s <fileIn.SC?> <x> <y> <w> <h> [transparent_color]\n\n".
 			 "CX) Create a rectangle image as V9938 commands (CXL = palette last):\n".
-			 "    $appname cx[l] <fileIn.SC?> <x> <y> <w> <h> [compressor]\n\n".
+			 "    $appname cx[l] <fileIn.SC?> <x> <y> <w> <h> [compressor] [--transparent-color=N]\n\n".
 			 "R) Create a location redirection:\n".
 			 "    $appname r <fileOut.IM?> <target_loc>\n\n".
 			 "D) Remove a CHUNK from an image:\n".
@@ -430,7 +447,11 @@
 			 "                 RLE: light compression but fast load (default).\n".
 			 "                 PLETTER: high compression but slow.\n".
 			 " [transparent] Optional: the color index that will become transparent (decimal).\n".
-			 "               Compression is forced to RLE.\n".
+			 "               Compression is forced to RLE for legacy 's'/'c' commands.\n".
+			 " --transparent-color=N\n".
+			 "               Optional flag for 'cx[l]': color index N treated as transparent.\n".
+			 "               Generates 2-pass LMMC AND+OR streaming instead of 1-pass HMMC.\n".
+			 "               Not supported in SC10/SC12 (YJK).\n".
 			 " <target_loc>  Target location number to redirect to.\n".
 			 "                 ex: a 12 redirects to image 012.IMx\n".
 			 "\n".
@@ -1046,7 +1067,147 @@
 	}
 
 	//=================================================================================
-	function compressV9938Rectangle($file, $x, $y, $w, $h, $comp)
+	// Process a packed-pixel rectangle to produce mask + image buffers (1 byte/pixel).
+	//
+	// $rectData     : packed rectangle bytes (output of sliceRect).
+	// $w, $h        : rectangle size in pixels.
+	// $sup          : uppercase screen mode char ('5','6','7','8').
+	// $transparent  : color index marking the transparent pixel.
+	//
+	// Returns [$maskBuffer, $imageBuffer], both w*h bytes long, 1 byte per pixel.
+	//   - mask byte  = full_bits (0xFF / 0x0F / 0x03) for transparent pixels (preserve dest)
+	//   - mask byte  = 0x00 for visible pixels (clear dest before OR pass)
+	//   - image byte = pixel color for visible pixels, 0 for transparent
+	//
+	// MSX byte→pixel mapping: high bits = leftmost pixel, low bits = rightmost.
+	function processTransparency($rectData, $w, $h, $sup, $transparent)
+	{
+		$bppMode = ['5'=>4,'6'=>2,'7'=>4,'8'=>8];
+		$bpp = $bppMode[$sup];
+		$ppb = intval(8 / $bpp);
+		$fullBits = (1 << $bpp) - 1;        // 0x0F SC5/7, 0x03 SC6, 0xFF SC8
+
+		$bytesPerLine = intval($w / $ppb);
+		$mask  = '';
+		$image = '';
+		$transCount = 0;
+
+		for ($row = 0; $row < $h; $row++) {
+			$rowBase = $row * $bytesPerLine;
+			for ($col = 0; $col < $bytesPerLine; $col++) {
+				$byte = ord($rectData[$rowBase + $col]);
+				// Iterate pixels left-to-right within byte (high bits first).
+				for ($p = 0; $p < $ppb; $p++) {
+					$shift = ($ppb - 1 - $p) * $bpp;
+					$pixel = ($byte >> $shift) & $fullBits;
+					if ($pixel === $transparent) {
+						$mask  .= chr($fullBits);
+						$image .= chr(0);
+						$transCount++;
+					} else {
+						$mask  .= chr(0);
+						$image .= chr($pixel);
+					}
+				}
+			}
+		}
+		if ($transCount === 0) {
+			echo "WARNING: no pixels with color $transparent found in rectangle. Mask is empty.\n";
+		}
+		return [$mask, $image];
+	}
+
+	//=================================================================================
+	// Compress $buffer into V9938CmdData chunks and emit one V9938Cmd that covers the
+	// rectangle (DX,DY,NX,NY) with the given $opcode. Returns ['cmd' => bin, 'data' => bin].
+	//
+	// Units of (DX, NX) depend on the opcode:
+	//   - HMMC (byte mode):   pass byte coords (DX_bytes = X/ppb, NX_bytes = W/ppb).
+	//   - LMMC (dot mode):    pass pixel coords directly (DX = X, NX = W).
+	function buildV9938CmdSequence($buffer, $dx, $dy, $nx, $ny, $comp, $opcode)
+	{
+		$origLen = strlen($buffer);
+		if ($origLen === 0) {
+			die("\nERROR: buildV9938CmdSequence called with empty buffer.\n\n");
+		}
+
+		// V9938 HMMC/LMMC consume R#44 (CLR) as the FIRST pixel byte at command
+		// dispatch (per Grauw / V9938 spec). To process exactly NX*NY pixels:
+		//   - Preload R#44 with data[0] via the V9938Cmd's CLR field.
+		//   - Stream only data[1..N-1] via #9B → pixels 1..N-1.
+		// This must use the UNCOMPRESSED first byte (real pixel value), not the
+		// first byte of a compressed payload (which for RLE/Pletter is a control
+		// byte, not pixel data).
+		$firstPixelByte = ord($buffer[0]);
+		$streamBuffer   = substr($buffer, 1);
+		$totalUncomp    = strlen($streamBuffer);
+
+		$dataChunks = [];
+		// Edge case: 1-pixel rectangle → no streaming, just R#44 dispatch.
+		if ($totalUncomp > 0) {
+			// Cap de crecimiento de tamaño uncompressed por chunk:
+			//   PLETTER: límite por zona scratch VRAM del engine (PRP023).
+			//   RAW/RLE: sin cap, el límite efectivo lo impone CHUNK_CMDDATA_MAX.
+			$capGrow = ($comp[COMP_ID]==CHUNK_PLETTER) ? CHUNK_PLETTER_MAX_UNCOMP : ($totalUncomp);
+			$tmp = tempnam(sys_get_temp_dir(), 'imgwiz');
+			$pos = 0;
+			while ($pos < $totalUncomp) {
+				$sizeIn    = min($totalUncomp - $pos, CHUNK_SIZE);
+				$sizeDelta = intval(CHUNK_SIZE / 2);
+				$end = false;
+				do {
+					$sizeOut = compress($tmp, $streamBuffer, $pos, $sizeIn, $comp, -1);
+					if ($pos + $sizeIn >= $totalUncomp && $sizeOut <= CHUNK_CMDDATA_MAX) {
+						$end = true;
+					} else if ($sizeOut < CHUNK_CMDDATA_MAX - 1) {
+						if ($sizeDelta > 0 && $pos + $sizeIn < $totalUncomp && $sizeIn < $capGrow) {
+							$sizeIn = min($sizeIn + $sizeDelta, $totalUncomp - $pos, $capGrow);
+						} else {
+							$end = true;
+						}
+					} else if ($sizeOut > CHUNK_CMDDATA_MAX) {
+						$sizeIn -= $sizeDelta;
+						$sizeDelta = intval($sizeDelta * 0.95);
+					} else {
+						$end = true;
+					}
+				} while (!$end);
+
+				$payload = file_get_contents($tmp.'.'.$comp[COMP_EXT]);
+				$compID  = $comp[COMP_ID]==CHUNK_RAW   ? CMP_RAW
+				        : ($comp[COMP_ID]==CHUNK_RLE  ? CMP_RLE : CMP_PLETTER);
+				$dataChunks[] = [$compID, $sizeIn, $payload];
+				echo "    chunk pos=$pos uncomp=$sizeIn comp=".strlen($payload)." bytes\n";
+				$pos += $sizeIn;
+			}
+			@unlink($tmp); @unlink($tmp.'.'.$comp[COMP_EXT]);
+		}
+
+		// V9938Cmd: cmdCount=1 cubriendo todo el rectángulo.
+		// CLR (R#44) = primer byte real de pixel (data[0]).
+		$cmdEntry  = pack("vvvvvvCCC",
+			0, 0,                       // SX, SY (R32-R35)
+			$dx, $dy,                   // DX, DY (R36-R39)
+			$nx, $ny,                   // NX, NY (R40-R43)
+			$firstPixelByte,            // CLR    (R44) — preloaded first pixel
+			0,                          // ARG    (R45)
+			$opcode                     // CMD    (R46)
+		);
+		$cmdBin = chr(CHUNK_V9938CMD).pack("vv", 1, 15).chr(1).$cmdEntry;
+
+		// V9938CmdData chunks (suma de uncomp = N-1, complementa R#44 inicial)
+		$dataBin = "";
+		foreach ($dataChunks as $dc) {
+			list($compID, $uncomp, $payload) = $dc;
+			$dataBin .= chr(CHUNK_V9938DATA).pack("vv", 3, strlen($payload))
+			          . chr($compID).pack("v", $uncomp).$payload;
+		}
+
+		return ['cmd' => $cmdBin, 'data' => $dataBin];
+	}
+
+	//=================================================================================
+	function compressV9938Rectangle($file, $x, $y, $w, $h, $comp, $transparent=-1)
 	{
 		global $magic, $lastPalette;
 
@@ -1057,8 +1218,22 @@
 		// Tablas modo→unidades
 		$pixelsByte  = ['5'=>2,'6'=>4,'7'=>2,'8'=>1,'A'=>1,'C'=>1];
 		$bytesLine   = ['5'=>128,'6'=>128,'7'=>256,'8'=>256,'A'=>256,'C'=>256];
+		$bppMode     = ['5'=>4,'6'=>2,'7'=>4,'8'=>8];
 
-		// HMMC trabaja en bytes — validar que x y w son múltiplos de pixelsByte
+		// Validate transparency mode (PRP024)
+		if ($transparent >= 0) {
+			if ($sup == 'A' || $sup == 'C') {
+				die("\nERROR: --transparent-color is not supported in SC10/SC12 (YJK).\n".
+				    "       Use a different screen mode or pre-composite the image.\n\n");
+			}
+			$maxColor = (1 << $bppMode[$sup]) - 1;
+			if ($transparent > $maxColor) {
+				die("\nERROR: transparent color $transparent out of range for SC".hexdec($sup)." (0..$maxColor)...\n\n");
+			}
+			echo "### Transparent color: $transparent (LMMC AND+OR streaming)\n";
+		}
+
+		// Validar que x y w son múltiplos de pixelsByte (HMMC y la extracción packed lo requieren)
 		if ($x % $pixelsByte[$sup] || $w % $pixelsByte[$sup]) {
 			die("\nERROR: SCREEN ".hexdec($sup)." needs x and w multiple of ".$pixelsByte[$sup]."...\n\n");
 		}
@@ -1069,103 +1244,54 @@
 		if ($in===FALSE) { die("File not found...\n"); }
 		$in = substr($in, 7);
 
-		// Conversión de DX/NX a bytes (HMMC siempre en bytes)
-		$dxUnit = intval($x / $pixelsByte[$sup]);
-		$nxUnit = intval($w / $pixelsByte[$sup]);
+		// Extraer el rectángulo completo (packed nativo del modo)
+		$fullRect    = sliceRect($in, $x, $y, $w, $h, $pixelsByte[$sup], $bytesLine[$sup]);
+		$totalUncomp = strlen($fullRect);
 
-		// 1) Extraer el rectángulo completo en un buffer contiguo (uncompressed)
-		$wb       = intval(round($w / $pixelsByte[$sup]));   // bytes por línea
-		$fullRect = sliceRect($in, $x, $y, $w, $h, $pixelsByte[$sup], $bytesLine[$sup]);
-		$totalUncomp = strlen($fullRect);                    // = $wb * $h
-
-		// 2) Particionar el payload en franjas. Estrategia:
-		//    - Tamaño inicial: CHUNK_SIZE (2043) — punto de bisección razonable para
-		//      cualquier compresor, igual que compressChunks() histórico.
-		//    - Cap superior de crecimiento:
-		//        PLETTER: CHUNK_PLETTER_MAX_UNCOMP (11264, zona scratch VRAM en engine).
-		//        RAW/RLE: sin cap engineering — el límite efectivo lo impone el
-		//                 cap de comprimido CHUNK_CMDDATA_MAX=2040 (engine descomprime
-		//                 directo al #9B, no necesita buffer).
-		$capGrow = ($comp[COMP_ID]==CHUNK_PLETTER) ? CHUNK_PLETTER_MAX_UNCOMP : ($totalUncomp);
-		$tmp = tempnam(sys_get_temp_dir(), 'imgwiz');
-		$dataChunks = [];                                    // array de [compID, uncompSize, payload]
-		$pos = 0;
-		while ($pos < $totalUncomp) {
-			$sizeIn    = min($totalUncomp - $pos, CHUNK_SIZE);
-			$sizeDelta = intval(CHUNK_SIZE / 2);
-			$end = false;
-			do {
-				$sizeOut = compress($tmp, $fullRect, $pos, $sizeIn, $comp, -1);
-				if ($pos + $sizeIn >= $totalUncomp && $sizeOut <= CHUNK_CMDDATA_MAX) {
-					$end = true;
-				} else if ($sizeOut < CHUNK_CMDDATA_MAX - 1) {
-					if ($sizeDelta > 0 && $pos + $sizeIn < $totalUncomp && $sizeIn < $capGrow) {
-						$sizeIn = min($sizeIn + $sizeDelta, $totalUncomp - $pos, $capGrow);
-					} else {
-						$end = true;
-					}
-				} else if ($sizeOut > CHUNK_CMDDATA_MAX) {
-					$sizeIn -= $sizeDelta;
-					$sizeDelta = intval($sizeDelta * 0.95);
-				} else {
-					$end = true;
-				}
-			} while (!$end);
-
-			$payload = file_get_contents($tmp.'.'.$comp[COMP_EXT]);
-			$compID  = $comp[COMP_ID]==CHUNK_RAW   ? CMP_RAW
-			        : ($comp[COMP_ID]==CHUNK_RLE  ? CMP_RLE : CMP_PLETTER);
-			$dataChunks[] = [$compID, $sizeIn, $payload];
-			echo "    chunk pos=$pos uncomp=$sizeIn comp=".strlen($payload)." bytes\n";
-			$pos += $sizeIn;
-		}
-		@unlink($tmp); @unlink($tmp.'.'.$comp[COMP_EXT]);
-
-		// 3) Emitir un único V9938Cmd con cmdCount=1 que cubre todo el rectángulo.
-		//    El primer byte de payload del primer CmdData va en CLR (R44).
-		$firstByte = ord($dataChunks[0][2][0]);
-		$cmdEntry  = pack("vvvvvvCCC",
-			0, 0,                       // SX, SY (R32-R35, no usados en HMMC)
-			$dxUnit, $y,                // DX, DY (R36-R39)
-			$nxUnit, $h,                // NX, NY (R40-R43)
-			$firstByte,                 // CLR    (R44)
-			0,                          // ARG    (R45)
-			VDP_HMMC                    // CMD    (R46) — siempre HMMC, sin op lógica
-		);
-		$cmdChunksBin = chr(CHUNK_V9938CMD).pack("vv", 1, 15).chr(1).$cmdEntry;
-
-		// 4) Empaquetar V9938CmdData chunks
-		$dataChunksBin = "";
-		foreach ($dataChunks as $dc) {
-			list($compID, $uncomp, $payload) = $dc;
-			$dataChunksBin .= chr(CHUNK_V9938DATA).pack("vv", 3, strlen($payload))
-			                . chr($compID).pack("v", $uncomp).$payload;
+		if ($transparent >= 0) {
+			// ---------- TRANSPARENCY PATH (LMMC AND + LMMC OR) ----------
+			// LMMC trabaja por píxeles — DX/NX se pasan en píxeles directamente.
+			list($maskBuf, $imageBuf) = processTransparency($fullRect, $w, $h, $sup, $transparent);
+			echo "    [PASS 1: mask buffer ".strlen($maskBuf)." bytes (LMMC|AND)]\n";
+			$seqMask  = buildV9938CmdSequence($maskBuf,  $x, $y, $w, $h, $comp, VDP_LMMC | LOG_AND);
+			echo "    [PASS 2: image buffer ".strlen($imageBuf)." bytes (LMMC|OR)]\n";
+			$seqImage = buildV9938CmdSequence($imageBuf, $x, $y, $w, $h, $comp, VDP_LMMC | LOG_OR);
+			$cmdChunksBin  = $seqMask['cmd']  . $seqMask['data'];
+			$cmdChunksBin .= $seqImage['cmd'] . $seqImage['data'];
+			$totalReport   = strlen($maskBuf) + strlen($imageBuf);
+		} else {
+			// ---------- HMMC PATH (sin transparencia, legacy PRP022) ----------
+			// HMMC trabaja en bytes — DX/NX se pasan convertidos a unidades de byte.
+			$dxUnit = intval($x / $pixelsByte[$sup]);
+			$nxUnit = intval($w / $pixelsByte[$sup]);
+			$seqHmmc = buildV9938CmdSequence($fullRect, $dxUnit, $y, $nxUnit, $h, $comp, VDP_HMMC);
+			$cmdChunksBin = $seqHmmc['cmd'] . $seqHmmc['data'];
+			$totalReport  = $totalUncomp;
 		}
 
-		// 5) Paleta (si paletizado)
+		// Paleta (si paletizado)
 		$palBin = "";
 		if (hexdec($scr) < 8) {
 			list($in2, $paper, $ink) = checkPalettedColors($in, $scr);
 			$palBin = addPalette($file, $in2, $scr, NULL);
 		}
 
-		// 6) Ensamblar fichero final con INFO al inicio
+		// Ensamblar fichero final con INFO al inicio
 		$out  = $magic.$scr;
 		$infoPos = strlen($out);
 		$out .= str_repeat("\0", 15);                  // INFO placeholder
 
 		if ($palBin && !$lastPalette) $out .= $palBin;
 		$out .= $cmdChunksBin;
-		$out .= $dataChunksBin;
 		if ($palBin && $lastPalette)  $out .= $palBin;
 
-		// 7) Contar chunks reales y rellenar el INFO
+		// Contar chunks reales y rellenar el INFO
 		$chunkCount = countChunks(substr($out, $infoPos+15)) + 1;   // +1 para el propio INFO
 		$infoBin    = buildInfoChunk($scr, $chunkCount, $w, $h);
 		$out        = substr_replace($out, $infoBin, $infoPos, 15);
 
-		// 8) Escribir
-		echo "    In: $totalUncomp bytes\n    Out: ".strlen($out)." bytes [".number_format(strlen($out)/$totalUncomp*100,1,'.','')."%]\n";
+		// Escribir
+		echo "    In: $totalReport bytes\n    Out: ".strlen($out)." bytes [".number_format(strlen($out)/$totalReport*100,1,'.','')."%]\n";
 		$fileOut = substr(basename($file), 0, -3)."IM".$scr;
 		echo "### Writing $fileOut\n";
 		file_put_contents($fileOut, $out);

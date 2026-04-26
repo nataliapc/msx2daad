@@ -215,12 +215,12 @@ volatile __at (JIFFY)  uint16_t varJIFFY;
 #define IMG_MAGIC 			"IMG"
 #define IMG_CHUNK_REDIRECT	0		// Redirect to another image
 #define IMG_CHUNK_PALETTE	1		// Load palette
-#define IMG_CHUNK_RAW		2		// Load RAW format data
-#define IMG_CHUNK_RLE		3		// Load RLE format data
-#define IMG_CHUNK_PLETTER	4		// Load Pletter5 format data#define IMG_CHUNK_RESET		16		// Reset VRAM write pointer to current Window
-#define IMG_CHUNK_RESET		16		// Reset VRAM write pointer to current Window
+//#define IMG_CHUNK_RAW		2		// [**DEPRECATED**] Load RAW format data
+//#define IMG_CHUNK_RLE		3		// [**DEPRECATED**] Load RLE format data
+//#define IMG_CHUNK_PLETTER	4		// [**DEPRECATED**] Load Pletter5 format data
+//#define IMG_CHUNK_RESET	16		// [**DEPRECATED**] Reset VRAM write pointer to current Window
 #define IMG_CHUNK_CLS		17		// Clear Window (CLS)
-#define IMG_CHUNK_SKIP		18		// Skip VRAM bytes (SKIP)
+//#define IMG_CHUNK_SKIP	18		// [**DEPRECATED**] Skip VRAM bytes (SKIP)
 #define IMG_CHUNK_PAUSE		19		// Pause in 1/50 sec units (PAUSE)
 #define IMG_CHUNK_CMD		20		// Execute V9938 commands (CMDDATA payload is **SKIPPED** until stream-decompress PRP)
 #define IMG_CHUNK_CMDDATA	21		// V9938 command data chunks (**SKIPPED** until stream-decompress PRP)

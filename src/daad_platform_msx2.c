@@ -60,17 +60,17 @@ static const char CHARS_MSX[]  = "\xA6\xAD\xA8\xAE\xAF\xA0\x82\xA1\xA2\xA3\xA4\x
 // Variables
 //=========================================================
 
-// Start position in VRAM where draw a image file
-static uint32_t posVRAM;
-
 // Offset to set/unset the graphical charset
 static bool offsetText;
-// Offset to set/unset the VRAM page where load images
-uint32_t gfxPictureOffet;
-// Offset (in pixels) to set/unset the VRAM page where write text (GFX 7/8)
-static uint16_t gfxTextOffset;
+// OffsetY (in pixels) to set/unset the VRAM page where load images
+static uint16_t gfxPictureOffsetY;
+// OffsetY (in pixels) to set/unset the VRAM page where write text (GFX 7/8)
+static uint16_t gfxTextOffsetY;
 // Current VRAM page visible
 static bool currentPage;
+// Windows offsets (in pixels)
+static uint16_t gfxWinOffsetX;
+static uint16_t gfxWinOffsetY;
 
 // RAM Mapper variables [experimental]
 #ifdef RAM_MAPPER
@@ -273,14 +273,15 @@ void loadFilesBin(int argc, char **argv)
 	memcpy(FILE_IMG, FILE_LOAD, 11);
 	cw = (Window*)(heap_top+IMG_MAXREAD);	//Fake current Window
 	cw->winX = cw->winY = 0;
-	posVRAM = 0;
+	gfxWinOffsetX = gfxWinOffsetY = 0;
 	gfxPictureShow();
 
 	// Load image FONT (old DMG) to VRAM hidden zone
 	memcpy(FILE_IMG, FILE_FONT, 11);
-	posVRAM = ((uint32_t)FONTINITY) * BYTESxLINE;
+	gfxPictureOffsetY = FONTINITY;
 	gfxPictureShow();
 	// Restore & free
+	gfxPictureOffsetY = 0;
 	memcpy(FILE_IMG, aux, 11);
 	free(11);
 
@@ -529,8 +530,10 @@ void gfxSetScreen()
 	//Initialize variables
 	offsetText = false;
 	currentPage = false;
-	gfxPictureOffet = 0;
-	gfxTextOffset = 0;
+	gfxPictureOffsetY = 0;
+	gfxWinOffsetX = 0;
+	gfxWinOffsetY = 0;
+	gfxTextOffsetY = 0;
 }
 
 /*
@@ -613,7 +616,7 @@ void gfxClearScreenBlock(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
  */
 inline void gfxClearWindow()
 {
-	uint8_t pr = gfxTextOffset ? 32 : 0;
+	uint8_t pr = gfxTextOffsetY ? 32 : 0;
 	gfxClearScreenBlock(cw->winX, cw->winY + pr, cw->winW, cw->winH);
 }
 
@@ -626,7 +629,7 @@ inline void gfxClearWindow()
  */
 inline void gfxClearCurrentLine()
 {
-	uint8_t pr = gfxTextOffset ? 32 : 0;
+	uint8_t pr = gfxTextOffsetY ? 32 : 0;
 	gfxClearScreenBlock(cw->winX, cw->winY + cw->cursorY + pr, cw->winW, 1);
 }
 
@@ -640,8 +643,8 @@ inline void gfxClearCurrentLine()
 inline void gfxScrollUp()
 {
 	ASM_HALT;
-	uint16_t py = gfxTextOffset;
-	uint8_t  pr = gfxTextOffset ? 32 : 0;
+	uint16_t py = gfxTextOffsetY;
+	uint8_t  pr = gfxTextOffsetY ? 32 : 0;
 	if (cw->winH > 1) {
 		bitBlt(cw->winX*FONTWIDTH, (cw->winY+1)*FONTHEIGHT + py, cw->winX*FONTWIDTH, cw->winY*FONTHEIGHT + py, cw->winW*FONTWIDTH, (cw->winH-1)*FONTHEIGHT, 0, 0, CMD_HMMM);
 	}
@@ -719,7 +722,7 @@ inline void gfxSetGraphCharset(bool value)
  */
 static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy)
 {
-	dy += gfxTextOffset;
+	dy += gfxTextOffsetY;
 	c -= 16;
 	uint16_t sx = (c*8)%SCREEN_WIDTH,
 	         sy = (c/(SCREEN_WIDTH/FONTHEIGHT)*FONTHEIGHT) + FONTINITY;
@@ -849,7 +852,8 @@ bool gfxPicturePrepare(uint8_t location)
 	location /= 10;
 	pic[0] = location%10 + '0';
 	
-	posVRAM = cw->winX * FONTWIDTH / PIXELSxBYTE + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
+	gfxWinOffsetX = cw->winX * FONTWIDTH;
+	gfxWinOffsetY = cw->winY * FONTHEIGHT;
 	return fileexists(FILE_IMG);
 }
 
@@ -885,18 +889,8 @@ inline bool gfxPictureShow()
 			//=============================================
 			// Clear Window (CLS)
 			if (chunk->type==IMG_CHUNK_CLS) {
-				uint8_t pageOffset = gfxPictureOffet ? 32 : 0;
+				uint8_t pageOffset = gfxPictureOffsetY ? 32 : 0;
 				gfxClearScreenBlock(cw->winX, cw->winY+pageOffset, cw->winW, cw->winH);
-			} else
-			//=============================================
-			// Reset VRAM write position to current Window
-			if (chunk->type==IMG_CHUNK_RESET) {
-				posVRAM = cw->winX * FONTWIDTH / PIXELSxBYTE + cw->winY * FONTHEIGHT * BYTESxLINE + gfxPictureOffet;
-			} else
-			//=============================================
-			// Skip VRAM bytes
-			if (chunk->type==IMG_CHUNK_SKIP) {
-				posVRAM += chunk->auxData;
 			} else
 			//=============================================
 			// Pause the image load in 1/50 sec units
@@ -926,6 +920,8 @@ inline bool gfxPictureShow()
 					uint8_t cmdCount = *p;
 					p++;
 					while (cmdCount--) {
+						((BITBLT*)p)->dx += gfxWinOffsetX;
+						((BITBLT*)p)->dy += gfxWinOffsetY + gfxPictureOffsetY;
 						fastVCopy(p);
 						p += 15;
 					}
@@ -949,20 +945,8 @@ inline bool gfxPictureShow()
 				}
 			} else {
 				//=============================================
-				// Picture data chunks
+				// Skip unknown/deprecated chunks
 				fread(chunk->data, chunk->chunkSize);
-//				if (chunk->type==IMG_CHUNK_RAW) {		// Show RAW data
-//					copyToVRAM((uint16_t)chunk->data, posVRAM, chunk->chunkSize);
-//				} else
-				if (chunk->type==IMG_CHUNK_RLE) {		// Show RLE data
-					unRLE_vram(chunk->data, posVRAM);
-				} else
-				if (chunk->type==IMG_CHUNK_PLETTER) {	// Show Pletter5 data
-					pletter2vram(chunk->data, posVRAM);
-				} else {
-					continue;
-				}
-				posVRAM += chunk->auxData;	//OutSize
 			}
 		} while (!(size & 0xff00));
 
@@ -1005,19 +989,19 @@ inline void gfxRoutines(uint8_t routine, uint8_t value)
 			break;
 		//=================== Graphics Write to Phys (3)
 		case GFX_GRAPHICS_IN_PHYS:
-			gfxPictureOffet = 0;
+			gfxPictureOffsetY = 0;
 			break;
 		//=================== Graphics Write to Back (4)
 		case GFX_GRAPHICS_IN_BACK:
-			gfxPictureOffet = 256l * BYTESxLINE;
+			gfxPictureOffsetY = 256;
 			break;
 		//=================== Text Write to Phys (7)
 		case GFX_TEXTS_IN_PHYS:
-			gfxTextOffset = 0;
+			gfxTextOffsetY = 0;
 			break;
 		//=================== Text Write to Back (8)
 		case GFX_TEXTS_IN_BACK:
-			gfxTextOffset = 256;
+			gfxTextOffsetY = 256;
 			break;
 #endif//DISABLE_GFX
 		//=================== Clear Back (6)
@@ -1206,5 +1190,3 @@ void sfxTone(uint8_t tone, uint8_t duration) __naked
 	__endasm;
 }
 #endif //DISABLE_BEEP
-
-
