@@ -458,7 +458,7 @@
 			 "L) List image chunks:\n".
 			 "    $appname l <fileIn.IM?>\n\n".
 			 "CX) Create a rectangle image as V9938 commands (CXL = palette last):\n".
-			 "    $appname cx[l] <fileIn.SC?> <x> <y> <w> <h> [compressor] [--transparent-color=N]\n\n".
+			 "    $appname cx[l] <fileIn.SC?> <x> <y> <w> <h> [compressor] [--fixed=X,Y] [--transparent-color=N]\n\n".
 			 "C) [DEPRECATED] Create an image IMx (CL - Create the palette at last chunk):\n".
 			 "    $appname c[l] <fileIn.SC?> <lines> [compressor | transparent_color]\n\n".
 			 "S) [DEPRECATED] Create an image from a rectangle:\n".
