@@ -16,14 +16,14 @@
 		0x0003  1    Source screen type ('5', '6', '7', '8', 'A', 'C')
 		0x0004 ...   Chunks containing the image (chunk max length: 5+2043 bytes each)
 
-	Chunk Redirect format:
+	0: Chunk Redirect format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type: (0:redirect)
 		0x0001  2    New image location to read
 		0x0003  2    Empty chunk header (filled with 0x00)
 
-	Chunk Palette format:
+	1: Chunk Palette format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type  (1:palette)
@@ -32,35 +32,35 @@
 		---data---
 		0x0005  32   12 bits palette data in 2 bytes format (0xRB 0x0G)
 
-	Chunk Reset VRAM pointer format:
+	16: [**DEPRECATED**] Chunk Reset VRAM pointer format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type: (16:ResetPointer)
 		0x0001  2    Chunk data length (0x0000)
 		0x0003  2    Empty chunk header (0x0000)
 
-	Chunk ClearWindow format:
+	17: Chunk ClearWindow format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type: (17:ClearWindow)
 		0x0001  2    Chunk data length (0x0000)
 		0x0003  2    Empty chunk header (0x0000)
 
-	Chunk SkipBytes format:
+	18: [**DEPRECATED**] Chunk SkipBytes format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type: (18:SkipBytes)
 		0x0001  2    Chunk data length (0x0000)
 		0x0003  2    VRAM Bytes to skip
 
-	Chunk Pause format:
+	19: Chunk Pause format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type: (19:Pause)
 		0x0001  2    Chunk data length (0x0000)
 		0x0003  2    Time to wait in 1/50 sec units
 
-	Chunk bitmap format:
+	2,3,4: [**DEPRECATED**] Chunk bitmap format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type  (2:data_raw 3:data_rle 4:data_pletter)
@@ -71,7 +71,7 @@
 
 	## VERSION 2
 
-	Chunk Info format:
+	128: Chunk Info format:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type: (128)
@@ -86,7 +86,7 @@
 		0x000d  1    Palette type (0: unespecified, 1: GRB332, 2: GRB333)
 		0x000e  1    Chipset type (0: unespecified, 1: TMS9918, 2: V9938, 3: V9958, 4: V9990)
 
-	Chunk V9938Cmd:
+	20: Chunk V9938Cmd:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type  (20:V9938Cmd)
@@ -97,7 +97,7 @@
 		--data--
 		0x0006  15   All paremeters packed and ready to send (15 bytes each)
 
-	Chunk V9938CmdData:
+	21: Chunk V9938CmdData:
 		Offset Size  Description
 		--header--
 		0x0000  1    Chunk type  (21:V9938CmdData)
@@ -108,6 +108,18 @@
 		0x0006  2    Uncompressed data length (max: 16Kb)
 		---data---
 		0x0008 ...   Compressed data (1-2040 bytes length)
+
+	129: Chunk Fixed Image offsets:
+		Offset Size  Description
+		--header--
+		0x0000  1    Chunk type  (129:FixedImage)
+		0x0001  2    Extra header length (4)
+		0x0003  2    Data length (0)
+		--extra header--
+		0x0005  2    Global Offset X in pixels (max: offsetX + imageWidth <= ScreenWidth)
+		0x0007  2    Global Offset Y in pixels (max: offsetY + imageHeight <= ScreenHeight)
+		---data---
+
 */
 
 	define('CHUNK_HEAD',        5);
@@ -127,6 +139,7 @@
 	define('CHUNK_V9938CMD',   20);
 	define('CHUNK_V9938DATA',  21);
 	define('CHUNK_INFO',      128);
+	define('CHUNK_FIXEDIMG',  129);     // [PRP027] Fixed-position image (sets gfxWinOffsetX/Y)
 
 	define('INFO_VERSION',      1);
 	define('CMP_RAW',           0);
@@ -306,9 +319,11 @@
 		}
 		$x = intval($argv[3]); $y = intval($argv[4]);
 		$w = intval($argv[5]); $h = intval($argv[6]);
-		// Optional positional [compressor] and optional flag --transparent-color=N
+		// Optional positional [compressor] + flags --transparent-color=N --fixed=X,Y
 		$compress    = "RLE";   // default
 		$transparent = -1;
+		$fixedX      = -1;      // -1 = no FIXEDIMG chunk (PRP027)
+		$fixedY      = -1;
 		for ($i = 7; $i < $argc; $i++) {
 			$arg = $argv[$i];
 			if (strpos($arg, "--transparent-color=") === 0) {
@@ -318,6 +333,15 @@
 					exit;
 				}
 				$transparent = intval($val);
+			} else if (strpos($arg, "--fixed=") === 0) {
+				$val = substr($arg, strlen("--fixed="));
+				$parts = explode(",", $val);
+				if (count($parts) !== 2 || !is_numeric($parts[0]) || !is_numeric($parts[1])
+					|| intval($parts[0]) < 0 || intval($parts[1]) < 0) {
+					die("\nERROR: --fixed=X,Y requires two non-negative integers (e.g. --fixed=64,32).\n\n");
+				}
+				$fixedX = intval($parts[0]);
+				$fixedY = intval($parts[1]);
 			} else {
 				$compress = strtoupper($arg);
 			}
@@ -335,7 +359,7 @@
 		} else {
 			echo "### Compressor: $compress (CX command — no transparency)\n";
 		}
-		compressV9938Rectangle($fileIn, $x, $y, $w, $h, $comp, $transparent);
+		compressV9938Rectangle($fileIn, $x, $y, $w, $h, $comp, $transparent, $fixedX, $fixedY);
 		exit;
 	}
 
@@ -465,6 +489,11 @@
 			 "               Supported in: SC5 (0..15), SC6 (0..3), SC7 (0..15), SC8 (0..255),\n".
 			 "                             SC10 (0..15 paletted; YJK pixels auto-preserved).\n".
 			 "               NOT supported in SC12 (pure YJK, no per-pixel A flag).\n".
+			 " --fixed=X,Y\n".
+			 "               Optional flag for 'cx[l]': emit a FIXEDIMG chunk with global pixel\n".
+			 "               offset (X,Y) so the image renders at a fixed screen position\n".
+			 "               regardless of the active DAAD window. Engine sets gfxWinOffsetX/Y.\n".
+			 "               Bounds: X+W <= 256 (SC5/SC8/SC10/SC12) or 512 (SC6/SC7); Y+H <= 212.\n".
 			 " <target_loc>  Target location number to redirect to.\n".
 			 "                 ex: a 12 redirects to image 012.IMx\n".
 			 "\n".
@@ -504,8 +533,8 @@
 			$sout = unpack("v", substr($body, $pos+3, 2))[1];   // SizeIn/dataSize
 			$type = ord($body[$pos]);
 			// v1 chunks (PALETTE/RAW/RLE/PLETTER): the data length is sin
-			// v2 chunks (INFO/CMD/CMDDATA): bytes after 5-hdr = extraHeaderSize + dataSize
-			if ($type==CHUNK_INFO || $type==CHUNK_V9938CMD || $type==CHUNK_V9938DATA) {
+			// v2 chunks (INFO/CMD/CMDDATA/FIXEDIMG): bytes after 5-hdr = extraHeaderSize + dataSize
+			if ($type==CHUNK_INFO || $type==CHUNK_V9938CMD || $type==CHUNK_V9938DATA || $type==CHUNK_FIXEDIMG) {
 				$pos += 5 + $sin + $sout;
 			} else {
 				$pos += 5 + $sin;
@@ -658,6 +687,12 @@
 					echo "    CHUNK $id: V9938CmdData [$compName] $uncomp bytes ($sout comp)\n";
 					$size += $sin + $sout;
 					break;
+				case CHUNK_FIXEDIMG:
+					$offX = unpack("v", substr($in, $pos+5, 2))[1];
+					$offY = unpack("v", substr($in, $pos+7, 2))[1];
+					echo "    CHUNK $id: FixedImage offsetX=$offX offsetY=$offY\n";
+					$size += $sin + $sout;
+					break;
 				default:
 					echo "    CHUNK $id: UNKNOWN CHUNK TYPE!!!! [**Aborted**]\n\n";
 					exit;
@@ -665,8 +700,8 @@
 			if ($type==CHUNK_V9938DATA) {
 				$totalRaw  += $uncomp;       // uncompressedSize del extra header
 				$totalComp += $sout;         // dataSize = payload comprimido
-			} else if ($type==CHUNK_INFO || $type==CHUNK_V9938CMD) {
-				// INFO y V9938Cmd no son datos de imagen — no contribuyen al ratio
+			} else if ($type==CHUNK_INFO || $type==CHUNK_V9938CMD || $type==CHUNK_FIXEDIMG) {
+				// INFO, V9938Cmd, FIXEDIMG no son datos de imagen — no contribuyen al ratio
 			} else if ($type != CHUNK_REDIRECT) {
 				$totalRaw  += $sout;
 				$totalComp += $sin;
@@ -1275,7 +1310,7 @@
 	}
 
 	//=================================================================================
-	function compressV9938Rectangle($file, $x, $y, $w, $h, $comp, $transparent=-1)
+	function compressV9938Rectangle($file, $x, $y, $w, $h, $comp, $transparent=-1, $fixedX=-1, $fixedY=-1)
 	{
 		global $magic, $lastPalette;
 
@@ -1287,6 +1322,22 @@
 		$pixelsByte  = ['5'=>2,'6'=>4,'7'=>2,'8'=>1,'A'=>1,'C'=>1];
 		$bytesLine   = ['5'=>128,'6'=>128,'7'=>256,'8'=>256,'A'=>256,'C'=>256];
 		$bppMode     = ['5'=>4,'6'=>2,'7'=>4,'8'=>8];
+
+		// Validate FIXEDIMG bounds (PRP027)
+		if ($fixedX >= 0 && $fixedY >= 0) {
+			$screenWidth  = ['5'=>256, '6'=>512, '7'=>512, '8'=>256, 'A'=>256, 'C'=>256];
+			$screenHeight = 212;
+			$sw = $screenWidth[$sup];
+			if ($fixedX + $w > $sw) {
+				die("\nERROR: --fixed X+W out of bounds for SC".hexdec($sup).":\n".
+				    "       fixedX=$fixedX + width=$w = ".($fixedX+$w)." > ScreenWidth=$sw\n\n");
+			}
+			if ($fixedY + $h > $screenHeight) {
+				die("\nERROR: --fixed Y+H out of bounds for SC".hexdec($sup).":\n".
+				    "       fixedY=$fixedY + height=$h = ".($fixedY+$h)." > ScreenHeight=$screenHeight\n\n");
+			}
+			echo "### Fixed image position: ($fixedX, $fixedY) — chunk FIXEDIMG will be emitted\n";
+		}
 
 		// Validate transparency mode (PRP024 + PRP026)
 		if ($transparent >= 0) {
@@ -1354,10 +1405,19 @@
 			$palBin = addPalette($file, $in2, $scr, NULL);
 		}
 
+		// FIXEDIMG chunk (PRP027): emitted right after INFO, before palette/cmds
+		$fixedImgBin = "";
+		if ($fixedX >= 0 && $fixedY >= 0) {
+			$fixedImgBin = chr(CHUNK_FIXEDIMG)
+			             . pack("vv", 4, 0)                  // extraHeaderSize=4, dataSize=0
+			             . pack("vv", $fixedX, $fixedY);     // offsetX, offsetY
+		}
+
 		// Ensamblar fichero final con INFO al inicio
 		$out  = $magic.$scr;
 		$infoPos = strlen($out);
 		$out .= str_repeat("\0", 15);                  // INFO placeholder
+		$out .= $fixedImgBin;                          // FIXEDIMG (si aplica)
 
 		if ($palBin && !$lastPalette) $out .= $palBin;
 		$out .= $cmdChunksBin;

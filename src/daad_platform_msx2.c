@@ -911,8 +911,16 @@ inline bool gfxPictureShow()
 					fseek(32, SEEK_CUR);
 				#endif
 			} else
+			//=============================================
+			// Load image fixed coordinates for next chunks (like V9938Cmd/CmdData)
+			if (chunk->type==IMG_CHUNK_FIXEDIMG) {
+				size = fread(chunk->data, 4);
+				gfxWinOffsetX = ((IMG_FIXEDIMG*)chunk)->offsetX;
+				gfxWinOffsetY = ((IMG_FIXEDIMG*)chunk)->offsetY;
+			} else
+			//=============================================
+			// Chunk with V9938 Commands to prepare IMG_CHUNK_CMDDATA
 			if (chunk->type==IMG_CHUNK_CMD) {
-				//=============================================
 				// V9938 commands chunk: execute each packed command (15 bytes/cmd)
 				char *p = &((IMG_V9938_CMD*)chunk)->cmdCount;
 				size = fread(p, ((IMG_CHUNK_HEADER*)chunk)->extraHeaderSize + ((IMG_CHUNK_HEADER*)chunk)->dataSize);
@@ -927,10 +935,10 @@ inline bool gfxPictureShow()
 					}
 				}
 			} else
+			//=============================================
+			// V9938 command data chunk: decompress + stream to port #9B
+			// (VDP Cmd was dispatched by the preceding V9938Cmd chunk).
 			if (chunk->type==IMG_CHUNK_CMDDATA) {
-				//=============================================
-				// V9938 command data chunk: decompress + stream to port #9B
-				// (HMMC was dispatched by the preceding V9938Cmd chunk).
 				char *p = &((IMG_V9938_CMDDATA*)chunk)->compressorID;
 				size = fread(p, ((IMG_CHUNK_HEADER*)chunk)->extraHeaderSize + ((IMG_CHUNK_HEADER*)chunk)->dataSize);
 				if (!(size & 0xff00)) {
@@ -955,7 +963,7 @@ inline bool gfxPictureShow()
 			} else {
 				//=============================================
 				// Skip unknown/deprecated chunks
-				fread(chunk->data, chunk->chunkSize);
+				fseek(chunk->chunkSize, SEEK_CUR);
 			}
 		} while (!(size & 0xff00));
 

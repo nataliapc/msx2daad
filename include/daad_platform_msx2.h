@@ -213,6 +213,7 @@ volatile __at (JIFFY)  uint16_t varJIFFY;
 #define IMG_MAXREAD			IMG_CHUNK_SIZE + 1 + 2 + 2 	// 1:type + 2:sizeIn + 2:sizeOut + 2043:max_chunk_size
 
 #define IMG_MAGIC 			"IMG"
+// === Legacy Chunks
 #define IMG_CHUNK_REDIRECT	0		// Redirect to another image
 #define IMG_CHUNK_PALETTE	1		// Load palette
 //#define IMG_CHUNK_RAW		2		// [**DEPRECATED**] Load RAW format data
@@ -222,9 +223,12 @@ volatile __at (JIFFY)  uint16_t varJIFFY;
 #define IMG_CHUNK_CLS		17		// Clear Window (CLS)
 //#define IMG_CHUNK_SKIP	18		// [**DEPRECATED**] Skip VRAM bytes (SKIP)
 #define IMG_CHUNK_PAUSE		19		// Pause in 1/50 sec units (PAUSE)
+// === Chunks image format/data
 #define IMG_CHUNK_CMD		20		// Execute V9938 commands (CMDDATA payload is **SKIPPED** until stream-decompress PRP)
 #define IMG_CHUNK_CMDDATA	21		// V9938 command data chunks (**SKIPPED** until stream-decompress PRP)
+// === Chunks internals
 #define IMG_CHUNK_INFO		128		// Information chunk (**SKIPPED via else fallback**)
+#define IMG_CHUNK_FIXEDIMG	129		// The image must be loaded at a fixed location avoiding the current Window
 
 typedef struct {
 	char     magic[3];				// Magic text: "IMG".
@@ -255,6 +259,14 @@ typedef struct {
 	uint8_t  paletteType;			// 0=unspec, 1=GRB332, 2=GRB333
 	uint8_t  chipsetType;			// 0=unspec, 1=TMS9918, 2=V9938, 3=V9958, 4=V9990
 } IMG_INFO;
+
+typedef struct {
+	IMG_CHUNK_HEADER header;		// { 22, 4, 0 } Type=22 (FixedImg chunk), extraHeaderSize=4, dataSize=0
+	// Extra header (4 bytes)
+	uint16_t offsetX;				// { x } Global Offset X in pixels (max: offsetX + imageWidth <= ScreenWidth)
+	uint16_t offsetY;				// { y } Global Offset Y in pixels (max: offsetY + imageHeight <= ScreenHeight)
+	// No data
+} IMG_FIXEDIMG;
 
 typedef struct {
 	IMG_CHUNK_HEADER header;		// { 20, 1, n*15 } Type=20 (V9938Cmd chunk), extraHeaderSize=1, dataSize=n*15
