@@ -226,13 +226,10 @@
 			}
 		}
 		echo "### Compressor: RLE (forced)\n";
-		if ($transparent < 0) {
-			echo "\n".
-			     "WARNING: 's' command without transparency is DEPRECATED.\n".
-			     "         Use 'cx' for new images (V9938 HMMC streaming).\n".
-			     "         's' with transparency remains the recommended path.\n".
-			     "         Continuing in legacy mode...\n\n";
-		}
+		echo "\n".
+		     "WARNING: 's' command is DEPRECATED.\n".
+		     "         Use 'cx' for new images (V9938 streaming, with optional --transparent-color=N).\n".
+		     "         Continuing in legacy mode...\n\n";
 		compressRectangle($fileIn, $x, $y, $w, $h, $transparent);
 		exit;
 	}
@@ -436,12 +433,12 @@
 			 "to be used by MSX2DAAD engine.\n\n".
 			 "L) List image chunks:\n".
 			 "    $appname l <fileIn.IM?>\n\n".
-			 "C) Create an image IMx (CL - Create the palette at last chunk):\n".
-			 "    $appname c[l] <fileIn.SC?> <lines> [compressor | transparent_color]\n\n".
-			 "S) Create an image from a rectangle:\n".
-			 "    $appname s <fileIn.SC?> <x> <y> <w> <h> [transparent_color]\n\n".
 			 "CX) Create a rectangle image as V9938 commands (CXL = palette last):\n".
 			 "    $appname cx[l] <fileIn.SC?> <x> <y> <w> <h> [compressor] [--transparent-color=N]\n\n".
+			 "C) [DEPRECATED] Create an image IMx (CL - Create the palette at last chunk):\n".
+			 "    $appname c[l] <fileIn.SC?> <lines> [compressor | transparent_color]\n\n".
+			 "S) [DEPRECATED] Create an image from a rectangle:\n".
+			 "    $appname s <fileIn.SC?> <x> <y> <w> <h> [transparent_color]\n\n".
 			 "R) Create a location redirection:\n".
 			 "    $appname r <fileOut.IM?> <target_loc>\n\n".
 			 "D) Remove a CHUNK from an image:\n".
@@ -465,11 +462,13 @@
 			 " --transparent-color=N\n".
 			 "               Optional flag for 'cx[l]': color index N treated as transparent.\n".
 			 "               Generates 2-pass LMMC AND+OR streaming instead of 1-pass HMMC.\n".
-			 "               Not supported in SC10/SC12 (YJK).\n".
+			 "               Supported in: SC5 (0..15), SC6 (0..3), SC7 (0..15), SC8 (0..255),\n".
+			 "                             SC10 (0..15 paletted; YJK pixels auto-preserved).\n".
+			 "               NOT supported in SC12 (pure YJK, no per-pixel A flag).\n".
 			 " <target_loc>  Target location number to redirect to.\n".
 			 "                 ex: a 12 redirects to image 012.IMx\n".
 			 "\n".
-			 "Example: $appname c image.sc8 96 rle\n".
+			 "Example: $appname cx image.sc8 0 0 256 96 rle\n".
 			 "\n";
 		exit(1);
 	}
@@ -1096,6 +1095,11 @@
 	// MSX byte→pixel mapping: high bits = leftmost pixel, low bits = rightmost.
 	function processTransparency($rectData, $w, $h, $sup, $transparent)
 	{
+		// SCA (SC10, YJK+YAE) requires a different algorithm — see PRP026.
+		if ($sup === 'A') {
+			return processTransparencySCA($rectData, $transparent);
+		}
+
 		$bppMode = ['5'=>4,'6'=>2,'7'=>4,'8'=>8];
 		$bpp = $bppMode[$sup];
 		$ppb = intval(8 / $bpp);
@@ -1127,6 +1131,54 @@
 		}
 		if ($transCount === 0) {
 			echo "WARNING: no pixels with color $transparent found in rectangle. Mask is empty.\n";
+		}
+		return [$mask, $image];
+	}
+
+	//=================================================================================
+	// PRP026 — SCREEN 10 (SCA, YJK+YAE) transparency.
+	//
+	// SCA byte layout: bits 7-4 = Y or palette index, bit 3 = A flag (0:YJK, 1:paletted),
+	// bits 2-0 = K/J chroma contribution shared across the 4-byte aligned group.
+	//
+	// Transparency rules:
+	//   A=0 (YJK source pixel)         → preserve dest fully (mask=0xFF, image=0x00)
+	//   A=1, idx == transparent_color  → preserve dest fully (mask=0xFF, image=0x00)
+	//   A=1, idx != transparent_color  → overwrite Y/idx+A bits (7-3), preserve dest's
+	//                                     bits 2-0 to keep YJK group chroma intact:
+	//                                       mask  = 0x07
+	//                                       image = byte & 0xF8
+	function processTransparencySCA($rectData, $transparent)
+	{
+		$mask  = '';
+		$image = '';
+		$yjkCount = 0;
+		$transCount = 0;
+		$visibleCount = 0;
+		$totalBytes = strlen($rectData);
+
+		for ($i = 0; $i < $totalBytes; $i++) {
+			$byte = ord($rectData[$i]);
+			if (($byte & 0x08) === 0) {
+				$mask  .= chr(0xFF);
+				$image .= chr(0x00);
+				$yjkCount++;
+			} else {
+				$paletteIdx = ($byte >> 4) & 0x0F;
+				if ($paletteIdx === $transparent) {
+					$mask  .= chr(0xFF);
+					$image .= chr(0x00);
+					$transCount++;
+				} else {
+					$mask  .= chr(0x07);
+					$image .= chr($byte & 0xF8);
+					$visibleCount++;
+				}
+			}
+		}
+		echo "    [SCA stats: $visibleCount visible, $transCount paletted-transparent, $yjkCount YJK auto-preserved]\n";
+		if ($visibleCount === 0) {
+			echo "WARNING: no visible paletted pixels in rectangle.\n";
 		}
 		return [$mask, $image];
 	}
@@ -1236,17 +1288,27 @@
 		$bytesLine   = ['5'=>128,'6'=>128,'7'=>256,'8'=>256,'A'=>256,'C'=>256];
 		$bppMode     = ['5'=>4,'6'=>2,'7'=>4,'8'=>8];
 
-		// Validate transparency mode (PRP024)
+		// Validate transparency mode (PRP024 + PRP026)
 		if ($transparent >= 0) {
-			if ($sup == 'A' || $sup == 'C') {
-				die("\nERROR: --transparent-color is not supported in SC10/SC12 (YJK).\n".
-				    "       Use a different screen mode or pre-composite the image.\n\n");
+			if ($sup == 'C') {
+				die("\nERROR: --transparent-color is not supported in SC12 (pure YJK, no per-pixel A flag).\n".
+				    "       Use SCREEN 10 (.SCA) instead, which supports paletted+YJK mixed mode.\n\n");
 			}
-			$maxColor = (1 << $bppMode[$sup]) - 1;
-			if ($transparent > $maxColor) {
-				die("\nERROR: transparent color $transparent out of range for SC".hexdec($sup)." (0..$maxColor)...\n\n");
+			if ($sup == 'A') {
+				// PRP026 — SCA transparency: paletted-visible pixels use mask=0x07 to
+				// preserve dest's bits 2-0 (chroma contribution to YJK group), YJK
+				// source pixels are auto-preserved (mask=0xFF, image=0x00).
+				if ($transparent > 15) {
+					die("\nERROR: transparent color $transparent out of range for SC10 paletted (0..15)...\n\n");
+				}
+				echo "### Transparent color: $transparent (SCA paletted; YJK regions auto-preserved)\n";
+			} else {
+				$maxColor = (1 << $bppMode[$sup]) - 1;
+				if ($transparent > $maxColor) {
+					die("\nERROR: transparent color $transparent out of range for SC".hexdec($sup)." (0..$maxColor)...\n\n");
+				}
+				echo "### Transparent color: $transparent (LMMC AND+OR streaming)\n";
 			}
-			echo "### Transparent color: $transparent (LMMC AND+OR streaming)\n";
 		}
 
 		// Validar que x y w son múltiplos de pixelsByte (HMMC y la extracción packed lo requieren)
