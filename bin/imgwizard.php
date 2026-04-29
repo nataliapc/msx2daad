@@ -451,7 +451,7 @@
 		global $appname;
 		
 		echo "\n".
-			 "IMGWIZARD v1.4.0 for MSX2DAAD\n".
+			 "IMGWIZARD v1.4.1 for MSX2DAAD\n".
 			 "===================================================================\n".
 			 "A tool to create and manage MSX image files in several screen modes\n".
 			 "to be used by MSX2DAAD engine.\n\n".
@@ -1389,11 +1389,14 @@
 			$cmdChunksBin .= $seqImage['cmd'] . $seqImage['data'];
 			$totalReport   = strlen($maskBuf) + strlen($imageBuf);
 		} else {
-			// ---------- HMMC PATH (sin transparencia, legacy PRP022) ----------
-			// HMMC trabaja en bytes — DX/NX se pasan convertidos a unidades de byte.
-			$dxUnit = intval($x / $pixelsByte[$sup]);
-			$nxUnit = intval($w / $pixelsByte[$sup]);
-			$seqHmmc = buildV9938CmdSequence($fullRect, $dxUnit, $y, $nxUnit, $h, $comp, VDP_HMMC);
+			// ---------- HMMC PATH (sin transparencia) ----------
+			// V9938 spec §6.4: "NX and NY represent the length of each side in dots."
+			// §6.5.1 footnote: en G4/G6 se ignora bit 0 de NX/DX y en G5 los bits 0-1,
+			// pero el VALOR escrito se sigue expresando en dots. La etiqueta "Unit: Byte"
+			// de HMMC en la tabla de comandos se refiere al transfer (cada OUT a #9B es
+			// 1 byte que contiene varios pixels en G4/G5/G6), NO a la unidad de NX/DX.
+			// Pasar $x, $w directamente en dots (sin dividir por pixelsByte).
+			$seqHmmc = buildV9938CmdSequence($fullRect, $x, $y, $w, $h, $comp, VDP_HMMC);
 			$cmdChunksBin = $seqHmmc['cmd'] . $seqHmmc['data'];
 			$totalReport  = $totalUncomp;
 		}
