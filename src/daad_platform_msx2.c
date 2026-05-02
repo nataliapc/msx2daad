@@ -822,6 +822,7 @@ inline void gfxPutInputEcho(char c, bool keepPos)
  */
 inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue)
 {
+	index, red, green, blue;
 #if SCREEN == 8
 	index %= 16;
 	((uint8_t*)colorTranslationSC8)[index] = (green & 0xE0) | ((red & 0xE0) >> 3) | ((blue & 0xE0) >> 6);
