@@ -451,7 +451,7 @@
 		global $appname;
 		
 		echo "\n".
-			 "IMGWIZARD v1.4.1 for MSX2DAAD\n".
+			 "IMGWIZARD v1.4.2 for MSX2DAAD\n".
 			 "===================================================================\n".
 			 "A tool to create and manage MSX image files in several screen modes\n".
 			 "to be used by MSX2DAAD engine.\n\n".
@@ -640,7 +640,7 @@
 					break;
 				case CHUNK_INFO:
 					// $sin = extraHeaderSize (10), $sout = dataSize (0)
-					$pixelTypeNames = [0=>'Unspecified', 1=>'BP2 (4 cols paletted)', 2=>'BP4 (16 cols paletted)', 4=>'BD8 (256 fixed cols)'];
+					$pixelTypeNames = [0=>'Unspecified', 1=>'BP2 (4 cols paletted)', 2=>'BP4 (16 cols paletted)', 4=>'BD8 (256 fixed cols)', 6=>'SCC (YJK, SC12)', 7=>'SCA (YJK+YAE, SC10)'];
 					$paletteTypeNames = [0=>'Unspecified', 1=>'GRB332', 2=>'GRB333'];
 					$chipsetTypeNames = [0=>'Unspecified', 1=>'TMS9918', 2=>'V9938', 3=>'V9958', 4=>'V9990'];
 					$extra = substr($in, $pos+5, $sin);
@@ -648,7 +648,7 @@
 					$cnt   = unpack("v", substr($extra, 1, 2))[1];
 					$wInf  = unpack("v", substr($extra, 3, 2))[1];
 					$hInf  = unpack("v", substr($extra, 5, 2))[1];
-					$px    = $pixelTypeNames[ord($extra[7])];
+					$px    = $pixelTypeNames[ord($extra[7])] ?? 'Unknown ('.ord($extra[7]).')';
 					$pl = $paletteTypeNames[ord($extra[8])];
 					$cs = $chipsetTypeNames[ord($extra[9])];
 					echo "    CHUNK $id: INFO v$ver\n".
