@@ -9,6 +9,7 @@
 - [Create your own Adventure: Sources and Compilers](#create-your-own-adventure-sources-and-compilers)
 - [Our Wiki pages with articles and tutorials](https://github.com/nataliapc/msx2daad/wiki)
 - [Supported languages](#supported-languages)
+- [Image format & transparency (since v3.0.0)](#image-format--transparency-since-v300)
 - [MSX graphical modes & limitations](#msx-graphical-modes--limitations)
 - [Aditional tools in /bin folder](#aditional-tools-in-bin-folder)
 - [External tools](#external-tools)
@@ -22,7 +23,7 @@ This project is a **DAAD** interpreter created from scratch for **MSX2**/**MSX2+
 **DAAD** is a multi-machine and multi-graphics adventure writer, enabling you to target a broad range of 8-bit and 16-bit systems.  
 You can see the classic interpreters [here](https://github.com/daad-adventure-writer/daad).
 
-**MSX2DAAD** is also compatible with [**DRC**](https://github.com/daad-adventure-writer/DRC/wiki) compiler, and [**Maluva DAAD extension**](https://github.com/Utodev/MALUVA/wiki) emulating his new functionalities to the classic interpreters:
+**MSX2DAAD** is also compatible with [**DRC**](https://github.com/daad-adventure-writer/DRC/wiki) compiler, and [**Maluva DAAD extension**](https://github.com/Utodev/MALUVA/wiki) emulating his new functionalities to the classic interpreters for **DAAD V2**:
 
 - `XPICTURE`: Load bitmap images from disk.
 - `XLOAD`/`XSAVE`: To load/save your gameplay from/to disk.
@@ -30,6 +31,8 @@ You can see the classic interpreters [here](https://github.com/daad-adventure-wr
 - `XPLAY`: Play music using a simplified [MML](https://en.wikipedia.org/wiki/Music_Macro_Language) string, the same format of PLAY instruction from MSX1 Basic.
 
 ...and some others.
+
+Starting with **v3.0.0**, MSX2DAAD also loads **DAAD V3** databases natively (the DDB version is auto-detected at load time). V3 adds three native condacts (`XMES`, `INDIR`, `SETAT`), new flag-53 bitmask semantics for the parser/object subsystem, and changes the behaviour of `PAUSE 0`, `SYNONYM` and `EXTERN`. Pre-v3.0.0 V2 adventures keep working without changes. See the [V3 sections in the wiki](https://github.com/nataliapc/msx2daad/wiki/MSX2DAAD-Wiki:-DAAD-Condacts:-a-quick-reference#daad-v3-native-condacts) for the full list.
 
 ![](https://www.eslamejor.com/img/msx2daad_sample.png) 
 
@@ -46,14 +49,23 @@ Contact email: natypclicense@gmail.com
 
 You can download the last binaries release, or compile the binaries yourself.
 
-To compile the binaries you need [SDCC](http://sdcc.sourceforge.net/) compiler.  
-Then just use the makefile:
+The build is dockerized: it uses **SDCC 4.5.0** inside `nataliapc/sdcc:4.5.0`, so the only host requirements are **Docker**, **PHP** (for `bin/precomp.php` and `bin/imgwizard.php`), and **openMSX** (for `make test`). No local SDCC install is needed.
 
 To clean and compile the msx2daad\.com:
 > make clean all
 
 To test the /dsk folder content with openMSX (you need to add at least your DAAD\.DDB to /dsk):
 > make test
+
+To build all 14 release variants (EN/ES × SC5/6/7/8/10/12 + transcript) under `package/`:
+> make package
+
+The default build enables `-DDAADV3` (DAAD V3 + V2 compatibility). Almost every other choice is selectable via `-D` flags in `CXXFLAGS`: language (`-DLANG_EN`/`-DLANG_ES`), screen mode (`-DSCREEN=5|6|7|8|10|12`), font width (`-DFONTWIDTH=6|8`), and per-codec opt-out for the V2 image format (`-DCOMPRESSOR_{RAW,RLE,PLETTER,ZX0}`) — defining a subset trims the unused decoders out of the `.com`.
+
+There is also a unit-test suite (Dockerized too) under `unitTests/`:
+> cd unitTests && make all && make test
+
+It produces 11 binaries (~442 OK / 0 FAIL / 16 TODO) covering condacts, parser, V3 paths, DOS library and engine internals.
 
 ***
 
@@ -84,6 +96,21 @@ To learn more about **how to create your own adventure** your can:
 
 - English
 - Spanish
+
+***
+
+### Image format & transparency (since v3.0.0)
+
+Pictures are converted from standard MSX `.SCx` files to MSX2DAAD's chunked container with `bin/imgwizard.php` (current version **1.4.2**). The canonical command is now **`cx[l]`** (chunked V2 format with V9938 streaming via port `#9B`); the legacy `c`/`cl`/`s` commands still work but are marked **DEPRECATED** and emit a warning — new pictures should use `cx`/`cxl`.
+
+`cx[l]` highlights:
+
+- Four codecs per `V9938CmdData` chunk: **RAW (0)**, **RLE (1)**, **Pletter (2)**, **ZX0 (3)**. ZX0 is usually the smallest for monochrome / sparse data; Pletter remains a good general-purpose choice.
+- **Transparency** via `--transparent-color=N` (2-pass `LMMC|AND` + `LMMC|OR`) on SC5/6/7/8.
+- **SC10 (`.SCA`) transparency** uses the per-pixel YJK+YAE A flag; SC12 (pure YJK) is intentionally not supported.
+- **Fixed-position images** via `--fixed=X,Y` (emits a `FIXEDIMG` chunk with global offsets).
+
+See the [features-and-limits wiki](https://github.com/nataliapc/msx2daad/wiki/MSX2DAAD-Wiki:-MSX2DAAD-features-and-limits) for the full chunk table and per-mode caveats.
 
 ***
 
@@ -147,13 +174,19 @@ To learn more about **how to create your own adventure** your can:
 
 ### Aditional tools in /bin folder
 
-#### **imgwizard.php**
-A tool to convert SC5, SC6, SC7, SC8 and SCC images to the **msx2daad** and compressed format.  
-The compression can be: **raw** (no compression), **rle**, or **pletter** (needs pletter executable in the path).
+#### **imgwizard.php** (current version: 1.4.2)
+A tool to convert SC5, SC6, SC7, SC8, SCA (SC10) and SCC (SC12) images to the **msx2daad** chunked image format.  
+Supported codecs: **raw** (no compression), **rle**, **pletter _[DEPRECATED]_** and **zx0**.
 
-Example to create an image (*LOC1.IM8*) from a *Screen 8 MSX file* using only the first 96 lines and compressing with RLE:
+Since v3.0.0 the canonical command is **`cx[l]`** (chunked V2 format with V9938 streaming via port `#9B`):
 
-	$> php imgwizard.php c LOC1.SC8 96 rle
+	$> php imgwizard.php cx LOC1.SC8 0 0 256 198 zx0
+
+It also supports `--transparent-color=N` (2-pass `LMMC|AND` + `LMMC|OR` on SC5/6/7/8; YJK+YAE A flag on SC10) and `--fixed=X,Y` for fixed-position pictures (`FIXEDIMG` chunk).
+
+The legacy `c`/`cl`/`s` commands still work but are marked **DEPRECATED** and emit a warning — convert existing pictures to `cx`/`cxl` for new work:
+
+	$> php imgwizard.php c LOC1.SC8 96 rle    # legacy, deprecated
 
 You can execute the tool without arguments to see examples of all the options and uses.
 
