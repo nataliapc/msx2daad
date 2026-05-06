@@ -224,11 +224,12 @@ void test_NEWTEXT_success()
 	const char *_func = __func__;
 	beforeEach();
 
-	//BDD when NEWTEXT: clearLogicalSentences() (stub), checkEntry unchanged (true)
+	//BDD when NEWTEXT: must call clearLogicalSentences(); checkEntry unchanged (true)
 	static const char proc[] = { _NEWTEXT, 255 };
 	do_action(proc);
 
 	ASSERT(checkEntry, "NEWTEXT must not affect checkEntry");
+	ASSERT_EQUAL(fake_clearLogicalSentences_calls, 1, "NEWTEXT must call clearLogicalSentences exactly once");
 	SUCCEED();
 }
 
@@ -408,11 +409,13 @@ void test_RESTART_success()
 	const char *_func = __func__;
 	beforeEach();
 
-	//BDD when RESTART: cancels DOALL, pops all PROCs, pushes proc 0, sets checkEntry=false
+	//BDD when RESTART: cancels DOALL, pops all PROCs, pushes proc 0, sets checkEntry=false.
+	//                  Note: RESTART does NOT clear logical sentences (END does).
 	static const char proc[] = { _RESTART, 255 };
 	do_action(proc);
 
 	ASSERT(!checkEntry, "RESTART must set checkEntry=false");
+	ASSERT_EQUAL(fake_clearLogicalSentences_calls, 0, "RESTART must NOT clear logical sentences (only END/RESTART caller does)");
 	SUCCEED();
 }
 

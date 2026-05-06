@@ -1539,9 +1539,10 @@ void test_AUTOG_not_found()
 	static const char proc[] = { _AUTOG, 255 };
 	do_action(proc);
 
-	//BDD then SM26 "There isn't one of those here." (Manual L.1311)
+	//BDD then SM26 "There isn't one of those here." (Manual L.1311) + NEWTEXT
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 26, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
+	ASSERT(fake_clearLogicalSentences_calls > 0, "AUTOG fail must perform NEWTEXT (Manual L.1311)");
 	SUCCEED();
 }
 
@@ -1589,9 +1590,10 @@ void test_AUTOD_not_found()
 	static const char proc[] = { _AUTOD, 255 };
 	do_action(proc);
 
-	//BDD then SM28 "I don't have one of those." (Manual L.1324)
+	//BDD then SM28 "I don't have one of those." (Manual L.1324) + NEWTEXT
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 28, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
+	ASSERT(fake_clearLogicalSentences_calls > 0, "AUTOD fail must perform NEWTEXT (Manual L.1324)");
 	SUCCEED();
 }
 
@@ -1695,9 +1697,10 @@ void test_AUTOR_not_found()
 	static const char proc[] = { _AUTOR, 255 };
 	do_action(proc);
 
-	//BDD then SM23 "I'm not wearing one of those." (Manual L.1350)
+	//BDD then SM23 "I'm not wearing one of those." (Manual L.1350) + NEWTEXT
 	ASSERT_EQUAL(fake_lastSysMesPrinted, 23, ERROR_SYSMES);
 	ASSERT(!checkEntry, ERROR);
+	ASSERT(fake_clearLogicalSentences_calls > 0, "AUTOR fail must perform NEWTEXT (Manual L.1350)");
 	SUCCEED();
 }
 

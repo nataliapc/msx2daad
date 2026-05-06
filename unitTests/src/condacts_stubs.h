@@ -33,6 +33,7 @@ typedef enum CONDACT {
 
 // Global variables
 extern uint8_t  fake_keyPressed;
+extern uint8_t  fake_clearLogicalSentences_calls;
 extern int16_t  fake_lastSysMesPrinted;
 extern int      fake_lastCharPrinted;
 extern int16_t  fake_lastUserMsgPrinted;

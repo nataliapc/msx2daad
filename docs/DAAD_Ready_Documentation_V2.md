@@ -1417,7 +1417,7 @@ Another powerful action which allows the implementation of an
 'ALL' type command.
 
 * 1 - An attempt is made to find an object at Location locno.
-  If this is unsuccessful the DOALL is cancelled and action DONE is performed.
+  If this is unsuccessful the DOALL is cancelled and actions NOTDONE and NEWTEXT are performed.
 * 2 - The object number is converted into the LS Noun1 (and
   Adjective1 if present) by reference to the object
   definition section. If Noun (Adjective)1 matches

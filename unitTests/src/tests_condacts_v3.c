@@ -359,6 +359,197 @@ void test_DOALL_bit0_clear_when_objects()
 	SUCCEED();
 }
 
+// =============================================================================
+// PRP028 — DOALL cancellation: NOTDONE + NEWTEXT (DAAD Ready V2 §DOALL step 1)
+// =============================================================================
+
+// TEST D-CANCEL-1 — DOALL no objects: must mark NOTDONE (isDone=false)
+void test_DOALL_no_objects_marks_NOTDONE()
+{
+	const char *_func = __func__;
+	beforeEach();
+	// No objects at location 5 (all default to 0).
+	isDone = true;  // pre-set to verify it gets cleared by NOTDONE
+
+	char proc[] = { _DOALL, 5, _DONE, 255 };
+	pPROC = proc + 1;
+	indirection = false;
+	currProc->condactDOALL = NULL;
+
+	do_DOALL();
+
+	ASSERT_EQUAL(isDone, false, "DOALL no-objects must call NOTDONE (isDone=false), not DONE");
+	SUCCEED();
+}
+
+// TEST D-CANCEL-2 — DOALL no objects: must call clearLogicalSentences (NEWTEXT effect)
+void test_DOALL_no_objects_calls_NEWTEXT()
+{
+	const char *_func = __func__;
+	beforeEach();
+	// fake_clearLogicalSentences_calls reset to 0 by beforeEach()
+
+	char proc[] = { _DOALL, 5, _DONE, 255 };
+	pPROC = proc + 1;
+	indirection = false;
+	currProc->condactDOALL = NULL;
+
+	do_DOALL();
+
+	ASSERT(fake_clearLogicalSentences_calls > 0, "DOALL no-objects must call clearLogicalSentences (NEWTEXT effect)");
+	SUCCEED();
+}
+
+// TEST D-CANCEL-2b — Regression: isDone must stay false even AFTER processPROC's
+// post-condact `isDone |= ce->flag`. The original PRP028 fix called do_NOTDONE
+// after clearing condactDOALL, which fell into popPROC + ended-up overwritten by
+// flag=1 OR on DOALL. This test forces the full inner loop via do_entry().
+void test_DOALL_no_objects_isDone_false_after_processPROC_OR()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	// No objects at location 5 (all default to 0).
+	static const char entry[] = { _DOALL, 5, 0xff };
+	do_entry(entry);
+
+	ASSERT_EQUAL(isDone, false,
+		"DOALL no-objects: isDone must remain false after processPROC's post-OR");
+	SUCCEED();
+}
+
+// TEST D-CANCEL-2c — Integration test reproducing the wild-reported scenario:
+// player issues "DEJAR TODO" twice in a row carrying a single lantern.
+//   1st "DEJAR TODO": DOALL CARRIED finds the lantern, fNoun1 is filled.
+//   2nd "DEJAR TODO": no carried objects remain → DOALL must NOTDONE+NEWTEXT.
+// Without the PRP028 follow-up fix (DOALL flag=1 → 0 + manual cancel), the
+// second DOALL left isDone=true after processPROC's post-OR, which made the
+// player handler's `ISDONE / REDO` branch swallow the input silently — the
+// exact failure shown in the user's screenshot.
+void test_DOALL_two_consecutive_DEJAR_TODO_second_cancels_cleanly()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	// Setup: player at loc 5, holds ONE carried object (lantern).
+	flags[fPlayer] = 5;
+	objects[1].location = LOC_CARRIED;
+	objects[1].nounId = 100;
+	objects[1].adjectiveId = NULLWORD;
+
+	// 1st DEJAR TODO: DOALL CARRIED locates the lantern, sets fNoun1.
+	static const char entry1[] = { _DOALL, LOC_CARRIED, 0xff };
+	do_entry(entry1);
+	ASSERT_EQUAL(flags[fNoun1], 100, "1st DEJAR TODO: fNoun1 must be the lantern (id=100)");
+
+	// Simulate: lantern got dropped — moved to player's location, no longer carried.
+	objects[1].location = 5;
+
+	// Re-init proc stack: 1st DOALL completed without entering cancel path
+	// (the lantern was found), but state is fine for a fresh entry.
+	initializePROC();
+	pushPROC(0);
+	fake_clearLogicalSentences_calls = 0;
+	isDone = true;        // pre-set to confirm NOTDONE actually clears it
+
+	// 2nd DEJAR TODO: nothing carried → cancellation path must fire.
+	static const char entry2[] = { _DOALL, LOC_CARRIED, 0xff };
+	do_entry(entry2);
+
+	// Critical assertions — the bug from the screenshot:
+	//   - isDone stayed `true` (flag=1 OR overrode NOTDONE) → ISDONE branch fired
+	//     in the player handler → REDO swallowed input silently.
+	ASSERT_EQUAL(isDone, false,
+		"2nd DEJAR TODO: isDone must be false after NOTDONE (post-OR must not re-set it)");
+	ASSERT(fake_clearLogicalSentences_calls > 0,
+		"2nd DEJAR TODO: NEWTEXT must fire (lsBuffer cleared)");
+	SUCCEED();
+}
+
+// TEST D-CANCEL-2d — Regression: DOALL exhausted *after iterating* must mark DONE.
+// The user-reported screenshot showed "He dejado la linterna.No puedo hacer eso."
+// because cancellation marked NOTDONE despite the lantern having been dropped.
+//
+// This test models processPROC's line 211 path (NOT a condact dispatch):
+//   if (currProc->condactDOALL) do_DONE(); else _popPROC();
+// — there is NO post-OR `isDone |= ce->flag` here, unlike condact dispatch.
+// We call do_DONE() directly to expose the cancellation behaviour.
+void test_DOALL_implicit_DONE_after_iteration_must_mark_DONE()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	// Pre-iteration state: simulate that obj 1 was already iterated by DOALL.
+	flags[fPlayer]   = 5;
+	flags[fDAObjNo]  = 1;             // last iterated object number
+
+	// Fake DOALL frame: condactDOALL points past [condact_byte][locno_byte].
+	// _internal_doall reads condactDOALL[-1] = locno, condactDOALL[-2] = condact.
+	static const uint8_t fake_proc[] = { 0, LOC_CARRIED, 0xff };
+	currProc->condactDOALL = (char*)&fake_proc[2];
+
+	// Object 1 was already dropped (now at player loc, not LOC_CARRIED anymore).
+	objects[1].location = 5;
+	// All other objects default to location=0, none at LOC_CARRIED.
+
+	isDone = false;
+
+	// Simulate processPROC line 211: implicit DONE on table exhaustion.
+	do_DONE();
+
+	// Caso B (iterated then exhausted): something WAS done, must mark DONE.
+	ASSERT_EQUAL(isDone, true,
+		"Step-4 implicit DONE with no more objects: must mark DONE (caso B), not NOTDONE");
+	SUCCEED();
+}
+
+// TEST D-CANCEL-2e — Same idea with multi-iteration: fDAObjNo > 0 → caso B → DONE.
+void test_DOALL_implicit_DONE_after_multi_iteration_marks_DONE()
+{
+	const char *_func = __func__;
+	beforeEach();
+
+	flags[fPlayer]   = 5;
+	flags[fDAObjNo]  = 5;             // simulate 5 objects already iterated
+
+	static const uint8_t fake_proc[] = { 0, LOC_CARRIED, 0xff };
+	currProc->condactDOALL = (char*)&fake_proc[2];
+
+	// All objects at default location=0, none carried anymore.
+	isDone = false;
+
+	do_DONE();
+
+	ASSERT_EQUAL(isDone, true,
+		"Multi-iter DOALL exhaustion: must mark DONE regardless of how many were iterated");
+	SUCCEED();
+}
+
+// NOTE: a "do_DONE with condactDOALL active and fDAObjNo==NULLWORD" test is
+// not reachable in the new PRP028 Annex B architecture. Caso A is handled
+// exclusively in do_DOALL's initial call; if no objects are found, condactDOALL
+// is cleared before any further condact runs, so do_DONE never sees that state.
+// Caso A coverage is retained in test_DOALL_no_objects_marks_NOTDONE et al.
+
+// TEST D-CANCEL-3 — V3: F53_DOALLNONE bit stays SET after cancellation; isDone=false
+void test_DOALL_no_objects_v3_F53_bit0_set_after_cancel()
+{
+	const char *_func = __func__;
+	beforeEach(); setV3();
+	flags[fOFlags] = 0;
+
+	char proc[] = { _DOALL, 5, _DONE, 255 };
+	pPROC = proc + 1;
+	indirection = false;
+	currProc->condactDOALL = NULL;
+
+	do_DOALL();
+
+	ASSERT(flags[fOFlags] & F53_DOALLNONE, "V3: F53_DOALLNONE must remain SET when DOALL cancels with no objects");
+	ASSERT_EQUAL(isDone, false, "V3: DOALL no-objects must mark NOTDONE (consistent with V2)");
+	SUCCEED();
+}
+
 
 // =============================================================================
 // Tests SYNONYM V3
@@ -487,6 +678,13 @@ int main(char** argv, int argc)
 	// DOALL bit 0
 	test_DOALL_bit0_set_when_no_objects();
 	test_DOALL_bit0_clear_when_objects();
+	test_DOALL_no_objects_marks_NOTDONE();
+	test_DOALL_no_objects_calls_NEWTEXT();
+	test_DOALL_no_objects_isDone_false_after_processPROC_OR();
+	test_DOALL_two_consecutive_DEJAR_TODO_second_cancels_cleanly();
+	test_DOALL_implicit_DONE_after_iteration_must_mark_DONE();
+	test_DOALL_implicit_DONE_after_multi_iteration_marks_DONE();
+	test_DOALL_no_objects_v3_F53_bit0_set_after_cancel();
 
 	// SYNONYM V3: must NOT mark DONE
 	test_SYNONYM_v3_no_done();

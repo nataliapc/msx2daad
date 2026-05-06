@@ -68,7 +68,8 @@ void initObjects() {}
 
 void prompt(bool printPromptMsg) {}
 
-void clearLogicalSentences() {}
+uint8_t fake_clearLogicalSentences_calls;
+void clearLogicalSentences() { fake_clearLogicalSentences_calls++; }
 bool getLogicalSentence() {}
 void nextLogicalSentence() {}
 bool useLiteralSentence() {}
@@ -216,7 +217,8 @@ void beforeEach()
 
 	cw = windows;
 
-	fake_keyPressed         = 0;
+	fake_keyPressed                  = 0;
+	fake_clearLogicalSentences_calls = 0;
 	fake_lastSysMesPrinted  = -1;
 	fake_lastCharPrinted    = -1;
 	fake_lastUserMsgPrinted = -1;

@@ -21,7 +21,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 ifndef VERSION
-	VERSION := 3.0.0
+	VERSION := 3.0.1
 endif
 COMPFLAGS := -DCOMPRESSOR_RAW -DCOMPRESSOR_RLE -D_COMPRESSOR_PLETTER -DCOMPRESSOR_ZX0
 ifndef CXXFLAGS
@@ -29,7 +29,7 @@ ifndef CXXFLAGS
 				$(COMPFLAGS) \
 				-D_TEST -D_TRANSCRIPT -D_DEBUG -D_VERBOSE -D_VERBOSE2
 endif
-FULLOPT =  --max-allocs-per-node 200000
+#FULLOPT :=  --max-allocs-per-node 200000
 LDFLAGS := -rc
 OPFLAGS := --less-pedantic --opt-code-size -pragma-define:CRT_ENABLE_STDIO=0
 WRFLAGS := --disable-warning 196 --disable-warning 84
@@ -158,7 +158,7 @@ _package_single:
 	@echo "$(COL_YELLOW)####################### $(OUTFILE)$(COL_RESET)"
 	@mkdir -p $(PKGDIR)
 	$(MAKE) clean
-	$(MAKE) $(OBJDIR)msx2daad.com
+	nice -n 19 $(MAKE) -j4 $(OBJDIR)msx2daad.com
 	@cp $(OBJDIR)msx2daad.com $(PKGDIR)$(OUTFILE)
 package: EN_SC5 EN_SC6 EN_SC7 EN_SC8 EN_SC10 EN_SC12 \
          ES_SC5 ES_SC6 ES_SC7 ES_SC8 ES_SC10 ES_SC12 \

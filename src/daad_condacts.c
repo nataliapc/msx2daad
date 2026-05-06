@@ -42,7 +42,7 @@ const CONDACT_LIST condactList[] = {
 	{ do_ADJECT2,   0 }, { do_ADD,       1 }, { do_SUB,       1 }, { do_PARSE,     0 }, { do_LISTAT,    1 },	// 70-74  PARSE have isDone logic inside
 	{ do_PROCESS,   0 }, { do_SAME,      0 }, { do_MES,       1 }, { do_WINDOW,    1 }, { do_NOTEQ,     0 },	// 75-79
 	{ do_NOTSAME,   0 }, { do_MODE,      1 }, { do_WINAT,     1 }, { do_TIME,      1 }, { do_PICTURE,   1 },	// 80-84
-	{ do_DOALL,     1 }, { do_MOUSE,     1 }, { do_GFX,       1 }, { do_ISNOTAT,   0 }, { do_WEIGH,     1 },	// 85-89
+	{ do_DOALL,     0 }, { do_MOUSE,     1 }, { do_GFX,       1 }, { do_ISNOTAT,   0 }, { do_WEIGH,     1 },	// 85-89  DOALL has isDone logic inside (see _internal_doall)
 	{ do_PUTIN,     1 }, { do_TAKEOUT,   1 }, { do_NEWTEXT,   1 }, { do_ABILITY,   1 }, { do_WEIGHT,    1 },	// 90-94
 	{ do_RANDOM,    1 }, { do_INPUT,     1 }, { do_SAVEAT,    1 }, { do_BACKAT,    1 }, { do_PRINTAT,   1 },	// 95-99
 	{ do_WHATO,     1 }, { do_CALL,      1 }, { do_PUTO,      1 }, { do_NOTDONE,   0 }, { do_AUTOP,     1 },	// 100-104
@@ -94,6 +94,7 @@ static const char SAVEGAME[] = "SAVEGAME.000";
 static void _internal_picture(uint8_t value);
 static void _internal_display(uint8_t value);
 static void _internal_placeObject(Object *obj, uint8_t newLoc);
+static bool _internal_doall_continue();
 
 
 //==============================================================================
@@ -207,9 +208,17 @@ void processPROC()
 		do {
 			currProc->entry++;
 			if (currProc->entry->verb==0) {
-				//Entry end: implicit DONE when DOALL is active (spec: "if none found in pass")
-				if (currProc->condactDOALL) do_DONE();
-				else _popPROC();
+				// PRP028 Annex B: end-of-table with DOALL active is the step-4 path.
+				//   If more objects available → continue iteration: helper resets
+				//     pPROC and entry to the condact after DOALL; just exit the
+				//     do-while so inner while resumes execution there.
+				//   If exhausted → caso B per PCDAAD pcdaad.pas:64-72: clean
+				//     StackPop without isDone/NEWTEXT mutation.
+				if (currProc->condactDOALL && _internal_doall_continue()) {
+					// pPROC and entry already reset by the helper.
+				} else {
+					_popPROC();
+				}
 				break;
 			} else {
 				//Next entry
@@ -2195,7 +2204,9 @@ void do_REDO()
 /*	Another powerful action which allows the implementation 'ALL' type command.
 
 	1 - An attempt is made to find an object at Location locno. 
-	    If this is unsuccessful the DOALL is cancelled and action DONE is performed.
+	    If this is unsuccessful the DOALL is cancelled and actions NOTDONE and NEWTEXT
+		are performed (new behaviour in DAAD, previously DONE was used to exit the table,
+		see DOALL condact in DAAD Ready V2 doc (PRP028)).
 	2 - The object number is converted into the LS Noun1 (and Adjective1 if present)
 	    by reference to the object definition section. If Noun(Adjective)1 matches
 	    Noun(Adjective)2 then a return is made to step 1. This implements the "Verb
@@ -2216,7 +2227,19 @@ void do_REDO()
 	doors are often flags only and would have to bemade into objects if they were to 
 	be included in a DOALL. */
 #ifndef DISABLE_DOALL
-static void _internal_doall() {
+// Search for the next object at the DOALL location, starting from fDAObjNo+1.
+// Returns:
+//   true  → object found; fNoun1/fAdject1/fDAObjNo updated; pPROC and entry
+//           reset to the condact after DOALL (continuing the loop).
+//   false → no more matching objects (exhausted). Caller decides whether
+//           this is caso A (initial call from do_DOALL) or caso B (step-4
+//           re-entry from end-of-table) and acts accordingly.
+//
+// Reference: PCDAAD condacts.pas:1462-1492 + pcdaad.pas:31-72. PCDAAD does
+// the search inline in two places (the _DOALL condact for caso A, and the
+// run loop's end-of-process handling for caso B). MSX2DAAD shares this
+// helper but defers cancellation-policy to the caller.
+static bool _internal_doall_search() {
 	uint8_t objno = flags[fDAObjNo] + 1;
 	uint8_t locno = *(currProc->condactDOALL - 1);
 	if (*(currProc->condactDOALL - 2) > 127) locno = flags[locno];
@@ -2225,34 +2248,54 @@ static void _internal_doall() {
 	Object *obj = &objects[objno];
 	while (obj->location!=locno || (obj->nounId==flags[fNoun2] && obj->adjectiveId==flags[fAdject2])) {
 		objno++;
-		if (objno >= hdr->numObjDsc) {
-			currProc->condactDOALL = NULL;
-			do_DONE();
-			return;
-		}
+		if (objno >= hdr->numObjDsc) return false;	// exhausted
 		obj = &objects[objno];
 	}
 #ifdef DAADV3
-	if (ISV3) flags[fOFlags] &= ~F53_DOALLNONE;  // CLEAR: found at least one object
+	if (ISV3) flags[fOFlags] &= ~F53_DOALLNONE;	// CLEAR: found at least one object
 #endif
 	flags[fDAObjNo] = objno;
 	flags[fNoun1] = obj->nounId;
 	flags[fAdject1] = obj->adjectiveId;
 	pPROC = currProc->condactDOALL;
 	currProc->entry = currProc->entryDOALL;
+	return true;
 }
+
+// Step-4 re-entry helper called by processPROC at end-of-table when DOALL
+// active. Returns true if iteration continues (next object found), false if
+// the DOALL exhausted — in which case caller pops the process normally
+// (mirrors PCDAAD pcdaad.pas:48-72: clear DoallPTR + StackPop + advance).
+// No isDone/checkEntry/lsBuffer mutation here (caso B per PCDAAD spec).
+static bool _internal_doall_continue() {
+	if (!_internal_doall_search()) {
+		currProc->condactDOALL = NULL;
+		return false;
+	}
+	return true;
+}
+
 void do_DOALL() {	// locno+
 #ifdef DAADV3
-	if (ISV3) flags[fOFlags] |= F53_DOALLNONE;   // SET: no objects found yet
+	if (ISV3) flags[fOFlags] |= F53_DOALLNONE;	// SET: no objects found yet
 #endif
 	if (currProc->condactDOALL) errorCode(4);
 	currProc->condactDOALL = ++pPROC;
 	currProc->entryDOALL = currProc->entry;
-	flags[fDAObjNo] = NULLWORD;	// 255+1=0 in _internal_doall → start from object 0
-	_internal_doall();
+	flags[fDAObjNo] = NULLWORD;	// 255+1=0 in _internal_doall_search → start from object 0
+	if (!_internal_doall_search()) {
+		// Caso A — DOALL never found any object on its initial call.
+		// PCDAAD condacts.pas:1486-1491: newtext + _NOTDONE.
+		// DoallPTR is intentionally never set (already done above; we clear it).
+		currProc->condactDOALL = NULL;
+		clearLogicalSentences();	// NEWTEXT
+		isDone = false;				// NOTDONE effect (without falling into popPROC's branch)
+		popPROC();
+		checkEntry = false;
+	}
 }
 #else
-static void _internal_doall() {}
+bool _internal_doall_continue() { return false; }
 #endif
 
 // =============================================================================
@@ -2345,12 +2388,12 @@ void do_EXIT()		// value
 #ifndef DISABLE_DONE
 void do_DONE()
 {
-	if (currProc->condactDOALL) {
-		_internal_doall();
-	} else {
-		isDone = true;
-		popPROC();
-	}
+	// PRP028 Annex B: explicit DONE inside an active DOALL must trigger step-4
+	// re-iteration. If exhausted, fall through to normal popPROC (no NOTDONE),
+	// matching PCDAAD's "process finishes normally" path (pcdaad.pas:64-76).
+	if (currProc->condactDOALL && _internal_doall_continue()) return;
+	isDone = true;
+	popPROC();
 }
 #endif
 
@@ -2365,12 +2408,10 @@ void do_DONE()
 #ifndef DISABLE_NOTDONE
 void do_NOTDONE()
 {
-	if (currProc->condactDOALL) {
-		_internal_doall();
-	} else {
-		isDone = false;
-		popPROC();
-	}
+	// Same logic as do_DONE: continue DOALL if possible, else exit table.
+	if (currProc->condactDOALL && _internal_doall_continue()) return;
+	isDone = false;
+	popPROC();
 }
 #endif
 
