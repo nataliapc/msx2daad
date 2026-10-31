@@ -36,6 +36,7 @@
 
 // Vocabulary constants
 #define NULLWORD			255
+#define LAST_CONVERTIBLE_NOUN	19		// Nouns up to this code also work as verbs (PARSE 0)
 #define SYNTH_PRONOUN_ID	1		// Synthetic id for parser-injected PRONOUN tokens (enclitic -lo/-la/-los/-las).
 #define SYNTH_UNKNOWN_ID	2		// Synthetic id for parser-injected UNKNOWN_WORD tokens (V3 F53_UNRECWRD). Must be non-zero (0 terminates lsBuffer scan).
 									// Must be non-zero: lsBuffer scan loop treats id==0 as end-of-buffer.
@@ -299,7 +300,7 @@ void clearLogicalSentences();
 bool getLogicalSentence();
 void nextLogicalSentence();
 bool useLiteralSentence();
-bool populateLogicalSentence();
+bool populateLogicalSentence(bool convertNouns);
 
 void printBase10(uint16_t value);
 bool waitForTimeout(uint16_t timerFlag);

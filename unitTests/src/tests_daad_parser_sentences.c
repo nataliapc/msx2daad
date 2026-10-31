@@ -224,7 +224,7 @@ void test_populateLS_obj2_extAttr_byte_order_matches_CO()
 	lsBuffer0[6] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then fO2Att high byte is extAttr2, low byte is extAttr1 (consistent with fCOAtt)
 	ASSERT_EQUAL(flags[fNoun2], 100, "fNoun2 must be 100");
@@ -253,7 +253,7 @@ void test_populateLS_obj2_extAttr_cleared_when_obj_not_found()
 	lsBuffer0[6] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then extAttr flags are cleared
 	ASSERT_EQUAL(flags[fNoun2], 200, "fNoun2 must be 200");
@@ -263,6 +263,59 @@ void test_populateLS_obj2_extAttr_cleared_when_obj_not_found()
 	SUCCEED();
 }
 
+
+// --- Convertible nouns (PCDAAD parser.pas: the noun is copied, PARSE 0 only) ---
+
+// A noun below 20 with no verb is also the verb, and stays the noun
+void test_populateLS_convertible_noun_is_verb_and_noun()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+
+	//BDD given lsBuffer0 "I" = [14,NOUN, 0]
+	lsBuffer0[0] = 14;  lsBuffer0[1] = NOUN;
+	lsBuffer0[2] = 0;
+
+	populateLogicalSentence(true);
+
+	ASSERT_EQUAL(flags[fVerb],  14, "fVerb must take the convertible noun");
+	ASSERT_EQUAL(flags[fNoun1], 14, "fNoun1 must keep the convertible noun");
+	SUCCEED();
+}
+
+// With a verb, a noun below 20 is only a noun
+void test_populateLS_convertible_noun_with_verb_stays_noun()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+
+	//BDD given lsBuffer0 "GO NORTH" = [40,VERB, 2,NOUN, 0]
+	lsBuffer0[0] = 40;  lsBuffer0[1] = VERB;
+	lsBuffer0[2] = 2;   lsBuffer0[3] = NOUN;
+	lsBuffer0[4] = 0;
+
+	populateLogicalSentence(true);
+
+	ASSERT_EQUAL(flags[fVerb],  40, "fVerb must be the verb");
+	ASSERT_EQUAL(flags[fNoun1], 2,  "fNoun1 must be the noun");
+	SUCCEED();
+}
+
+// PARSE 1 (literal sentence) does not convert
+void test_populateLS_convertible_noun_not_converted_by_parse1()
+{
+	const char *_func = __func__;
+	daad_beforeEach();
+
+	lsBuffer0[0] = 14;  lsBuffer0[1] = NOUN;
+	lsBuffer0[2] = 0;
+
+	populateLogicalSentence(false);
+
+	ASSERT_EQUAL(flags[fVerb],  NULLWORD, "fVerb must stay empty");
+	ASSERT_EQUAL(flags[fNoun1], 14,       "fNoun1 must be the noun");
+	SUCCEED();
+}
 
 // --- INC-02: PRONOUN handling ---
 
@@ -282,7 +335,7 @@ void test_populateLS_pronoun_replaces_empty_noun1()
 	lsBuffer0[4] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then fVerb=30, fNoun1=100 (from pronoun), fAdject1=5
 	ASSERT_EQUAL(flags[fVerb],    30,  "fVerb must be 30");
@@ -308,7 +361,7 @@ void test_populateLS_pronoun_ignored_if_noun1_already_set()
 	lsBuffer0[6] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then explicit Noun1=200 wins (pronoun sees fNoun1 already set when processed after NOUN)
 	//     Note: actually pronoun is processed BEFORE the noun in this order; but since Noun1
@@ -337,7 +390,7 @@ void test_populateLS_pronoun_when_cpnoun_is_nullword()
 	lsBuffer0[4] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then fNoun1 stays NULLWORD (no replacement possible)
 	ASSERT_EQUAL(flags[fNoun1], NULLWORD, "fNoun1 stays NULLWORD when fCPNoun is NULLWORD");
@@ -361,7 +414,7 @@ void test_populateLS_saves_non_proper_noun_as_pronoun()
 	lsBuffer0[6] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then fCPNoun/fCPAdject are updated to the non-proper noun
 	ASSERT_EQUAL(flags[fCPNoun],   100, "fCPNoun must be updated with non-proper noun id");
@@ -385,7 +438,7 @@ void test_populateLS_proper_noun_doesnt_update_pronoun()
 	lsBuffer0[4] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then fCPNoun/fCPAdject remain unchanged (proper noun doesn't overwrite pronoun)
 	ASSERT_EQUAL(flags[fCPNoun],   100, "fCPNoun must NOT be overwritten by a proper noun");
@@ -408,7 +461,7 @@ void test_populateLS_does_not_clear_cpnoun_on_each_call()
 	lsBuffer0[2] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then fCPNoun/fCPAdject are not touched
 	ASSERT_EQUAL(flags[fCPNoun],   100, "fCPNoun must survive across populateLogicalSentence calls");
@@ -430,7 +483,7 @@ void test_populateLS_pronoun_boundary_id_49_is_proper()
 	lsBuffer0[2] = 49;  lsBuffer0[3] = NOUN;
 	lsBuffer0[4] = 0;
 
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fCPNoun], 200, "id=49 is proper → fCPNoun must not be updated");
 	SUCCEED();
@@ -450,7 +503,7 @@ void test_populateLS_pronoun_boundary_id_50_is_non_proper()
 	lsBuffer0[2] = 50;  lsBuffer0[3] = NOUN;
 	lsBuffer0[4] = 0;
 
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fCPNoun], 50, "id=50 is non-proper → fCPNoun must be updated");
 	SUCCEED();
@@ -477,7 +530,7 @@ void test_populateLS_adj2_captured_before_noun2()
 	lsBuffer0[12] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	//BDD then both adjectives are captured
 	ASSERT_EQUAL(flags[fAdject1], 7,        "fAdject1 must be 7 (first adjective)");
@@ -501,7 +554,7 @@ void test_populateLS_adj1_and_adj2_both_captured()
 	lsBuffer0[8] = 60;   lsBuffer0[9] = NOUN;
 	lsBuffer0[10] = 0;
 
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fAdject1], 7,  "fAdject1 must be 7");
 	ASSERT_EQUAL(flags[fAdject2], 9,  "fAdject2 must be 9 (second adj captured)");
@@ -523,7 +576,7 @@ void test_populateLS_spanish_adj_after_nouns_unchanged()
 	lsBuffer0[10] = 9;    lsBuffer0[11] = ADJECTIVE;  // ADJ2 = ROJA (follows noun2)
 	lsBuffer0[12] = 0;
 
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fAdject1], 7,  "fAdject1 must be 7 (VERDE for LAMPARA)");
 	ASSERT_EQUAL(flags[fNoun1],   50, "fNoun1 must be 50 (LAMPARA)");
@@ -827,7 +880,7 @@ void test_populateLS_UNKNOWN_WORD_sets_F53_UNRECWRD_v3()
 	flags[fOFlags] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fVerb], 10, "fVerb must be 10");
 	ASSERT(flags[fOFlags] & F53_UNRECWRD, "F53_UNRECWRD (bit 5 of flag 53) must be set after UNKNOWN_WORD token");
@@ -850,7 +903,7 @@ void test_populateLS_clears_F53_UNRECWRD_at_start_v3()
 	lsBuffer0[2] = 0;
 
 	//BDD when populateLogicalSentence()
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fVerb], 10, "fVerb must be 10");
 	ASSERT_EQUAL(flags[fOFlags] & F53_UNRECWRD, 0, "F53_UNRECWRD must be cleared at the start of each new LS");
@@ -873,7 +926,7 @@ void test_parser_to_populate_UNKNOWN_WORD_flow_v3()
 
 	strcpy(tmpMsg, "COGER XYZZY");
 	parser();
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fVerb], 20, "fVerb must be 20 (COGER)");
 	ASSERT(flags[fOFlags] & F53_UNRECWRD, "F53_UNRECWRD must be set after parser()+populateLogicalSentence() of 'COGER XYZZY' in V3");
@@ -931,7 +984,7 @@ void test_parser_HABLA_CON_pollutes_noun_with_pronoun()
 	//BDD "HABLA" (simulating the 1st word of "HABLA CON PEDRO" — vocab has no CON/PEDRO)
 	strcpy(tmpMsg, "HABLA");
 	parser();
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fVerb],  35,       "fVerb must be 35 (HABLA)");
 	//BDD HABLA-bug consequence: fNoun1 gets filled from fCPNoun via synthetic PRONOUN
@@ -1023,7 +1076,7 @@ void test_parser_to_populate_enclitic_flow()
 	//     populateLogicalSentence resolves PRONOUN → fNoun1 = fCPNoun = 100
 	strcpy(tmpMsg, "COGERLO");
 	parser();
-	populateLogicalSentence();
+	populateLogicalSentence(true);
 
 	ASSERT_EQUAL(flags[fVerb],    20,      "fVerb must be 20 (COGER)");
 	ASSERT_EQUAL(flags[fNoun1],   100,     "fNoun1 must be 100 (filled from fCPNoun via PRONOUN)");
@@ -1054,6 +1107,9 @@ int main(char** argv, int argc)
 	test_populateLS_obj2_extAttr_cleared_when_obj_not_found();
 
 	// populateLogicalSentence — INC-02 (PRP015)
+	test_populateLS_convertible_noun_is_verb_and_noun();
+	test_populateLS_convertible_noun_with_verb_stays_noun();
+	test_populateLS_convertible_noun_not_converted_by_parse1();
 	test_populateLS_pronoun_replaces_empty_noun1();
 	test_populateLS_pronoun_ignored_if_noun1_already_set();
 	test_populateLS_pronoun_when_cpnoun_is_nullword();

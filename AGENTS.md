@@ -15,8 +15,11 @@ Any change to the repository that affects build commands, project structure, con
 - **Docker image**: `nataliapc/sdcc:4.5.0`. The Makefile defines `DOCKER_RUN` which mounts the **project root** (`msx2_daad/`) at `/src` with working directory set to the relevant subdirectory. Change `SDCC_VER` in the Makefile to use other SDCC versions.
 - **Calling convention**: SDCC 4.5.0 uses `__sdcccall(1)` by default — 8-bit return in `A`, 16-bit in `DE`, `uint32_t` in `E:D:L:H`. All `__naked` functions in `src/libs/` have been rewritten for this convention (see PRP007).
 - **Post-link**: `hex2bin` converts `.ihx` → `.com`; binary is copied to `dsk/`.
-- **Host tools**: `gcc` (for `bin/testdaad`), `php` (for `bin/precomp.php`, `bin/imgwizard.php`).
+- **Host tools**: `gcc` (for `bin/testdaad`), `php` (for `bin/precomp.php`, `bin/imgwizard.php`), `python3` with Pillow and the `zx0` compressor (for `bin/img9990.py`, GFX9000 images).
 - Docker must be running before any `make` target. No `docker-compose` is used — the Makefile calls `docker run` directly.
+- **Native SDCC 4.6.0** (e.g. Homebrew) also builds the program and all unit tests by overriding the tools: `make AS=sdasz80 AR=sdar CC=sdcc HEX2BIN=<hex2bin>`. Two things keep it working:
+    - Prototypes in `include/daad_platform_api.h` must not be declared `inline`. SDCC 4.6.0 enforces C99 inline semantics (error 328) in every translation unit that includes the header; the platform `.c` files keep `inline` on their definitions.
+    - SDCC 4.6.0 (z80) hits a fatal internal error (`gen.c` line 1334) when `x > 0`, with `x` an extern `uint8_t`, is passed as a `bool` argument followed by a pointer argument (e.g. `ASSERT(counter > 0, "msg")`). Write `x != 0` instead.
 
 ### Key commands
 
@@ -24,7 +27,8 @@ Any change to the repository that affects build commands, project structure, con
 make clean all          # Full rebuild of msx2daad.com (default: test/debug, Spanish, MSX-DOS1, Screen 8)
 make test               # Launch openMSX emulator with dsk/ as disk A
 make precomp            # Analyze dsk/DAAD.DDB → regenerate include/daad_defines.h (strips unused condacts)
-make package            # Build all 14 release variants (EN/ES × SC5/6/7/8/10/12 + transcript)
+make package            # Build all 16 release variants (EN/ES × SC5/6/7/8/10/12 + transcript + GFX9000)
+make EN_G9K             # Build one variant (here the GFX9000 one in English) into package/
 make disk               # Generate game.dsk and game.rom from dsk/ contents
 make bin/testdaad       # Compile the host-side integration test tool (GCC)
 ```
@@ -56,7 +60,7 @@ Almost everything is selected via `-D` flags in `CXXFLAGS`. The Makefile default
 | `-DMSX2` / `-DCPM` / `-DPC_TXT` | Target platform (mutually exclusive) |
 | `-DMSXDOS1` | MSX-DOS version (MSXDOS2 removed — FCB/DOS1 API only) |
 | `-DLANG_EN` / `-DLANG_ES` | Language (English or Spanish) |
-| `-DSCREEN=5\|6\|7\|8\|10\|12` | MSX screen mode (default 8) |
+| `-DSCREEN=5\|6\|7\|8\|10\|12\|16` | MSX screen mode (default 8). `16` is the GFX9000 (V9990) B1 BD16 mode: defines `V9990`, undefines `COMPRESSOR_PLETTER` |
 | `-DFONTWIDTH=6\|8` | Font width in pixels |
 | `-DDAADV3` | DDB V3 format support |
 | `-DCOMPRESSOR_RAW` / `-DCOMPRESSOR_RLE` / `-DCOMPRESSOR_PLETTER` / `-DCOMPRESSOR_ZX0` | Enable each V9938CmdData decompressor in the gfxPictureShow dispatch (PRP025). Defining a subset trims the unused decoders from the .com. |
@@ -69,7 +73,7 @@ Almost everything is selected via `-D` flags in `CXXFLAGS`. The Makefile default
 
 Override at invocation: `make CXXFLAGS="-DMSX2 -DMSXDOS1 -DLANG_EN -DSCREEN=5" clean all`
 
-The Makefile defines `COMPFLAGS` and `PKGFLAGS` macros that share the compressor/font/version flags between the default build and the 14 `package` targets — change them in one place.
+The Makefile defines `COMPFLAGS` and `PKGFLAGS` macros that share the compressor/font/version flags between the default build and the 16 `package` targets — change them in one place.
 
 ---
 
@@ -98,9 +102,10 @@ src/daad/                   # Engine split into testable translation units
     daad_prompt.c           #   prompt() — user input handler
     daad_transcript.c       #   transcript_flush(), transcript_char()
     daad_utils.c            #   errorCode(), waitForTimeout()
-src/libs/                   # Low-level libraries → compiled into dos.lib, vdp.lib, utils.lib
+src/libs/                   # Low-level libraries → compiled into dos.lib, vdp.lib, gfx9000.lib, utils.lib
     dos_*.c / dos_*.s       #   MSX-DOS file operations (FCB/DOS1 API only)
     vdp_*.c / vdp_*.s       #   VDP (TMS9938) BitBlt, palette, screen ops
+    g9k_*.c / g9k_*.s       #   GFX9000 (V9990): detection, B1 BD16 set-up, command engine, picture buffer, ZX0
     utils_*.c / utils_*.s   #   Decompression (Pletter/RLE/ZX7), string ops, mouse
 
 include/                    # Headers
@@ -109,6 +114,7 @@ include/                    # Headers
     daad_condacts.h         #   Condact function declarations + NUM_PROCS
     daad_defines.h          #   Auto-generated by precomp.php (condact exclusion #defines)
     dos.h, vdp.h, heap.h   #   Library APIs
+    gfx9000.h               #   GFX9000 (V9990) ports, registers, command packet, VRAM layout, g9k_* API
     msx_const.h             #   MSX BIOS constants (~1700 lines)
     sdcc_compat.h           #   SDCC 4.5.0 compatibility helpers
 
@@ -136,7 +142,7 @@ docs/                       # DAAD official documentation (markdown)
     DAAD_Ready_Documentation_V2.md  # DAAD Ready v2 — condact reference for DRC compiler (@ indirection)
     Flags_for_Quill_PAWS_SWAN_and_DAAD.md  # System flag reference
 
-bin/                        # Tools: imgwizard.php, precomp.php, testdaad.c, dsktool, dsk2rom
+bin/                        # Tools: imgwizard.php, img9990.py (GFX9000 .IMG), precomp.php, testdaad.c, dsktool, dsk2rom
 dsk/                        # Runtime disk image contents (DAAD.DDB, fonts, images, MSX-DOS)
 emulation/                  # openMSX Tcl scripts (boot.tcl, info_daad.tcl)
 plan/                       # PRP planning documents (PRP001–PRP026)
@@ -153,6 +159,12 @@ plan/                       # PRP planning documents (PRP001–PRP026)
     - **V1 (legacy `c`/`cl`/`s` commands, DEPRECATED)**: chunks PALETTE/RAW/RLE/PLETTER + control chunks (RESET/CLS/SKIP/PAUSE).
     - **V2 (`cx`/`cxl` commands, current)**: INFO + V9938Cmd + V9938CmdData chunks streamed directly to V9938 HMMC/LMMC via port #9B (PRP022). Compressors per V9938CmdData chunk: RAW (0), RLE (1), PLETTER (2), ZX0 (3). Decompressors stream into a VRAM scratch zone at `0x1D400` (`VRAM_DECOMP_SCRATCH`, capped at 11264 bytes uncomp per chunk).
     - **Transparency**: `cx[l] --transparent-color=N` produces a 2-pass LMMC|AND + LMMC|OR sequence (mask + image buffers) for SC5/6/7/8 (PRP024). SC10 (`.SCA`) supported via the YJK+YAE bit-A flag: paletted-visible pixels use `mask=0x07, image=byte&0xF8` to preserve dest's bits 2-0 (chroma sharing of the 4-byte YJK group); YJK source pixels are auto-preserved (PRP026). SC12 (pure YJK) remains unsupported.
+    - **GFX9000 (`SCREEN=16`, `.IMG`, screen type `'G'`)**: created by `bin/img9990.py` (`image`, `font`, `list`). INFO (pixel type 5 = BD16, palette type 3 = GRB555, chipset 4 = V9990) + optional FIXEDIMG + V9990Cmd (type 22: 21-byte packets for R#32-R#52, one LMMC over the rectangle) + V9990CmdData (type 23: same layout as V9938CmdData; RAW, RLE or ZX0, at most 32768 uncompressed bytes per chunk). The interpreter does not send the LMMC: the data chunks are decoded through P#0 into a linear VRAM buffer at `0x60000` (`G9K_VRAM_SCRATCH`) and the rectangle is drawn with one BMXL. No Pletter decoder for the V9990.
+        - **Clipping**: a picture without FIXEDIMG is a floating DAAD picture and is clipped to the window current at DISPLAY (right and bottom; a window reaching the last column or line extends to the screen edge, and CLS of such a window clears up to the edge too, so nothing drawn there is left behind). Lower is one BMXL with a smaller NY; narrower is one BMXL per line, as the buffer keeps the full width. FONT.IMG is not clipped (`g9kLoadingFont`).
+        - **FIXEDIMG with window**: the extra header may be 8 bytes, `{ offsetX, offsetY, winX, winY, winW, winH }` (window in characters); the current window then becomes that rectangle, as a fixed DAAD picture does (`img9990.py image --fixed X,Y --window C,R,W,H`). The 4 byte form is unchanged.
+        - **Palette**: an optional chunk type 1 in the legacy layout `{ 1, 32, 32 }` + 16 GRB555 words (`--palette`) loads the colour table used by INK, PAPER and the rest, as the palette of a fixed DAAD picture does. The pixels themselves are direct colour.
+        - **Fonts**: `img9990.py font --gchars PNG` adds the graphic charset (256x32, glyphs from code 16) as a second LMMC 264 lines below the text one, where `gfxPutChPixels()` reads it after `\g` (VRAM line 476).
+- **GFX9000 (V9990) build**: `SCREEN=16` keeps the V9938 code paths and VRAM layout (font at Y=212, TEMP at 244, back screen at 256, graphic charset at 476) in an image space of 256x1024 pixels, 2 bytes each (GRB555, bit 15 = YS). `bitBlt()`, `waitVDPready()` and `setVPage()` are macros to V9990 versions in `daad_platform_msx2.c`: colours are EGA indexes looked up in a GRB555 table (GFX 9/10 change and read it), V9938 command and logical codes are translated to V9990 LMMV/LMMM. Every command writes all 16 bits (write mask 0xFFFF), because transparency compares the whole word with 0 and VRAM holds garbage in bit 15 after power-on; only NOT uses mask 0x7FFF. The CRT0 does not clear uninitialised data: initialise statics explicitly (see `g9kPicturePending`). The MSX VDP keeps the MSX-DOS text mode; `checkPlatformSystem()` dies without a GFX9000. `flags[fScMode]` is `32|4|2`.
 - **`#ifdef` heavy**: Nearly every source file uses conditional compilation for platform, screen mode, language, and debug features. Be careful with changes — test the specific variant you're modifying.
 - **MSX-DOS1 only**: `MSXDOS2` support was removed in PRP007. All filesystem calls use FCB-based DOS1 API.
 
@@ -220,6 +232,10 @@ There is no CI pipeline. All testing is local.
 ---
 
 ## Known bugs / limitations
+
+- **Convertible nouns**: with no verb, a noun up to `LAST_CONVERTIBLE_NOUN` (19) is copied to the verb and stays the noun, for PARSE 0 only (PCDAAD `parser.pas`). It used to be moved, which left Noun1 empty and broke entries such as `_ I`.
+- **DOALL with no objects** ends the table as DONE/NOTDONE do and leaves `checkEntry` alone, so a calling process goes on after its PROCESS (it used to abort the caller's entry).
+- **Line wrap**: `printChar()` wraps as soon as the last column is written, so text ending exactly at the right edge of a window one line high scrolls it away. Games that right-align a status line must stop one column short.
 
 - **`AUTOT` container search** was broken until PRP008: `getObjectId(LOC_CONTAINER=256)` always failed because `256 < numObjDsc` (uint8) is always false. Fixed in `src/daad/daad_objects.c` — now checks `objects[i].location < numObjDsc` instead.
 - **`PAUSE`, `END`, `EXIT 0`** are not unit-testable: PAUSE loops on `getTime()` (always 0 in stubs), END/EXIT 0 call `die()` which terminates the process.

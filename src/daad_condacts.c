@@ -2287,11 +2287,13 @@ void do_DOALL() {	// locno+
 		// Caso A — DOALL never found any object on its initial call.
 		// PCDAAD condacts.pas:1486-1491: newtext + _NOTDONE.
 		// DoallPTR is intentionally never set (already done above; we clear it).
+		// The table ends as with DONE/NOTDONE ("the DOALL is cancelled and action
+		// DONE is performed", DAAD manual 1991): a calling process goes on after
+		// its PROCESS, so checkEntry is left as it is, as do_NOTDONE does.
 		currProc->condactDOALL = NULL;
 		clearLogicalSentences();	// NEWTEXT
 		isDone = false;				// NOTDONE effect (without falling into popPROC's branch)
 		popPROC();
-		checkEntry = false;
 	}
 }
 #else

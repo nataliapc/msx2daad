@@ -49,7 +49,7 @@ LIB_GUARD=@mkdir -p $(LIBDIR)
 
 EMUSCRIPTS = -script ./emulation/boot.tcl -script ./emulation/info_daad.tcl
 
-LIBS := dos.lib vdp.lib utils.lib daad.lib
+LIBS := dos.lib vdp.lib gfx9000.lib utils.lib daad.lib
 REL_LIBS := $(addprefix $(LIBDIR), $(LIBS)) \
 			$(addprefix $(OBJDIR), crt0msx_msxdos_advanced.rel \
 									heap.rel \
@@ -99,6 +99,11 @@ $(LIBDIR)dos.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)dos
 	@$(AR) $(LDFLAGS) $@ $^ ;
 
 $(LIBDIR)vdp.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)vdp_*))
+	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
+	@$(LIB_GUARD)
+	@$(AR) $(LDFLAGS) $@ $^ ;
+
+$(LIBDIR)gfx9000.lib: $(patsubst $(SRCLIB)%, $(OBJDIR)%.rel, $(wildcard $(SRCLIB)g9k_*))
 	@echo "$(COL_WHITE)######## Compiling $@$(COL_RESET)"
 	@$(LIB_GUARD)
 	@$(AR) $(LDFLAGS) $@ $^ ;
@@ -154,6 +159,10 @@ EN_SC8_TR:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DLANG_EN -DSCREEN=8 $(PKGFLAGS) -DTRANSCRIPT" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 ES_SC8_TR:
 	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DLANG_ES -DSCREEN=8 $(PKGFLAGS) -DTRANSCRIPT" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+EN_G9K:
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DLANG_EN -DSCREEN=16 $(PKGFLAGS)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
+ES_G9K:
+	$(MAKE) $(MAKEFLAGS) CXXFLAGS="-DLANG_ES -DSCREEN=16 $(PKGFLAGS)" OUTFILE="msx2daad_$(VERSION)_$@.com" _package_single
 _package_single:
 	@echo "$(COL_YELLOW)####################### $(OUTFILE)$(COL_RESET)"
 	@mkdir -p $(PKGDIR)
@@ -162,7 +171,8 @@ _package_single:
 	@cp $(OBJDIR)msx2daad.com $(PKGDIR)$(OUTFILE)
 package: EN_SC5 EN_SC6 EN_SC7 EN_SC8 EN_SC10 EN_SC12 \
          ES_SC5 ES_SC6 ES_SC7 ES_SC8 ES_SC10 ES_SC12 \
-		 EN_SC8_TR ES_SC8_TR
+		 EN_SC8_TR ES_SC8_TR \
+		 EN_G9K ES_G9K
 
 
 precomp: $(INCDIR)daad_defines.h clean

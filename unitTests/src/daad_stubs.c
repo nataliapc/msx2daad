@@ -54,7 +54,7 @@ void clearLogicalSentences() {}
 bool getLogicalSentence() {}
 void nextLogicalSentence() {}
 bool useLiteralSentence() {}
-bool populateLogicalSentence() {}
+bool populateLogicalSentence(bool convertNouns) { convertNouns; }
 void prompt(bool p) {}
 void parser() {}
 

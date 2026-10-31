@@ -147,9 +147,11 @@ cprintf("%u %u %u %u %u %u %u %u \n",lsBuffer[0],lsBuffer[1],lsBuffer[2],lsBuffe
  * --------------------------------
  * Set the flags with the current logical sentence.
  *
+ * @param convertNouns	True for PARSE 0: a sentence without a verb takes a
+ *						noun below 20 as its verb too (see LAST_CONVERTIBLE_NOUN).
  * @return		Boolean with True if any logical sentence found.
  */
-bool populateLogicalSentence()
+bool populateLogicalSentence(bool convertNouns)
 {
 	char *p, type, id;
 	bool ret;
@@ -172,13 +174,7 @@ cputs("populateLogicalSentence()\n");
 			flags[fVerb] = id;
 			ret = true;
 		} else if (type==NOUN && flags[fNoun1]==NULLWORD) {								// NOUN1
-			// word that works like noun and verb
-			if (id<20 && flags[fVerb]==NULLWORD) {
-				flags[fVerb] = id;
-			} else {
-				// workd only like noun
-				flags[fNoun1] = id;
-			}
+			flags[fNoun1] = id;
 			ret = true;
 		} else if (type==NOUN && flags[fNoun2]==NULLWORD) {								// NOUN2
 			flags[fNoun2] = id;
@@ -212,6 +208,14 @@ cputs("populateLogicalSentence()\n");
 		}
 #endif
 		p+=2;
+	}
+
+	// Convertible nouns: with no verb, a noun below 20 is also the verb. The
+	// original interpreters copy it, so verb and noun hold the same code, and
+	// only for PARSE 0 (PCDAAD parser.pas). Games rely on it: La Aventura
+	// Original answers "I" (noun 14) with an entry "_ I".
+	if (convertNouns && flags[fVerb]==NULLWORD && flags[fNoun1]<=LAST_CONVERTIBLE_NOUN) {
+		flags[fVerb] = flags[fNoun1];
 	}
 
 	if (flags[fNoun2]!=NULLWORD) {
@@ -259,7 +263,7 @@ bool getLogicalSentence()
 		prompt(true);
 		parser();
 	}
-	return populateLogicalSentence();
+	return populateLogicalSentence(true);
 }
 
 /*
@@ -272,7 +276,7 @@ bool getLogicalSentence()
 bool useLiteralSentence()
 {
 	memcpy(lsBuffer0, lsBuffer1, sizeof(lsBuffer1));
-	return populateLogicalSentence();
+	return populateLogicalSentence(false);
 }
 
 /*

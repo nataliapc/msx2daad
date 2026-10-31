@@ -39,6 +39,10 @@
 							Bitmap mode with fixed palette (0-19268)
 							PAPER/INK changes don't have effect. INK is always white and PAPER is always black.
 
+					16: GFX9000 (V9990) B1 256x212 32768col (direct colour GRB555, BD16)
+							Needs a GFX9000 at port 0x60. Images are .IMG files (V9990Cmd/V9990CmdData chunks).
+							PAPER/INK use the 16 EGA colours (redefinable with GFX 9). The MSX VDP is not used.
+
 			SCREEN_HEIGHT
 					212: Default (26 rows)
 					192: You can change the screen height to 192px (24 rows)
@@ -94,6 +98,14 @@
 #endif
 #define VERSION_STR			"MSX2DAAD v"STRINGIFY(VERSION)"#"STRINGIFY(LANG)"#"STRINGIFY(SCREEN)"_"STRINGIFY(FONTWIDTH)
 
+// GFX9000 (V9990) modes
+#if SCREEN==16
+	#define V9990					// GFX9000 B1 BD16
+	#if defined(COMPRESSOR_PLETTER)
+		#undef COMPRESSOR_PLETTER	// No Pletter decoder for the V9990 (RAW, RLE and ZX0 only)
+	#endif
+#endif
+
 // SCREEN_WIDTH
 #if SCREEN==6 || SCREEN==7
 	#define SCREEN_WIDTH    512
@@ -102,7 +114,9 @@
 #endif
 
 // BYTESxLINE
-#if SCREEN >= 7
+#if defined(V9990)
+	#define BYTESxLINE		512		// GFX9000 B1 BD16 (2 bytes per pixel)
+#elif SCREEN >= 7
 	#define BYTESxLINE		256		// Screen 7, 8, 10, 12
 #else
 	#define BYTESxLINE		128		// Screen 5, 6
@@ -127,6 +141,8 @@
 	#define SCREEN_CHAR     STRINGIFY(A)
 #elif SCREEN==12
 	#define SCREEN_CHAR     STRINGIFY(C)
+#elif SCREEN==16
+	#define SCREEN_CHAR     STRINGIFY(G)
 #else
 	#define SCREEN_CHAR     STRINGIFY(SCREEN)
 #endif
@@ -226,6 +242,8 @@ volatile __at (JIFFY)  uint16_t varJIFFY;
 // === Chunks image format/data
 #define IMG_CHUNK_CMD		20		// Execute V9938 commands (CMDDATA payload is **SKIPPED** until stream-decompress PRP)
 #define IMG_CHUNK_CMDDATA	21		// V9938 command data chunks (**SKIPPED** until stream-decompress PRP)
+#define IMG_CHUNK_G9KCMD	22		// Execute V9990 commands (21 bytes each, R#32-R#52)
+#define IMG_CHUNK_G9KDATA	23		// V9990 command data (LMMC stream to P#2): same layout as CMDDATA
 // === Chunks internals
 #define IMG_CHUNK_INFO		128		// Information chunk (**SKIPPED via else fallback**)
 #define IMG_CHUNK_FIXEDIMG	129		// The image must be loaded at a fixed location avoiding the current Window
@@ -261,10 +279,18 @@ typedef struct {
 } IMG_INFO;
 
 typedef struct {
-	IMG_CHUNK_HEADER header;		// { 22, 4, 0 } Type=22 (FixedImg chunk), extraHeaderSize=4, dataSize=0
+	IMG_CHUNK_HEADER header;		// { 129, 4|8, 0 } Type=129 (FixedImg chunk), extraHeaderSize=4 or 8, dataSize=0
 	// Extra header (4 bytes)
 	uint16_t offsetX;				// { x } Global Offset X in pixels (max: offsetX + imageWidth <= ScreenWidth)
 	uint16_t offsetY;				// { y } Global Offset Y in pixels (max: offsetY + imageHeight <= ScreenHeight)
+	// Optional (extraHeaderSize=8): the current window becomes this rectangle, in
+	// characters, as a fixed picture does in DAAD ("the coordinates and size of
+	// the window selected at that moment adapt to those of the picture", DMG,
+	// DAAD manual 1991)
+	uint8_t  winX;
+	uint8_t  winY;
+	uint8_t  winW;
+	uint8_t  winH;
 	// No data
 } IMG_FIXEDIMG;
 
@@ -284,6 +310,14 @@ typedef struct {
 	// Dummy Data
 	char     data[0];				// Dummy data only to get the pointer to the data section
 } IMG_V9938_CMDDATA;
+
+typedef struct {
+	IMG_CHUNK_HEADER header;		// { 22, 1, n*21 } Type=22 (V9990Cmd chunk), extraHeaderSize=1, dataSize=n*21
+	// Extra header (1 byte)
+	uint8_t  cmdCount;				// { n } Number of commands in this chunk data (21 bytes per command, R#32-R#52)
+	// Dummy Data
+	char     data[0];				// Dummy data only to get the pointer to the data section
+} IMG_V9990_CMD;
 
 
 #endif //__PLATFORM_MSX2_H__

@@ -73,7 +73,7 @@ void clearLogicalSentences() { fake_clearLogicalSentences_calls++; }
 bool getLogicalSentence() {}
 void nextLogicalSentence() {}
 bool useLiteralSentence() {}
-bool populateLogicalSentence() {}
+bool populateLogicalSentence(bool convertNouns) { convertNouns; }
 void parser() {}
 void mainLoop() {}
 

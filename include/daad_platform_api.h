@@ -46,8 +46,8 @@ uint16_t checkKeyboardBuffer();
 void     clearKeyboardBuffer();
 uint8_t  getKeyInBuffer();
 void     waitingForInput();
-inline void *safeMemoryAllocate();
-inline void safeMemoryDeallocate(void*);
+void *safeMemoryAllocate();
+void safeMemoryDeallocate(void*);
 
 
 // Filesystem
@@ -63,20 +63,20 @@ void printXMES(uint16_t address);
 void gfxSetScreen();
 void gfxSetScreenModeFlags();
 void gfxClearScreenBlock(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
-inline void gfxClearWindow();
-inline void gfxClearCurrentLine();
-inline void gfxScrollUp();
-inline void gfxSetPaperCol(uint8_t col);
-inline void gfxSetInkCol(uint8_t col);
-inline void gfxSetBorderCol(uint8_t col);
-inline void gfxSetGraphCharset(bool value);
-inline void gfxPutChWindow(uint8_t c);
+void gfxClearWindow();
+void gfxClearCurrentLine();
+void gfxScrollUp();
+void gfxSetPaperCol(uint8_t col);
+void gfxSetInkCol(uint8_t col);
+void gfxSetBorderCol(uint8_t col);
+void gfxSetGraphCharset(bool value);
+void gfxPutChWindow(uint8_t c);
 static void gfxPutChPixels(uint8_t c, uint16_t dx, uint16_t dy);
-inline void gfxPutInputEcho(char c, bool keepPos);
-inline void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
+void gfxPutInputEcho(char c, bool keepPos);
+void gfxSetPalette(uint8_t index, uint8_t red, uint8_t green, uint8_t blue);
 bool gfxPicturePrepare(uint8_t location);
-inline bool gfxPictureShow();
-inline void gfxRoutines(uint8_t routine, uint8_t value);
+bool gfxPictureShow();
+void gfxRoutines(uint8_t routine, uint8_t value);
 
 // GFX constants
 #define GFX_FULL_COPY_TO_PHYS		0

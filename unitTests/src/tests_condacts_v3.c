@@ -382,6 +382,29 @@ void test_DOALL_no_objects_marks_NOTDONE()
 	SUCCEED();
 }
 
+// TEST D-CANCEL-1b — DOALL with no objects in a sub-process ends that table only:
+// the calling entry goes on after its PROCESS, as with DONE and NOTDONE. Cozumel
+// draws its inventory with a DOALL in a sub-process and its caller must go on.
+void test_DOALL_no_objects_caller_continues()
+{
+	const char *_func = __func__;
+	beforeEach();
+	PROCstack *caller = currProc;
+	currProc++;								// the sub-process frame
+	memset(currProc, 0, sizeof(PROCstack));
+
+	char proc[] = { _DOALL, 5, _DONE, 255 };
+	pPROC = proc + 1;
+	indirection = false;
+	checkEntry = true;
+
+	do_DOALL();
+
+	ASSERT(currProc == caller, "DOALL no-objects must end the sub-process");
+	ASSERT(checkEntry, "DOALL no-objects must not end the calling entry");
+	SUCCEED();
+}
+
 // TEST D-CANCEL-2 — DOALL no objects: must call clearLogicalSentences (NEWTEXT effect)
 void test_DOALL_no_objects_calls_NEWTEXT()
 {
@@ -396,7 +419,7 @@ void test_DOALL_no_objects_calls_NEWTEXT()
 
 	do_DOALL();
 
-	ASSERT(fake_clearLogicalSentences_calls > 0, "DOALL no-objects must call clearLogicalSentences (NEWTEXT effect)");
+	ASSERT(fake_clearLogicalSentences_calls != 0, "DOALL no-objects must call clearLogicalSentences (NEWTEXT effect)");
 	SUCCEED();
 }
 
@@ -461,7 +484,7 @@ void test_DOALL_two_consecutive_DEJAR_TODO_second_cancels_cleanly()
 	//     in the player handler → REDO swallowed input silently.
 	ASSERT_EQUAL(isDone, false,
 		"2nd DEJAR TODO: isDone must be false after NOTDONE (post-OR must not re-set it)");
-	ASSERT(fake_clearLogicalSentences_calls > 0,
+	ASSERT(fake_clearLogicalSentences_calls != 0,
 		"2nd DEJAR TODO: NEWTEXT must fire (lsBuffer cleared)");
 	SUCCEED();
 }
@@ -679,6 +702,7 @@ int main(char** argv, int argc)
 	test_DOALL_bit0_set_when_no_objects();
 	test_DOALL_bit0_clear_when_objects();
 	test_DOALL_no_objects_marks_NOTDONE();
+	test_DOALL_no_objects_caller_continues();
 	test_DOALL_no_objects_calls_NEWTEXT();
 	test_DOALL_no_objects_isDone_false_after_processPROC_OR();
 	test_DOALL_two_consecutive_DEJAR_TODO_second_cancels_cleanly();
